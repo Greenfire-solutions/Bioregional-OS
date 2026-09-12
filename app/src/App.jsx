@@ -280,19 +280,30 @@ export default function App() {
             <div className="flex h-full">
               <div className="relative min-w-0 flex-1">
                 <Map3D places={places} hubs={hubs} signals={signals} focus={focus} version={version}
+                       selectedId={picked?.id ?? null}
                        onSelect={(s) => {
                          // An ecoregion has no single point to fly to — it is an
                          // area — so clicking one opens what is known about it
                          // instead of moving the camera.
-                         if (s.type === 'ecoregion') return setRegion(s.item);
+                         // One panel at a time, and each closes the other. A
+                         // double-click both zooms and picks, so it was opening
+                         // an ecoregion AND a feature at once — two answers to a
+                         // question nobody asked twice.
+                         if (s.type === 'ecoregion') { setPicked(null); return setRegion(s.item); }
                          // A thing the commons put on the map opens beside it
                          // rather than flying the camera: you clicked it because
                          // you wanted to know what it is, not to go somewhere.
-                         if (s.type === 'feature') return setPicked(s.item);
+                         if (s.type === 'feature') { setRegion(null); return setPicked(s.item); }
                          if (s.item.lat != null) setFocus({ lat: s.item.lat, lng: s.item.lng });
                        }} />
-                {region && <RegionPanel region={region} onClose={() => setRegion(null)} />}
               </div>
+              {region && (
+                // Beside the map, not floating over it — the same column the
+                // feature panel uses. It used to be absolutely positioned on
+                // top, so the two panel types behaved differently and the
+                // ecoregion one covered the ground it was describing.
+                <RegionPanel region={region} onClose={() => setRegion(null)} />
+              )}
               {picked && (
                 <MapPanel feature={picked} onClose={() => setPicked(null)}
                           onGoTo={(t) => { setPicked(null); setTab(t); }}

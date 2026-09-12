@@ -58,6 +58,44 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
   }, [view, width, height, features, kindsOn]);
 
   /**
+   * Move markers off each other, so a number is never half of another marker.
+   *
+   * Two things a kilometre apart are one pixel at a regional zoom, and thirteen
+   * markers were arriving as two visible pills with eleven stacked underneath.
+   * Worse than hidden: a place's dot sat exactly over the "2" of a gathering's
+   * "24", so the map read "4" — confidently, and wrong, which is the failure
+   * this whole project treats as the serious one.
+   *
+   * A short outward spiral from the true point, in screen space, on collision
+   * only. Something that has been moved is drawn with a thread back to where it
+   * really is, because a marker that quietly relocates is the same lie in a
+   * different font.
+   */
+  const laidOut = useMemo(() => {
+    const done = [];
+    const clashes = (a, b) => Math.abs(a.px - b.px) < a.w / 2 + b.w / 2 + 3
+      && Math.abs(a.py - b.py) < 24;
+    return placed.map((f) => {
+      const w = f.kind === 'place' || f.kind === 'hub' ? 22 : f.badge != null ? 40 : 16;
+      let px = f.x, py = f.y, moved = false;
+      for (let i = 0; i < 24; i++) {
+        const cand = { px, py, w };
+        if (!done.some((d) => clashes(cand, d))) break;
+        // A ring at a time: eight positions, then further out. Deterministic,
+        // so the same map lays out the same way twice and markers do not shuffle
+        // when something unrelated changes.
+        const ring = Math.floor(i / 8) + 1;
+        const angle = ((i % 8) / 8) * Math.PI * 2;
+        px = f.x + Math.cos(angle) * (16 * ring);
+        py = f.y + Math.sin(angle) * (14 * ring);
+        moved = true;
+      }
+      done.push({ px, py, w });
+      return { ...f, x: px, y: py, trueX: f.x, trueY: f.y, moved };
+    });
+  }, [placed]);
+
+  /**
    * Which markers may keep their name, and which fall back to a dot.
    *
    * Two places two kilometres apart are the same pixel at a regional zoom, so
@@ -77,42 +115,56 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
     // and hovering says what they are.
     if ((view?.zoom ?? 0) < 8.5) return keep;
 
+    // Every marker's own footprint is reserved first, each tagged with whose it
+    // is — because a label grows out of its OWN marker and would otherwise be
+    // tested against it. That was the bug: a place's label box started at
+    // f.x + 8 while its own footprint ran to f.x + 11, so every place name
+    // collided with the dot it belonged to and NO place name was ever drawn.
+    // The rule looked like a collision rule working hard and was a rule that
+    // could never say yes.
     const taken = [];
-    const hits = (box) => taken.some((t) =>
+    const hits = (box, ownerId) => taken.some((t) =>
+      t.owner !== ownerId &&
       box.x1 > t.x0 && box.x0 < t.x1 && box.y1 > t.y0 && box.y0 < t.y1);
 
-    // Every marker's own footprint is reserved FIRST, before any label is
-    // considered. Reserving only the labels let a project pill land squarely on
-    // a place name — the collision pass was checking labels against each other
-    // while the thing they actually collided with was never in the list.
     const footprint = (f) => {
       const w = f.kind === 'place' || f.kind === 'hub' ? 22
         : f.badge != null ? 40 : 16;
-      return { x0: f.x - w / 2, x1: f.x + w / 2, y0: f.y - 11, y1: f.y + 11 };
+      return { owner: f.id, x0: f.x - w / 2, x1: f.x + w / 2, y0: f.y - 11, y1: f.y + 11 };
     };
-    for (const f of placed) taken.push(footprint(f));
+    for (const f of laidOut) taken.push(footprint(f));
 
-    // Then names, most important first, each against everything already there.
-    for (const f of [...placed].reverse()) {
+    // Then names, most important first, each against everything already there
+    // except its own marker.
+    for (const f of [...laidOut].reverse()) {
       if (f.kind !== 'place') continue;
-      // Measured from the marker's own left edge, since the label grows
-      // rightwards out of the pill it belongs to.
-      const w = 26 + Math.min(String(f.title ?? '').length, 26) * 6;
-      const box = { x0: f.x + 8, x1: f.x + 8 + w, y0: f.y - 11, y1: f.y + 11 };
-      if (hits(box)) continue;
+      const w = 26 + Math.min(String(f.title ?? '').length, 30) * 6.2;
+      const box = { owner: f.id, x0: f.x + 8, x1: f.x + 8 + w, y0: f.y - 11, y1: f.y + 11 };
+      if (hits(box, f.id)) continue;
       taken.push(box);
       keep.add(f.id);
     }
     return keep;
-  }, [placed, view?.zoom]);
+  }, [laidOut, view?.zoom]);
 
-  if (!placed.length) return null;
+  if (!laidOut.length) return null;
 
   return (
     // Transparent to the pointer as a whole, so dragging the map still works;
     // each marker turns it back on for itself.
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {placed.map((f) => {
+      {/* A hairline from a nudged marker back to the point it actually marks.
+          Moving a marker to make it readable is fine; moving it silently is
+          the same overstatement as drawing a borrowed coordinate as a precise
+          one, which this map already refuses to do. */}
+      <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
+        {laidOut.filter((f) => f.moved).map((f) => (
+          <line key={`t:${f.kind}:${f.id}`}
+                x1={f.trueX} y1={f.trueY} x2={f.x} y2={f.y}
+                stroke="rgba(233,243,236,0.28)" strokeWidth="1" strokeDasharray="2 2" />
+        ))}
+      </svg>
+      {laidOut.map((f) => {
         const k = KIND[f.kind] ?? KIND.observation;
         const blocked = f.state === 'blocked';
         const c = blocked && k.blockedColor ? k.blockedColor : k.color;
@@ -163,6 +215,9 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
                 borderWidth: weight === 'dot' ? 1.5 : 1.5,
                 background: isOn ? 'rgba(12,18,15,0.92)' : 'rgba(12,18,15,0.72)',
                 paddingRight: (weight === 'dot' && !isOn) ? 3 : 8,
+                // Around the whole capsule, where there is room for a ring to
+                // be seen. Still the only thing on the map that moves.
+                animation: blocked ? 'bros-pulse 3s ease-in-out infinite' : 'none',
               }}>
               {/* The glyph. A filled core for something standing where it says
                   it is; a hollow one for a coordinate it borrowed. */}
@@ -173,8 +228,10 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
                   height: weight === 'dot' ? 8 : 12,
                   background: borrowed ? 'transparent' : rgb,
                   border: borrowed ? `2px dashed ${rgb}` : `2px solid ${rgb}`,
-                  boxShadow: blocked ? `0 0 0 3px rgba(${c[0]},${c[1]},${c[2]},0.28)` : 'none',
-                  animation: blocked ? 'bros-pulse 3.2s ease-in-out infinite' : 'none',
+                  // The pulse used to live here, on the 12px dot — inside the
+                  // pill's own 2px stroke, which painted over most of the ring.
+                  // Two frames a second and a half apart were indistinguishable
+                  // at 2x magnification. It is on the pill now.
                 }}
               />
 
@@ -190,7 +247,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
                   two permanent labels were what made the middle of the map a
                   wall of black boxes. */}
               {(named || isOn) && (
-                <span className="max-w-[13rem] truncate whitespace-nowrap pr-1 text-[11px]
+                <span className="max-w-[17rem] truncate whitespace-nowrap pr-1 text-[11px]
                                  leading-none text-[var(--ink)]">
                   {f.title}
                 </span>

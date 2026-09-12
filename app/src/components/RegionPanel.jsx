@@ -54,8 +54,8 @@ export default function RegionPanel({ region, onClose }) {
   const has = brief?.downloaded;
 
   return (
-    <div className="absolute right-3 top-3 z-10 max-h-[calc(100%-1.5rem)] w-[22rem] max-w-[calc(100vw-1.5rem)]
-                    overflow-y-auto rounded border border-[var(--line)] bg-[var(--paper)] shadow-lg">
+    <aside className="flex h-full w-[19rem] shrink-0 flex-col overflow-y-auto border-l
+                      border-[var(--line)] bg-[var(--paper)]">
       <div className="flex items-start gap-2 border-b border-[var(--line)] px-4 py-3">
         <div className="min-w-0 flex-1">
           <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
@@ -133,7 +133,7 @@ export default function RegionPanel({ region, onClose }) {
           )}
         </div>
       )}
-    </div>
+    </aside>
   );
 }
 

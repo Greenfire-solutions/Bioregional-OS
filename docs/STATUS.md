@@ -118,6 +118,25 @@ and still a real constraint on what a chapter can rely on.
 
 ---
 
+## Known rough edges on the map
+
+Found by an audit on 2026-09-12 and deliberately left, with the reasoning:
+
+- **A badge's number has no unit.** "9" is open gates, "24" is people coming,
+  "18" is people coming. Two markers can legitimately both read "8" meaning
+  different things. The kind is carried by colour and shape and the meaning is
+  in the key, which is enough to read but not enough to read *fast*. A unit
+  glyph on the pill would fix it.
+- **Long titles still truncate on hover** at about 17rem — "Barton Creek Autumn
+  Watershed Ass…". Wider labels start colliding again; the real fix is
+  two-line labels, which the collision pass does not yet measure.
+- **Globe mode is off-key.** Markers are a single pale dot and the ecoregion
+  polygons render fully saturated with white seams — a different application's
+  palette. Terrain mode is the one that was designed.
+- **Ecoregion polygons show tessellation artifacts** at high zoom: black
+  triangular wedges across the fill. Upstream geometry plus deck.gl's
+  triangulation, not the markers.
+
 ## Things that bit, and will bite again
 
 - **`grep` returns nothing on `scripts/test.mjs` in some shells.** It cost an
@@ -134,6 +153,14 @@ and still a real constraint on what a chapter can rely on.
   alone or you have one defence nobody has checked.
 - **A test that asserts a list of names goes stale silently.** Assert the
   property.
+- **A collision rule that can never say yes looks like one working hard.** Every
+  place name collided with its OWN marker's reserved footprint, so no place name
+  was ever drawn — and the code read as a careful collision pass the whole time.
+  If a rule never fires, check that it *can*.
+- **Editing CSS with a string cut deleted the entire stylesheet** and the build
+  still succeeded; the app rendered as unstyled HTML. `git checkout --` the file
+  and reapply narrowly. Check `wc -l` after any scripted edit to a file you did
+  not read first.
 
 ---
 

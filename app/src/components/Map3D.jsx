@@ -32,7 +32,7 @@ function hsl(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
-export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect, version = 0 }) {
+export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect, version = 0, selectedId = null }) {
   const [mode, setMode] = useState('terrain');          // terrain | globe
   const [level, setLevel] = useState('l3');             // ecoregion detail
   const [relief, setRelief] = useState(true);
@@ -40,7 +40,6 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(null);
   const [features, setFeatures] = useState([]);
-  const [picked, setPicked] = useState(null);
   // The canvas's own size, measured rather than assumed: the map column
   // changes width whenever the detail panel opens, and a projection computed
   // against the wrong width puts every marker in the wrong place.
@@ -224,7 +223,10 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         views={views}
         viewState={mode === 'globe' ? { ...view, zoom: Math.min(view.zoom, 5), pitch: 0, bearing: 0 } : view}
         onViewStateChange={({ viewState }) => setView(viewState)}
-        controller={{ dragRotate: true, touchRotate: true }}
+        // scrollZoom named explicitly. It is on by default, but the wheel was
+        // reported dead and an option that is only on by default is one a
+        // future prop spread can switch off without anybody noticing.
+        controller={{ dragRotate: true, touchRotate: true, scrollZoom: true, doubleClickZoom: true }}
         layers={layers}
         getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}
       >
@@ -236,8 +238,12 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       {mode === 'terrain' && (
         <MapMarkers
           view={view} width={box.width} height={box.height}
-          features={features} kindsOn={kindsOn} selectedId={picked}
-          onPick={(f) => { setPicked(f.id); onSelect?.({ type: 'feature', item: f }); }}
+          // Selection is owned by whoever owns the panel, not by the map.
+          // Two sources of truth meant closing the panel left the marker
+          // permanently expanded — it survived zooming, toggling its whole kind
+          // off and back on, and a full drag. Only a reload cleared it.
+          features={features} kindsOn={kindsOn} selectedId={selectedId}
+          onPick={(f) => onSelect?.({ type: 'feature', item: f })}
         />
       )}
 
@@ -268,7 +274,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           than under it. Credit that is covered is credit not given, and the
           ecoregion layer's licence requires it — so the two are given
           non-overlapping space at every width rather than only on a desktop. */}
-      <div className="absolute bottom-3 left-3 z-20 max-h-[15rem] overflow-y-auto rounded-lg
+      <div className="absolute bottom-3 left-3 z-20 max-h-[calc(100%-5rem)] overflow-y-auto rounded-lg
                       border border-[var(--line)] bg-[var(--paper)]/80 p-1.5 shadow-lg backdrop-blur-md">
         <div className="mb-1 px-1.5 text-[9px] uppercase tracking-[0.08em] text-[var(--ink-3)]">
           On the map
@@ -310,8 +316,11 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           <div className="mt-1.5 flex items-start gap-1.5 border-t border-[var(--line)] px-1 pt-1.5">
             <img src={markerSVG('gathering', { precise: false })} alt=""
                  className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {/* Was clipped by the viewport at 812px tall and stopped mid-sentence
+                — "drawn at the centre of" and then nothing. A footnote that
+                cannot finish makes the whole panel read as unfinished. */}
             <span className="max-w-[9.5rem] text-[9px] leading-snug text-[var(--ink-3)]">
-              Hollow and dashed: no coordinate of its own, drawn at the centre of its place.
+              Hollow: no coordinate of its own.
             </span>
           </div>
         )}
