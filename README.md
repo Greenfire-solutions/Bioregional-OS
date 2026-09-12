@@ -10,9 +10,23 @@ with no account and no cloud.
 
 ---
 
+## Getting it
+
+You need the folder on your computer first. Either:
+
+- **Download the zip** from the green *Code* button at the top of
+  [this page](https://github.com/Greenfire-solutions/Bioregional-OS) → *Download ZIP*,
+  then double-click it to unpack. No git, no account, no command line.
+- **Or, if you use git:** `git clone https://github.com/Greenfire-solutions/Bioregional-OS.git`
+
+You also need [Node](https://nodejs.org) — the big green **LTS** button. The Mac
+launcher below checks for it and tells you the same thing if it is missing.
+
 ## Start in one step
 
-**Mac:** double-click `bin/Start BioRegional OS.command`.
+**Mac:** open the unpacked folder and double-click `bin/Start BioRegional OS.command`.
+The first time, macOS may say it cannot check the file: right-click it, choose
+*Open*, then *Open* again. That happens once.
 
 **Anything else:**
 

@@ -1187,6 +1187,81 @@ export const TOOLS = [
     handler: (i) => quest.priorities(ch(i)),
   },
   {
+    name: 'override_gate',
+    description:
+      'Pass a gate WITHOUT satisfying it, on a named person\'s authority and with a written ' +
+      'reason. Not a way to switch a gate off — a way to make going past it a recorded act with ' +
+      'somebody\'s name on it, kept and shown for as long as the project exists, so the commons ' +
+      'argues with the person rather than with the software. Three gates never graduate: ' +
+      'rights-holder consent, indigenous consent and youth safeguarding, because an override is ' +
+      'made by whoever is at the keyboard and those are not that person\'s to make.',
+    input_schema: S({
+      quest_id: str(''),
+      // Every gate is listed, including the three that never graduate. The
+      // central enum guard would otherwise refuse those first, with a generic
+      // "must be one of" that names the allowed values and not the reason —
+      // and the reason is the entire content of that refusal. Consent is not
+      // yours to waive; a consultation slot is not closed by a deadline; the
+      // person safeguarding protects is not in the room. The gate is not
+      // weaker for being listed: overrideGate refuses it either way.
+      gate: {
+        type: 'string',
+        enum: ['rights_holder_consent', 'indigenous_consent', 'land_access',
+               'youth_safeguarding', 'permits_insurance', 'ecological_assessment',
+               'maintenance_owner', 'affected_party_process', 'data_consent'],
+        description: 'Which gate to pass',
+      },
+      reason: str('Why this project proceeds without it. Kept forever.'),
+      overridden_by: str('Who is taking responsibility for that'),
+    }, ['quest_id', 'gate', 'reason', 'overridden_by']),
+    handler: (i) => quest.overrideGate(i.quest_id, i.gate,
+      { reason: i.reason, overridden_by: i.overridden_by }),
+  },
+  {
+    name: 'name_deputy',
+    description:
+      'Name who holds this chapter and who holds it when they cannot. The deputy must be a ' +
+      'different person and must have AGREED — recording somebody as deputy without asking them ' +
+      'is how a chapter discovers it has no deputy at the moment it needs one. A chapter fails ' +
+      'its own viability test until both are named, because a commons that stops when one person ' +
+      'is ill was never a commons.',
+    input_schema: S({
+      chapter_id: str(''),
+      steward: str('Who holds this chapter day to day'),
+      deputy: str('Who holds it when the steward cannot'),
+      deputy_agreed: bool('Has the deputy actually been asked and said yes?'),
+    }, ['steward', 'deputy']),
+    handler: (i) => {
+      const id = ch(i);
+      if (!id) return { error: 'no_chapter' };
+      const s = String(i.steward ?? '').trim();
+      const d = String(i.deputy ?? '').trim();
+      if (s.toLowerCase() === d.toLowerCase()) {
+        return {
+          error: 'same_person',
+          message: 'The steward and the deputy have to be two different people. A chapter whose ' +
+                   'deputy is its steward has an arrangement on paper and none in the world.',
+        };
+      }
+      if (!i.deputy_agreed) {
+        return {
+          error: 'not_agreed',
+          message: `Ask ${d} first. Recording somebody as deputy without asking is how a chapter ` +
+                   'finds out it has no deputy on the day it needs one — and the day it needs one ' +
+                   'is the day nobody can ask. Come back when they have said yes.',
+        };
+      }
+      run(`UPDATE chapters SET steward=?, deputy=?, deputy_agreed_at=datetime('now') WHERE id=?`,
+          s, d, id);
+      return {
+        steward: s, deputy: d,
+        note: `${d} should know where the backup lives and should restore one themselves at ` +
+              'least once. A backup nobody has restored is a backup nobody has.',
+        next: { tool: 'backup_commons', input: {} },
+      };
+    },
+  },
+  {
     name: 'who_could_help',
     description:
       'Join what this commons is short of against what people have already been recorded doing, ' +

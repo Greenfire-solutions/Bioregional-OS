@@ -54,6 +54,12 @@ const ADDED_COLUMNS = {
   decisions: [
     ['land_seat_context', 'TEXT'],
   ],
+  chapters: [
+    ['steward', 'TEXT'], ['deputy', 'TEXT'], ['deputy_agreed_at', 'TEXT'],
+  ],
+  quest_gates: [
+    ['overridden_by', 'TEXT'], ['override_reason', 'TEXT'], ['overridden_at', 'TEXT'],
+  ],
   federation_peers: [
     ['summary', 'TEXT'], ['summary_at', 'TEXT'], ['tags', 'TEXT'],
   ],

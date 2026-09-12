@@ -39,6 +39,31 @@ export const GATES = [
 /** Kept as the old name so nothing reads as if the set were still partial. */
 const BUILD_GATES = GATES;
 
+/**
+ * The three that cannot be overridden, whatever the reason and whoever gives it.
+ *
+ * Everything else here is graduated: a named person may pass a gate with a
+ * written reason, and the reason is kept and shown forever. That is Ostrom's
+ * fifth principle — graduated sanctions, not binary refusal — and it exists
+ * because a small group that cannot get past a blank field at nine o'clock on a
+ * Sunday stops using the tool and never says why. The design–reality gap closes
+ * systems more reliably than any missing feature.
+ *
+ * These three do not graduate, because an override is a decision made by
+ * whoever is at the keyboard, and these are not that person's to make:
+ *
+ *   rights_holder_consent — it is not yours to waive on somebody's behalf
+ *   indigenous_consent    — a consultation slot, and no dataset and no
+ *                           deadline may close it
+ *   youth_safeguarding    — the person it protects is not in the room
+ *
+ * The test of the line: could the person clicking override be the person the
+ * gate protects? If not, it does not graduate.
+ */
+export const HARD_GATES = Object.freeze([
+  'rights_holder_consent', 'indigenous_consent', 'youth_safeguarding',
+]);
+
 export function openQuest(chapterId, q) {
   const quest = create('quests', 'quest', chapterId, { ...q, chapter_id: chapterId });
   ensureGates(chapterId, quest.id);
@@ -90,18 +115,65 @@ export function satisfyGate(questId, gate, { evidence, reviewed_by }) {
   return gates(questId);
 }
 
+/**
+ * Pass a gate without satisfying it, on somebody's named authority.
+ *
+ * Not a way to make a gate optional — a way to make going past it an act with a
+ * name and a reason attached, visible for as long as the quest exists. The
+ * commons can then argue with the person rather than with the software.
+ */
+export function overrideGate(questId, gate, { reason, overridden_by } = {}) {
+  if (HARD_GATES.includes(gate)) {
+    return {
+      error: 'cannot_be_overridden',
+      message: `${gate.replace(/_/g, ' ')} cannot be passed by anybody at this keyboard. ` +
+               (gate === 'rights_holder_consent'
+                 ? 'Consent is not yours to waive on somebody else\'s behalf.'
+                 : gate === 'indigenous_consent'
+                   ? 'This is a consultation slot. No dataset and no deadline closes it — only a ' +
+                     'rights holder does.'
+                   : 'The person this protects is not in the room.'),
+      hard_gates: HARD_GATES,
+    };
+  }
+  if (!String(reason ?? '').trim() || !String(overridden_by ?? '').trim()) {
+    return {
+      error: 'reason_and_name_required',
+      message: 'An override needs a reason and the name of the person giving it. Both are kept ' +
+               'and shown for as long as the project exists — that is the whole of what makes ' +
+               'this different from switching the gate off.',
+    };
+  }
+  const row = one('SELECT id FROM quest_gates WHERE quest_id=? AND gate=?', questId, gate);
+  if (!row) return { error: 'not_found', message: `No ${gate} gate on that project.` };
+  run(`UPDATE quest_gates SET overridden_by=?, override_reason=?, overridden_at=datetime('now')
+        WHERE quest_id=? AND gate=?`,
+      String(overridden_by).trim(), String(reason).trim(), questId, gate);
+  return {
+    gate, overridden_by, reason,
+    note: 'Recorded. This stays on the project and on every report that mentions it.',
+    gates: gates(questId),
+  };
+}
+
 /** Can this quest advance? Returns the blocking reasons, not just a boolean. */
 export function canAdvance(questId, toStage) {
   const q = one('SELECT * FROM quests WHERE id=?', questId);
   if (!q) return { ok: false, blocked: ['quest not found'] };
   const blocked = [];
+  const check_notes = [];
   const idx = STAGES.indexOf(toStage);
   if (idx < 0) blocked.push(`unknown stage "${toStage}"`);
 
   // Build and everything after it require the gates closed.
   if (idx >= STAGES.indexOf('prototype')) {
-    const open = gates(questId).filter((g) => g.required && !g.satisfied);
+    const open = gates(questId).filter((g) => g.required && !g.satisfied && !g.overridden_at);
     for (const g of open) blocked.push(`gate not satisfied: ${g.gate}`);
+    // Named, never silent. An override that stopped mentioning itself would be
+    // the gate switched off with extra steps.
+    for (const g of gates(questId).filter((x) => x.overridden_at && !x.satisfied)) {
+      check_notes.push(`${g.gate.replace(/_/g, ' ')} was passed by ${g.overridden_by}: ${g.override_reason}`);
+    }
     if (!q.maintenance_owner) blocked.push('no maintenance owner named');
     if (!q.smallest_experiment) blocked.push('smallest useful experiment not defined');
   }
@@ -115,7 +187,7 @@ export function canAdvance(questId, toStage) {
     const learn = one('SELECT COUNT(*) n FROM learn WHERE quest_id=?', questId)?.n ?? 0;
     if (!learn) blocked.push('nothing written down — knowledge cannot travel');
   }
-  return { ok: blocked.length === 0, blocked, from: q.stage, to: toStage };
+  return { ok: blocked.length === 0, blocked, overridden: check_notes, from: q.stage, to: toStage };
 }
 
 export function advance(questId, toStage) {

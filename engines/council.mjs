@@ -131,8 +131,26 @@ export function minimumViableTest(chapterId) {
     {
       id: 'survives_founder',
       q: 'Can the group continue functioning if one founder steps away?',
-      pass: n('SELECT COUNT(DISTINCT land_seat_steward) n FROM decisions WHERE chapter_id=? AND land_seat_steward IS NOT NULL', chapterId) > 1,
-      fix: 'More than one person must have served the Land Seat.',
+      // Two DIFFERENT people, named in advance, and a second who has agreed.
+      //
+      // This used to pass on "more than one person has served the Land Seat",
+      // which a chapter satisfies by having had a busy month. It is evidence
+      // that two people once did something, not that anything is arranged —
+      // and the arrangement has to exist BEFORE it is needed, because the
+      // moment it is needed is the moment nobody can ask.
+      //
+      // Community networks have gone dark for months over a single person's
+      // computer. That failure looks technical and is entirely governance.
+      pass: (() => {
+        const c = one(
+          'SELECT steward, deputy, deputy_agreed_at FROM chapters WHERE id=?', chapterId) ?? {};
+        const s = String(c.steward ?? '').trim();
+        const d = String(c.deputy ?? '').trim();
+        return !!(s && d && s.toLowerCase() !== d.toLowerCase() && c.deputy_agreed_at);
+      })(),
+      fix: 'Name a steward and a deputy who are different people, and record that the ' +
+           'deputy has agreed: name_deputy. They need to know where the backup lives and ' +
+           'have restored one themselves at least once.',
     },
     {
       id: 'reported_failure',

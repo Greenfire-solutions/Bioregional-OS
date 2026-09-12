@@ -1197,6 +1197,104 @@ check('the intake promise states itself in words a person can read',
     /CoMapeo|QGIS/.test(unreadable.message ?? ''), unreadable.message);
 }
 
+// ── A gate you can pass, on your name, with a reason ──────────────────────
+// Binary refusal with no arena is the design–reality gap in code: the tool that
+// cannot be got past at nine on a Sunday is the tool that stops being used, and
+// nobody ever says why. Ostrom's fifth principle is graduated sanctions.
+//
+// So most gates graduate — a named person, a written reason, both kept forever.
+// Three do not, and the test of the line is whether the person clicking could
+// be the person the gate protects. If not, it does not graduate.
+{
+  const { HARD_GATES } = await import('../engines/quest.mjs');
+  const oq = await runTool('open_quest', { chapter_id: 'test', title: 'Override test' });
+
+  check('consent and safeguarding never graduate',
+    HARD_GATES.length === 3 && HARD_GATES.includes('indigenous_consent')
+      && HARD_GATES.includes('rights_holder_consent')
+      && HARD_GATES.includes('youth_safeguarding'), HARD_GATES.join(','));
+
+  for (const g of HARD_GATES) {
+    const r = await runTool('override_gate',
+      { quest_id: oq.id, gate: g, reason: 'the funder deadline', overridden_by: 'M. Okafor' });
+    check(`${g.replace(/_/g, ' ')} cannot be passed by whoever is at the keyboard`,
+      r.error === 'cannot_be_overridden', JSON.stringify(r.error));
+  }
+  // The refusal has to carry the REASON, not just the rule. A generic "must be
+  // one of" names the allowed values and not why these are not among them —
+  // and why is the entire content of this particular refusal.
+  const indig = await runTool('override_gate',
+    { quest_id: oq.id, gate: 'indigenous_consent', reason: 'deadline', overridden_by: 'M' });
+  check('and says why rather than just listing what is allowed',
+    /consultation slot/i.test(indig.message ?? ''), indig.message);
+
+  check('an override with no reason is refused',
+    (await runTool('override_gate',
+      { quest_id: oq.id, gate: 'permits_insurance', reason: '   ', overridden_by: 'M' })).error
+      === 'missing_required');
+  check('an override with no name is refused',
+    (await runTool('override_gate',
+      { quest_id: oq.id, gate: 'permits_insurance', reason: 'Small works exemption.', overridden_by: '' })).error
+      === 'missing_required');
+
+  const done = await runTool('override_gate', {
+    quest_id: oq.id, gate: 'permits_insurance',
+    reason: 'Under the small-works threshold; confirmed with the parish clerk.',
+    overridden_by: 'R. Alvarez',
+  });
+  check('a gate that genuinely does not apply can be passed', !done.error, JSON.stringify(done.error));
+
+  const adv = await runTool('check_quest_advance', { quest_id: oq.id, to_stage: 'prototype' });
+  check('an overridden gate stops blocking',
+    !adv.blocked.some((b) => /permits_insurance/.test(b)), JSON.stringify(adv.blocked));
+  // The property that keeps this from being the gate switched off with extra
+  // steps: it never stops mentioning itself.
+  check('and never stops saying who passed it and why',
+    adv.overridden.some((o) => /R\. Alvarez/.test(o) && /small-works/.test(o)),
+    JSON.stringify(adv.overridden));
+}
+
+// ── A deputy, named in advance, who has actually agreed ───────────────────
+// "Can the group continue if one founder steps away?" used to pass on "more
+// than one person has served the Land Seat" — which a chapter satisfies by
+// having had a busy month. Community networks have gone dark for months over
+// one person's computer, and that failure looks technical and is entirely
+// governance.
+{
+  const CH = 'deputy-test';
+  await runTool('create_chapter', {
+    id: CH, name: 'Deputy Test', scale: 'site',
+    represents: 'the people who signed up', does_not_represent: 'anyone else', lat: 30.2, lng: -97.8,
+  });
+  const before = await runTool('minimum_viable_test', { chapter_id: CH });
+  check('a chapter with nobody named cannot survive its founder',
+    before.checks.find((c) => c.id === 'survives_founder').pass === false);
+
+  check('a deputy who is the steward is refused',
+    (await runTool('name_deputy',
+      { chapter_id: CH, steward: 'Maya R.', deputy: 'maya r.', deputy_agreed: true })).error
+      === 'same_person');
+
+  // The one that matters. Recording somebody without asking is how a chapter
+  // discovers it has no deputy on the day it needs one — and that is the day
+  // nobody can ask.
+  const unasked = await runTool('name_deputy',
+    { chapter_id: CH, steward: 'Maya R.', deputy: 'T. Okonkwo' });
+  check('a deputy who has not been asked is refused', unasked.error === 'not_agreed');
+  check('and the refusal says to go and ask them',
+    /Ask T\. Okonkwo first/.test(unasked.message ?? ''), unasked.message);
+
+  const named = await runTool('name_deputy',
+    { chapter_id: CH, steward: 'Maya R.', deputy: 'T. Okonkwo', deputy_agreed: true });
+  check('two different people, one of whom has agreed, is an arrangement',
+    named.steward === 'Maya R.' && named.deputy === 'T. Okonkwo');
+  check('and they are told to restore a backup themselves',
+    /restore one themselves/.test(named.note ?? ''), named.note);
+  check('the chapter can now survive its founder',
+    (await runTool('minimum_viable_test', { chapter_id: CH }))
+      .checks.find((c) => c.id === 'survives_founder').pass === true);
+}
+
 // ── The assistant knows where it is standing ──────────────────────────────
 // The prompt used to carry one fact about the place — the chapter's name — and
 // several hundred words about the protocol. So the one surface that people

@@ -39,6 +39,15 @@ CREATE TABLE IF NOT EXISTS chapters (
   founded_at        TEXT NOT NULL DEFAULT (datetime('now')),
   charter_adopted   INTEGER NOT NULL DEFAULT 0,
   -- Murmurations profile fields, so the chapter is discoverable by the wider network
+  -- Who holds this chapter, and who holds it when they cannot.
+  -- Not inferred from activity: a chapter whose only evidence of a second
+  -- person is that two names once appeared on decisions has not arranged
+  -- anything, it has had a busy month. Community networks go dark for months
+  -- over one person's laptop, and the arrangement has to exist BEFORE it is
+  -- needed — asking afterwards is asking the wrong person.
+  steward           TEXT,
+  deputy            TEXT,
+  deputy_agreed_at  TEXT,
   murmurations_primary_url TEXT,
   murmurations_schema      TEXT DEFAULT 'organizations_schema-v1.0.0',
   murmurations_published_at TEXT,
@@ -205,6 +214,12 @@ CREATE TABLE IF NOT EXISTS quest_gates (
   evidence    TEXT,
   reviewed_by TEXT,
   reviewed_at TEXT,
+  -- A gate passed WITHOUT being satisfied, by a named person who said why.
+  -- Kept forever and shown forever: the point is not to make the gate optional,
+  -- it is to make going past it a recorded act with somebody's name on it.
+  overridden_by     TEXT,
+  override_reason   TEXT,
+  overridden_at     TEXT,
   UNIQUE (quest_id, gate)
 );
 
@@ -306,6 +321,15 @@ CREATE TABLE IF NOT EXISTS agents (
               CHECK (vf_agent_type IN ('Person','Organization','EcologicalAgent')),
   role        TEXT,
   contact     TEXT,
+  -- Who holds this chapter, and who holds it when they cannot.
+  -- Not inferred from activity: a chapter whose only evidence of a second
+  -- person is that two names once appeared on decisions has not arranged
+  -- anything, it has had a busy month. Community networks go dark for months
+  -- over one person's laptop, and the arrangement has to exist BEFORE it is
+  -- needed — asking afterwards is asking the wrong person.
+  steward           TEXT,
+  deputy            TEXT,
+  deputy_agreed_at  TEXT,
   murmurations_primary_url TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
