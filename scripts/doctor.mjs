@@ -44,7 +44,36 @@ check('Your commons data exists', existsSync(dbFile),
   'There is no database yet, so the OS has nothing to show.',
   'npm run seed', () => run('node', ['core/seed.mjs']));
 
+// "Delete it to erase" left these behind, holding most of the content. That is a
+// consent failure rather than untidiness: a chapter removing something a
+// rights-holder asked to have removed would believe it was gone. Checked OUTSIDE
+// the exists() branch below, because the whole point is that commons.db is gone.
+{
+  const orphans = ['-wal', '-shm'].map((x) => `${dbFile}${x}`).filter((f) => existsSync(f));
+  if (!existsSync(dbFile) && orphans.length) {
+    check('Nothing left behind by a deleted commons', false,
+      'commons.db is gone, but its log files are still here and they hold real content. ' +
+      'Deleting the database by hand does not erase a commons.',
+      'npm run erase -- --force');
+  }
+}
+
 if (existsSync(dbFile)) {
+  // Not a fault — this is just how SQLite works. But it is the number that makes
+  // "copy the file to back up" visibly wrong, so say it rather than wait for
+  // somebody to discover it by restoring.
+  const walFile = `${dbFile}-wal`;
+  const walSize = existsSync(walFile) ? statSync(walFile).size : 0;
+  const kb = (n) => `${Math.round(n / 1024)} KB`;
+  if (walSize > statSync(dbFile).size) {
+    ok(`Your commons is ${kb(statSync(dbFile).size)} in the file and ${kb(walSize)} in the write-ahead log`);
+    info('That is normal. It is also why copying commons.db by hand gives you an');
+    info('out-of-date commons, with nothing to tell you anything is missing.');
+    cmd('npm run backup');
+  } else {
+    ok('Backups will capture everything');
+  }
+
   const { all, one } = await import('../core/db.mjs');
   const chapter = one('SELECT * FROM chapters LIMIT 1');
   check('A chapter is set up', !!chapter,

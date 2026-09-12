@@ -17,6 +17,8 @@
     "doctor": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/doctor.mjs",
     "update": "node --disable-warning=ExperimentalWarning scripts/update.mjs",
     "seed": "node --disable-warning=ExperimentalWarning core/seed.mjs",
+    "backup": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/backup.mjs",
+    "erase": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/erase.mjs",
     "mcp": "node --disable-warning=ExperimentalWarning mcp/server.mjs",
     "app:dev": "cd app && npm run dev",
     "build": "cd app && npm run build",

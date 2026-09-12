@@ -52,12 +52,15 @@ const TOPICS = {
     title: 'Your data',
     body: [
       ['Where it lives', 'data/commons.db — one file, on this computer'],
-      ['Back it up', 'Copy that one file somewhere safe'],
+      ['Back it up', 'npm run backup'],
+      ['Check a backup is really readable', 'npm run backup -- --verify <file>'],
       ['Start over with fresh example data', 'npm run seed -- --reset'],
       ['Get it out as a map file', 'curl http://localhost:4180/api/export/geojson > atlas.geojson'],
       ['Refresh reference data', 'npm run update'],
     ],
-    note: 'Nothing is uploaded anywhere. Deleting that file deletes your commons.',
+    note: 'Nothing is uploaded anywhere. Do not copy commons.db by hand — recent work sits in a ' +
+          'separate log file, so a hand copy is usually out of date and gives you no sign of it. ' +
+          'npm run backup takes the lot, in one file, while the OS keeps running.',
   },
   today: {
     title: 'Knowing what to do',

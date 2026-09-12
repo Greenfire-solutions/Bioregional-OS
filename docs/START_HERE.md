@@ -43,8 +43,10 @@ In the terminal:
 | Something is broken | `npm run doctor -- --fix` |
 | Start it again later | `npm run os -- --open` |
 
-**You cannot break it by trying commands.** The only file that holds your work is
-`data/commons.db`. Copy that file and you have a complete backup.
+**You cannot break it by trying commands.** Your work lives in
+`data/commons.db`. To take a copy of it, run `npm run backup` — that writes one
+complete file you can put on a memory stick. Copying `commons.db` by hand is not
+enough and will quietly give you an out-of-date commons.
 
 ## Letting other people in
 

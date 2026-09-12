@@ -178,6 +178,9 @@ clean copy to hand another community.
 | `npm run doctor -- --fix` | Diagnose and repair |
 | `npm run update` | Refresh reference data, rebuild the interface |
 | `npm run update -- --package` | Clean copy for another community, without your data |
+| `npm run backup` | One complete file you can copy anywhere. Do this |
+| `npm run backup -- --verify <f>` | Open a backup and say what is really in it |
+| `npm run erase` | Remove the commons — all of it. Refuses without `--force` |
 | `npm run data` | Download the ecoregions around you, for offline use |
 | `npm run data -- --status` | What is downloaded, what has gone stale |
 | `npm run seed -- --reset` | Start over with the demonstration commons (fictional) |
@@ -203,8 +206,24 @@ clean copy to hand another community.
 
 ## Your data
 
-One file: `data/commons.db`. Copy it to back up; delete it to erase. Nothing is
-uploaded anywhere, ever. There is no telemetry and no account.
+Your whole commons lives in `data/commons.db`. Nothing is uploaded anywhere,
+ever. There is no telemetry and no account.
+
+**To back it up:**
+
+```bash
+npm run backup
+```
+
+One file, written while the OS keeps running, and checked before it tells you it
+worked. Keep it somewhere that is not this computer, and check one any time with
+`npm run backup -- --verify <file>`.
+
+Do **not** just copy `commons.db` by hand. The database keeps recent writes in a
+separate write-ahead log, so that file on its own is usually out of date — and it
+fails silently, because the copy opens and looks completely normal. For the same
+reason, erasing means deleting `commons.db` *and* its `-wal` and `-shm`
+companions; `npm run doctor` will tell you if any are left behind.
 
 ---
 

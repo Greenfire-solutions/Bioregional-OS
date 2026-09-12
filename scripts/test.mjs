@@ -1584,6 +1584,76 @@ check('a card from a real chapter does not cry wolf about being an example',
     `${enums.length} enum fields declared`);
 }
 
+// ── A backup that is actually a backup ─────────────────────────────────────
+// The docs said "copy data/commons.db and you have a complete backup". In WAL
+// mode that is false, and it fails in the worst available way: the copy exists,
+// opens, and looks entirely normal while being short by whatever had not been
+// checkpointed. Found by accident — a chapter was deleted, the file was copied,
+// and the deleted chapter was still in the copy.
+//
+// Restoring a backup is the only way anyone ever finds out a backup does not
+// work, and almost nobody does it before they need it. So the suite does.
+{
+  const { execFileSync } = await import('node:child_process');
+  const { DatabaseSync } = await import('node:sqlite');
+  const { mkdtempSync, copyFileSync, existsSync, writeFileSync, mkdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join: j } = await import('node:path');
+
+  const node = process.execPath;
+  const run = (script, args, env) => execFileSync(node, ['--disable-warning=ExperimentalWarning', script, ...args],
+    { env: { ...process.env, ...env }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const dir = mkdtempSync(j(tmpdir(), 'bros-backup-'));
+  const live = j(dir, 'commons.db');
+
+  // A database with content deliberately left in the WAL, which is the state a
+  // running commons is in essentially all of the time.
+  {
+    const db = new DatabaseSync(live);
+    db.exec('PRAGMA journal_mode=WAL');
+    db.exec('CREATE TABLE chapters (id TEXT PRIMARY KEY)');
+    db.exec("INSERT INTO chapters VALUES ('a'), ('b')");
+    db.close();
+  }
+  const walHeld = existsSync(`${live}-wal`);
+
+  run('scripts/backup.mjs', [j(dir, 'out.db')], { BROS_DB: live });
+  check('a backup can be taken while the commons is live', existsSync(j(dir, 'out.db')));
+
+  const got = new DatabaseSync(j(dir, 'out.db'), { readOnly: true });
+  const n = got.prepare('SELECT COUNT(*) AS n FROM chapters').get().n;
+  got.close();
+  check('the backup contains rows a plain file copy can miss', n === 2, `${n} of 2 rows, wal present=${walHeld}`);
+
+  // The bug this file exists to stop repeating: erase, pointed at one database,
+  // deleted ANOTHER commons's backups — because the backups directory came from
+  // the project root rather than from the database being erased. It was found by
+  // running it: a throwaway erase reported "1 backup will also go", and the real
+  // one was gone. Assert the project's own backups survive an erase elsewhere.
+  const projectBackups = j(process.cwd(), 'data', 'backups');
+  mkdirSync(projectBackups, { recursive: true });
+  const sentinel = j(projectBackups, 'erase-test-sentinel.db');
+  writeFileSync(sentinel, 'must survive an erase of a different database');
+
+  const far = mkdtempSync(j(tmpdir(), 'bros-far-'));
+  copyFileSync(live, j(far, 'far.db'));
+  run('scripts/erase.mjs', ['--force'], { BROS_DB: j(far, 'far.db') });
+  check('erasing a database elsewhere leaves this project\'s backups alone', existsSync(sentinel),
+    'erase derived its backups directory from the project root instead of from the database');
+  rmSync(sentinel, { force: true });
+
+  // Refusing by default is the whole safety property.
+  const out = run('scripts/erase.mjs', [], { BROS_DB: live });
+  check('erase refuses to delete anything without --force',
+    /Nothing has been deleted/.test(out) && existsSync(live));
+
+  run('scripts/erase.mjs', ['--force'], { BROS_DB: live });
+  check('erase removes the write-ahead log too, not just the visible file',
+    !existsSync(live) && !existsSync(`${live}-wal`) && !existsSync(`${live}-shm`),
+    'deleting commons.db by hand leaves the log, which holds most of the content');
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

@@ -30,3 +30,7 @@ app/node_modules/
 data/dossiers/
 !data/regions/
 node_modules
+
+# Backups of the commons. Same reasoning as commons.db itself: this is the
+# community's data, not the software.
+data/backups/
