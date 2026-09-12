@@ -9,6 +9,7 @@ import { all } from '../core/db.mjs';
 import { visibleAt } from '../core/ids.mjs';
 import { humanObserved, atPlaceCentroid } from '../core/provenance.mjs';
 import { creditForTags } from './registry.mjs';
+import { isDemoChapter, DEMO_NOTICE } from '../core/seedData.js';
 import { HUMAN_SOURCES } from '../core/provenance.mjs';
 
 /** Turn a GeoJSON FeatureCollection into draft signals for review. */
@@ -121,6 +122,12 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
       // condition of being allowed to share it. Resolved from the registry, so
       // it cannot go stale the way retyped prose does.
       ...creditForTags(signals.map((s) => s.source_adapter), { humanTags: [...HUMAN_SOURCES, null] }),
+      // A GeoJSON has no interface around it. Opened in QGIS, the seeded
+      // "Unpermitted Stormwater Outfall Discharge" is a Critical finding about a
+      // real creek naming a real city department, with nothing on the file
+      // saying it was invented. Only the example commons is marked — a notice on
+      // every export is noise, and noise is not read.
+      ...(isDemoChapter(chapterId) ? { demonstration_data: DEMO_NOTICE } : {}),
       generated_at: new Date().toISOString(),
     },
     features,

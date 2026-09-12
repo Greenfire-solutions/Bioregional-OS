@@ -7,6 +7,7 @@
 import { all, one } from '../core/db.mjs';
 import { makeRid, parseRid, visibleAt } from '../core/ids.mjs';
 import { creditForTags } from './registry.mjs';
+import { isDemoChapter, DEMO_NOTICE } from '../core/seedData.js';
 import { HUMAN_SOURCES } from '../core/provenance.mjs';
 import { createHash } from 'node:crypto';
 
@@ -17,6 +18,10 @@ export function manifest(chapterId, { clearance = 'public' } = {}) {
   return {
     '@type': 'koi:Manifest',
     chapter: chapterId,
+    // A manifest is the first thing another chapter fetches, and the thing that
+    // decides whether to fetch the bundles behind it. If the answer is "this is
+    // invented", it should arrive before the pull, not after.
+    ...(isDemoChapter(chapterId) ? { demonstration_data: DEMO_NOTICE } : {}),
     generated_at: new Date().toISOString(),
     clearance,
     withheld: rows.length - visible.length,
@@ -66,6 +71,11 @@ export function bundle(rid, { clearance = 'public' } = {}) {
     // So it carries its credit with it, resolved from the registry, and names
     // anything it could not resolve rather than passing on an unmarked gap.
     ...creditForTags([row.source_adapter], { humanTags: [...HUMAN_SOURCES, null, undefined] }),
+    // A bundle is built to land in a stranger's commons — no banner, no
+    // interface, nobody who knows where it came from. If it carries invented
+    // reporting it has to say so in the artifact itself, because by the time
+    // anyone wonders it is already somewhere else.
+    ...(isDemoChapter(parsed.chapterId) ? { demonstration_data: DEMO_NOTICE } : {}),
   };
 }
 
