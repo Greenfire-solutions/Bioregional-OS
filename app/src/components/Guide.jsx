@@ -35,7 +35,7 @@ const HELP = {
     title: 'Quests',
     what: 'Projects, and whether they are actually allowed to proceed.',
     do: [
-      'Click "check consent & safety gates" on any project.',
+      'Press "Check consent & safety gates" on any project.',
       'A project cannot reach the build stage with an open gate. That is enforced in the code.',
       'A good idea never overrides missing consent or a missing maintenance owner.',
     ],

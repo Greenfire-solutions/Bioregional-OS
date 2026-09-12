@@ -3,17 +3,62 @@ import TheGround, { BaselineOffer } from '../components/TheGround.jsx';
 import LandSeat from '../components/LandSeat.jsx';
 import {
   CheckCircle2, XCircle, AlertTriangle, Droplets, Users, Scale,
-  RefreshCw, BookOpen, Shield, Clock, MapPin,
+  RefreshCw, BookOpen, Shield, Clock, MapPin, Plus,
 } from 'lucide-react';
 
 export const Card = ({ children, className = '' }) => (
   <div className={`rounded border border-[var(--line)] bg-[var(--paper)] p-4 ${className}`}>{children}</div>
 );
-export const H = ({ children, sub }) => (
-  <div className="mb-3">
-    <h2 className="text-base font-medium">{children}</h2>
-    {sub && <p className="mt-0.5 text-xs text-[var(--ink-2)]">{sub}</p>}
+export /**
+ * A page heading, and the one thing this page is FOR.
+ *
+ * The primary action used to live in the tab strip, pushed to the far right as
+ * a small outlined pill — styled as navigation, sitting outside the column the
+ * eye is reading, at the size of a label. "Propose to council" is the entire
+ * point of the council page and it looked like a tab nobody had selected.
+ *
+ * It belongs beside the title, filled, at a size that reads as a thing you
+ * press. Heading plus primary action is the oldest arrangement there is,
+ * because it puts the verb where the noun already drew the eye.
+ */
+const H = ({ children, sub, action }) => (
+  <div className="mb-3 flex flex-wrap items-start gap-3">
+    <div className="min-w-0 flex-1">
+      <h2 className="text-base font-medium">{children}</h2>
+      {sub && <p className="mt-0.5 text-xs text-[var(--ink-2)]">{sub}</p>}
+    </div>
+    {action && (
+      <button onClick={action.onClick}
+        className="flex shrink-0 items-center gap-1.5 rounded bg-[var(--moss)] px-3.5 py-2
+                   text-xs font-medium text-[var(--on-accent)] transition-transform
+                   hover:brightness-110 active:scale-[0.98]"
+        style={{ boxShadow: 'var(--glow)' }}>
+        <Plus className="h-4 w-4" />{action.label}
+      </button>
+    )}
   </div>
+);
+
+/**
+ * Something you can do to the thing you are looking at.
+ *
+ * These were 11px underlined text — "close it", "decide this", "resolve the
+ * red flag" — sitting below a rule at the bottom of a card. Underlined small
+ * text reads as a footnote, and a footnote is not where somebody looks for the
+ * next move. They are buttons now: a border, a hit area, and a verb.
+ *
+ * `tone` carries the only distinction that matters here. Something blocking the
+ * commons is clay; everything else is ordinary. A page where every action
+ * shouts has no emphasis left for the one that needs it.
+ */
+export const Act = ({ onClick, tone = 'plain', children }) => (
+  <button onClick={onClick}
+    className={`rounded border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+      tone === 'urgent'
+        ? 'border-[#E4C9C2] bg-[#FBF1EE] text-[var(--clay)] hover:border-[var(--clay)]'
+        : 'border-[var(--line)] bg-[var(--paper)] text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]'}`}>
+    {children}
+  </button>
 );
 export const Pill = ({ tone = 'neutral', children }) => {
   const tones = {
@@ -120,12 +165,12 @@ export const Empty = ({ children }) => (
 );
 
 // ── Signals ───────────────────────────────────────────────────────────────
-export function Signals({ signals, onFocus }) {
+export function Signals({signals, onFocus, primary}) {
   const manual = signals.filter((s) => s.source_adapter !== 'usgs');
   const live = signals.filter((s) => s.source_adapter === 'usgs');
   return (
     <div className="space-y-4">
-      <H sub="Observations from land and people. Verification is a human act.">Signals</H>
+      <H action={primary} sub="Observations from land and people. Verification is a human act.">Signals</H>
       {manual.map((s) => (
         <Card key={s.id}>
           <div className="flex items-start justify-between gap-3">
@@ -168,12 +213,10 @@ export function Signals({ signals, onFocus }) {
 }
 
 // ── Quests ────────────────────────────────────────────────────────────────
-export function Quests({ quests, gates, onLoadGates, onFocus, onAct }) {
+export function Quests({quests, gates, onLoadGates, onFocus, onAct, primary}) {
   return (
     <div className="space-y-4">
-      <H sub="A high score never overrides a red flag, missing consent, or a missing maintenance owner.">
-        Quests
-      </H>
+      <H action={primary} sub="A high score never overrides a red flag, missing consent, or a missing maintenance owner.">Quests</H>
       {quests.map((q) => {
         const g = gates[q.id];
         const open = g?.filter((x) => x.required && !x.satisfied) ?? null;
@@ -198,8 +241,7 @@ export function Quests({ quests, gates, onLoadGates, onFocus, onAct }) {
             </div>
             <div className="mt-3 border-t border-[var(--line-2)] pt-2">
               {!g ? (
-                <button onClick={() => onLoadGates(q.id)}
-                  className="text-[11px] text-[var(--moss)] underline">check consent &amp; safety gates</button>
+                <Act onClick={() => onLoadGates(q.id)}>Check consent &amp; safety gates</Act>
               ) : (
                 <div className="space-y-1">
                   <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
@@ -214,17 +256,14 @@ export function Quests({ quests, gates, onLoadGates, onFocus, onAct }) {
                         {x.gate.replace(/_/g, ' ')}
                       </span>
                       {!x.satisfied && onAct && (
-                        <button onClick={() => onAct('satisfy_quest_gate', { quest_id: q.id, gate: x.gate })}
-                          className="ml-auto text-[10px] text-[var(--moss)] underline">close it</button>
+                        <Act tone="urgent" onClick={() => onAct('satisfy_quest_gate', { quest_id: q.id, gate: x.gate })}>Close a gate</Act>
                       )}
                     </div>
                   ))}
                   {onAct && (
                     <div className="flex gap-3 pt-1.5">
-                      <button onClick={() => onAct('update_quest', { quest_id: q.id })}
-                        className="text-[10px] text-[var(--moss)] underline">define the project</button>
-                      <button onClick={() => onAct('advance_quest', { quest_id: q.id })}
-                        className="text-[10px] text-[var(--moss)] underline">advance a stage</button>
+                      <Act onClick={() => onAct('update_quest', { quest_id: q.id })}>Define the project</Act>
+                      <Act onClick={() => onAct('advance_quest', { quest_id: q.id })}>Advance a stage</Act>
                     </div>
                   )}
                 </div>
@@ -238,12 +277,10 @@ export function Quests({ quests, gates, onLoadGates, onFocus, onAct }) {
 }
 
 // ── Council ───────────────────────────────────────────────────────────────
-export function Council({ decisions, due, onAct }) {
+export function Council({decisions, due, onAct, primary}) {
   return (
     <div className="space-y-4">
-      <H sub="Every agenda item carries a Land Seat report. Irreversible items need a heavier method.">
-        Council
-      </H>
+      <H action={primary} sub="Every agenda item carries a Land Seat report. Irreversible items need a heavier method.">Council</H>
 
       {/* Above the agenda, because the report is written here and read later.
           The measurements were always on this machine and never on this page. */}
@@ -281,12 +318,14 @@ export function Council({ decisions, due, onAct }) {
           {onAct && (
             <div className="mt-2 flex gap-3 border-t border-[var(--line-2)] pt-2">
               {d.red_flags && (
-                <button onClick={() => onAct('clear_red_flag', { decision_id: d.id })}
-                  className="text-[11px] text-[var(--clay)] underline">resolve the red flag</button>
+                <Act tone="urgent" onClick={() => onAct('clear_red_flag', { decision_id: d.id })}>
+                  Resolve the red flag
+                </Act>
               )}
               {d.status !== 'decided' && (
-                <button onClick={() => onAct('decide_council_item', { decision_id: d.id })}
-                  className="text-[11px] text-[var(--moss)] underline">decide this</button>
+                <Act onClick={() => onAct('decide_council_item', { decision_id: d.id })}>
+                  Decide this
+                </Act>
               )}
             </div>
           )}
@@ -297,12 +336,12 @@ export function Council({ decisions, due, onAct }) {
 }
 
 // ── Simple list views ─────────────────────────────────────────────────────
-export function Gatherings({ gatherings }) {
+export function Gatherings({gatherings, primary}) {
   const care = (g) => ['care_meals', 'care_transport', 'care_childcare', 'care_accessibility']
     .filter((k) => g[k]).length;
   return (
     <div className="space-y-4">
-      <H sub="Care provision is infrastructure, not catering. Fewer than two provisions is flagged.">Gatherings</H>
+      <H action={primary} sub="Care provision is infrastructure, not catering. Fewer than two provisions is flagged.">Gatherings</H>
       {gatherings.map((g) => (
         <Card key={g.id}>
           <div className="flex items-center gap-2">
@@ -321,10 +360,10 @@ export function Gatherings({ gatherings }) {
   );
 }
 
-export function Exchange({ exchange }) {
+export function Exchange({exchange, primary}) {
   return (
     <div className="space-y-4">
-      <H sub="Contributions as ValueFlows economic events — exportable to hREA or Bonfire.">Exchange &amp; Care</H>
+      <H action={primary} sub="Contributions as ValueFlows economic events — exportable to hREA or Bonfire.">Exchange &amp; Care</H>
       {exchange?.events?.map((e) => (
         <Card key={e.id}>
           <div className="flex items-center gap-2">
@@ -343,10 +382,10 @@ export function Exchange({ exchange }) {
   );
 }
 
-export function Learn({ learn, doctrine }) {
+export function Learn({learn, doctrine, primary}) {
   return (
     <div className="space-y-4">
-      <H sub="Knowledge written so it can travel without extracting the place it came from.">Learn</H>
+      <H action={primary} sub="Knowledge written so it can travel without extracting the place it came from.">Learn</H>
       {learn.map((l) => (
         <Card key={l.id}>
           <div className="flex items-center gap-2">
@@ -387,10 +426,10 @@ export function Learn({ learn, doctrine }) {
   );
 }
 
-export function Federation({ peers, onDiscover, discovering }) {
+export function Federation({peers, onDiscover, discovering, primary}) {
   return (
     <div className="space-y-4">
-      <H sub="Chapters that share without merging. Discovery runs over the Murmurations protocol.">Federation</H>
+      <H action={primary} sub="Chapters that share without merging. Discovery runs over the Murmurations protocol.">Federation</H>
       <button onClick={onDiscover} disabled={discovering}
         className="flex items-center gap-2 rounded bg-[var(--moss)] px-3 py-2 text-xs text-white disabled:opacity-50">
         <RefreshCw className={`h-3.5 w-3.5 ${discovering ? 'animate-spin' : ''}`} />
@@ -413,14 +452,12 @@ export function Federation({ peers, onDiscover, discovering }) {
 }
 
 // ── Stage 2: Listen ───────────────────────────────────────────────────────
-export function Listen({ intake }) {
+export function Listen({intake, primary}) {
   const waiting = intake.filter((i) => i.status === 'received');
   const answered = intake.filter((i) => i.status !== 'received');
   return (
     <div className="space-y-4">
-      <H sub="The front door. Someone brings a need; the commons answers and can be appealed.">
-        Listen
-      </H>
+      <H action={primary} sub="The front door. Someone brings a need; the commons answers and can be appealed.">Listen</H>
       {intake.length === 0 && (
         <Empty>
           Nothing has been brought yet. Until one person submits a need and receives a response,
@@ -458,12 +495,10 @@ export function Listen({ intake }) {
 }
 
 // ── Stage 11: Measure ─────────────────────────────────────────────────────
-export function Measure({ indicators, onAct, onRefresh }) {
+export function Measure({indicators, onAct, onRefresh, primary}) {
   return (
     <div className="space-y-4">
-      <H sub="An indicator without a decision trigger is decoration. Monitoring has to be able to change a decision.">
-        Measure
-      </H>
+      <H action={primary} sub="An indicator without a decision trigger is decoration. Monitoring has to be able to change a decision.">Measure</H>
       {indicators.length === 0 && (
         <Empty>Nothing is being measured yet. Add an indicator with a baseline and a decision trigger.</Empty>
       )}

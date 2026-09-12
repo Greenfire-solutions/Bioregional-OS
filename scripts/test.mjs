@@ -1197,6 +1197,47 @@ check('the intake promise states itself in words a person can read',
     /CoMapeo|QGIS/.test(unreadable.message ?? ''), unreadable.message);
 }
 
+// ── An action has to look like a thing you press ──────────────────────────
+// "Propose to council" is the entire point of the council page, and it lived in
+// the tab strip pushed to the far right as a small outlined pill — styled as
+// navigation, outside the column the eye reads, at the size of a label. The
+// per-item actions were worse: 11px underlined text under a rule at the bottom
+// of a card, which reads as a footnote, and a footnote is not where anybody
+// looks for the next move.
+//
+// Both were found by the person who designed this being unable to see them.
+// That is not a thing a test can notice, so these guard the shapes instead.
+{
+  const views = readFileSync(new URL('../app/src/views/Views.jsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../app/src/App.jsx', import.meta.url), 'utf8');
+
+  // Nothing that DOES something may be styled as underlined text.
+  const linkActions = [...views.matchAll(
+    /<button[^>]{0,240}?onAct\([^>]{0,240}?underline/gs)].length;
+  check('no action is styled as an underlined text link',
+    linkActions === 0, `${linkActions} still rendered as footnotes`);
+
+  // The primary action belongs beside the page's own title, not in the tabs.
+  check('the primary action is no longer in the navigation strip',
+    !/setForm\(\{ tool: active\.add \}\)/.test(app),
+    'the create button is back in the tab row, where it reads as a tab');
+  check('every view that has a primary action puts it in its heading',
+    (views.match(/<H action=\{primary\}/g) ?? []).length >= 9,
+    `${(views.match(/<H action=\{primary\}/g) ?? []).length} of 9`);
+
+  // The heading renders it filled, at a pressable size. The old pill was
+  // text-[11px] with a border and no fill; this asserts the fill, which is the
+  // difference between "a thing you press" and "a thing you read".
+  const heading = views.slice(views.indexOf('const H = ('), views.indexOf('const H = (') + 1400);
+  check('and renders it filled rather than outlined',
+    /bg-\[var\(--moss\)\]/.test(heading) && /text-xs/.test(heading), heading.slice(0, 80));
+
+  // Act exists and carries a tone for the one case that needs emphasis. A page
+  // where every action shouts has no emphasis left for the one that matters.
+  check('item actions share one button style with a tone for the urgent one',
+    /export const Act = /.test(views) && /tone === 'urgent'/.test(views));
+}
+
 // ── The board, and the question it is arranged around ─────────────────────
 // The front of this app was fifteen tabs named after the protocol's stages.
 // That is the system's filing cabinet — complete, correct, and navigable only

@@ -71,6 +71,12 @@ const groupOf = (id) => GROUPS.find((g) => g.sub.some((t) => t.id === id)) ?? GR
 
 export default function App() {
   const [tab, setTab] = useState('home');
+  // The one thing the page you are on is for, handed to that page so it can put
+  // it beside its own heading.
+  const primary = (t) => {
+    const sub = GROUPS.flatMap((g) => g.sub).find((x) => x.id === t);
+    return sub?.add ? { label: sub.addLabel, onClick: () => setForm({ tool: sub.add }) } : null;
+  };
   const [status, setStatus] = useState(null);
   const [dash, setDash] = useState(null);
   const [places, setPlaces] = useState([]);
@@ -228,14 +234,13 @@ export default function App() {
                 </button>
               );
             })}
-            {active?.add && (
-              <button onClick={() => setForm({ tool: active.add })}
-                className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border
-                           border-[var(--line)] px-3 py-1 text-[11px] text-[var(--ink-2)] transition-colors
-                           hover:border-[var(--moss)] hover:text-[var(--moss)]">
-                <Plus className="h-3.5 w-3.5" />{active.addLabel}
-              </button>
-            )}
+            {/* The primary action used to live here, pushed to the far right of
+                the tab strip as a small outlined pill — styled as navigation,
+                outside the column the eye reads, at the size of a label.
+                "Propose to council" is the whole point of the council page and
+                it looked like a tab nobody had selected. It is now beside each
+                page's own title, filled and at a size that reads as a thing you
+                press. See `primary` below. */}
           </div>
         )}
       </nav>
@@ -289,19 +294,19 @@ export default function App() {
                 {tab === 'today' && <Today onChanged={load} />}
                 {tab === 'vitals' && <Vitals />}
                 {tab === 'season' && <Season />}
-                {tab === 'listen' && <Listen intake={intake} />}
-                {tab === 'signals' && <Signals signals={signals} onFocus={focusOn} />}
-                {tab === 'quests' && <Quests quests={quests} gates={gates} onLoadGates={loadGates}
+                {tab === 'listen' && <Listen primary={primary('listen')} intake={intake} />}
+                {tab === 'signals' && <Signals primary={primary('signals')} signals={signals} onFocus={focusOn} />}
+                {tab === 'quests' && <Quests primary={primary('quests')} quests={quests} gates={gates} onLoadGates={loadGates}
                                              onFocus={focusOn} onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
-                {tab === 'council' && <Council decisions={decisions} due={dash?.due_for_review}
+                {tab === 'council' && <Council primary={primary('council')} decisions={decisions} due={dash?.due_for_review}
                                                onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
-                {tab === 'measure' && <Measure indicators={indicators}
+                {tab === 'measure' && <Measure primary={primary('measure')} indicators={indicators}
                                                onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
-                {tab === 'gatherings' && <Gatherings gatherings={gatherings} />}
-                {tab === 'exchange' && <Exchange exchange={exchange} />}
-                {tab === 'learn' && <Learn learn={learn} doctrine={doctrine} />}
+                {tab === 'gatherings' && <Gatherings primary={primary('gatherings')} gatherings={gatherings} />}
+                {tab === 'exchange' && <Exchange primary={primary('exchange')} exchange={exchange} />}
+                {tab === 'learn' && <Learn primary={primary('learn')} learn={learn} doctrine={doctrine} />}
                 {tab === 'card' && <Card />}
-                {tab === 'federation' && <Federation peers={peers} onDiscover={discover} discovering={discovering} />}
+                {tab === 'federation' && <Federation primary={primary('federation')} peers={peers} onDiscover={discover} discovering={discovering} />}
               </div>
             </div>
           )}
