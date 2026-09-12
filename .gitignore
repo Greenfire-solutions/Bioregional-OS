@@ -1,7 +1,12 @@
 node_modules/
 # Agent worktrees live here. A worktree is a second checkout of this same repo —
 # committing it would put a whole duplicate copy of the project inside itself.
-.claude/
+#
+# Narrowed to the worktrees rather than all of .claude/ on purpose: agent
+# definitions, skills and settings belong under .claude/ too, and those ARE worth
+# tracking. Ignoring the parent would mean a future .claude/agents/*.md could
+# never be committed and nobody would be told why.
+.claude/worktrees/
 data/commons.db
 data/commons.db-journal
 data/commons.db-wal
@@ -12,9 +17,6 @@ data/upstream/cache/
 data/last-card.json
 app/dist/
 app/node_modules/
-# Agent worktrees live here. A worktree is a second checkout of this same repo —
-# committing it would put a whole duplicate copy of the project inside itself.
-.claude/
 .DS_Store
 .env
 .env.local
