@@ -1,0 +1,160 @@
+# Where this is
+
+Written 2026-09-12, at the end of a long build session. This is the handover
+note: what exists, what does not, and what the next person — or the next
+session — should not have to rediscover.
+
+Everything in **Built** is tested and pushed. Everything in **Not built** is
+either researched and deliberately deferred, or known-missing. Nothing here is
+aspiration; if it says built, `npm test` covers it.
+
+---
+
+## How to check the state yourself, in four commands
+
+```
+npm test          # 509 protocol tests — proves the gates REFUSE
+npm run prove     # presses every button — proves the app RESPONDS
+npm run doctor    # is this machine set up, are the upstreams answering
+npm run data -- --status   # how much of the ecoregion library is downloaded
+```
+
+`npm test` asserts refusals. `npm run prove` runs every tool and every REST
+route against a throwaway commons and tells a clean refusal from a crash — the
+second is the one that catches a button doing nothing, because that failure is
+invisible from a screenshot.
+
+---
+
+## Built
+
+### The loop, end to end
+All twelve protocol stages are enforced in code, and all four phases of
+`docs/DAILY_USE.md` are shipped — the ground, first run, closing the loops, the
+group card, and the long rhythms (carrying, the turning, place attention, the
+neighbours, the seven numbers).
+
+### The front door
+`The commons` is the landing view: where you are, what needs doing with the
+button that does each thing, the projects with what is actually in their way,
+who is carrying what, and what is around you. The fifteen protocol-stage tabs
+still exist behind it.
+
+### The map as the playing field
+Everything drawable is on it — places, hubs, projects, needs, gatherings,
+observations, instrument readings — as HTML markers over the deck.gl canvas,
+with a key in the corner that doubles as per-kind switches. Clicking one opens
+a panel beside the map.
+
+### Protocol fidelity
+Four controls that read as in-place and enforced nothing were found and fixed:
+the ecological-assessment gate never fired, the Land Seat was unconnected to
+the land, the project score did not exist, and the AI log depended on the AI
+volunteering. The suite now compares `docs/PROTOCOL.md` and `core/schema.sql`
+to the code on every run.
+
+### Two security fixes
+`?clearance=sacred` was honoured from the query string. And
+`offerWantProfile()` — the one function that publishes an intake item to a
+world-readable global index — was the only place that did not check
+`intake.private`.
+
+### Device enrolment
+A second person can write, without accounts. See **Not built** for the part
+that is missing.
+
+---
+
+## Not built, and what it would take
+
+Ordered by how much each would change what a real chapter can do.
+
+**1. There is no UI for device enrolment.** `invite_device`, `enrol_device`,
+`list_devices` and `revoke_device` all work and are tested, reachable from the
+assistant and from `POST /api/tool`. What does not exist is the screen: an
+"Add a device" panel that shows the code as a QR, a page the phone lands on to
+redeem it, and somewhere on the phone to keep the token. Until that exists the
+feature is real and unusable by anybody who is not comfortable calling a tool.
+*This is the single highest-value next piece.*
+
+**2. Setup can finish with an empty database.** The strongest finding in
+`docs/COMMUNICATIONS.md`: 93% of 12,795 Ushahidi Crowdmaps held fewer than ten
+reports and 61% were untouched defaults, and the top self-reported cause was
+social, not technical. The fix is that onboarding should not be completable
+until real local content is in — "type the three things people already noticed
+this month". About a day of work, and it is the biggest gap between *installed*
+and *used*.
+
+**3. US only.** The ecoregion index is EPA: 85 Level III, 967 Level IV.
+`data/upstream/global-ecoregions.geojson` is absent, so `look_around` outside
+the United States resolves a place and finds no ecoregion polygon. The intended
+source is RESOLVE 2017 (CC-BY) — One Earth is CC-BY-**NC** and must not be
+redistributed. See `docs/DATA_SOURCES.md`.
+
+**4. The region library is ~509 of 967 downloaded.** Regenerable and
+gitignored. `npm run data -- --all` resumes and skips what is current. An
+uncompiled region still shows its identity and a download button.
+
+**5. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
+carries the whole decision. The recommendation is **inbound only** — a
+neighbour can text or speak a need and get an acknowledgement; the OS never
+broadcasts. Before any of it: `contact_channels`, shaped like `media_consent`
+with `granted_at` / `withdrawable` / `withdrawn_at`, because `agents.contact`
+and `intake.contact` are free text with no channel type, no verification and no
+opt-out, and retrofitting consent onto a live roster is work nobody ever does.
+
+**6. Voice: researched, nothing built.** Secondary but first-class — capture
+and playback, never an interaction channel. Note the blocker recorded in the
+doc: `getUserMedia` needs a secure context, so over `http://192.168.x.x` the
+`/join` page **cannot** record audio. The way round is
+`<input type="file" accept="audio/*" capture>`.
+
+**7. No sync between two stewards' machines.** `--share` is same-wifi only. The
+outbox design (one append-only file per device, never the live database) is
+written up and unbuilt.
+
+**8. Nothing happens when the laptop is closed.** Deliberate and documented,
+and still a real constraint on what a chapter can rely on.
+
+---
+
+## Things that bit, and will bite again
+
+- **`grep` returns nothing on `scripts/test.mjs` in some shells.** It cost an
+  audit a false finding this session ("the tests do not exist" — they did). Use
+  python or `rg` on that file.
+- **Paths contain a space.** `new URL(...).pathname` keeps it percent-encoded
+  and hands a subprocess a file that does not exist. Use `fileURLToPath`, or
+  `isMain()` from `scripts/lib.mjs`.
+- **A layer added without removing the one it replaces looks finished.** The map
+  drew places, hubs and signals twice for a while, and the only symptom was that
+  a switch did nothing.
+- **Defence in depth hides a broken half.** Revocation is enforced twice and the
+  first mutation test passed because the other half caught it. Test each half
+  alone or you have one defence nobody has checked.
+- **A test that asserts a list of names goes stale silently.** Assert the
+  property.
+
+---
+
+## The rules that are not obvious from the code
+
+These are argued at length in the docs and are easy to undo by accident.
+
+- **Only open obligations count** in the care ledger. Count completed work and
+  it becomes a scoreboard; count what is still owed and the number falls when
+  work finishes, which is what a warning does.
+- **No data is not a zero.** A chapter with no gatherings has no care score.
+- **The seven numbers do not add up.** The moment there is one number, that
+  number is what gets managed.
+- **A dataset may inform a decision and may never close a consent gate.**
+- **Three gates never graduate**: rights-holder consent, indigenous consent,
+  youth safeguarding. The test is whether the person clicking could be the
+  person the gate protects.
+- **Revocation is a status change, never a deletion** — for devices, people and
+  consent alike. Replicated data cannot be recalled, and deleting the row
+  orphans the work rather than undoing it.
+- **A clearance is a fact about the connection.** Nothing a client *claims*
+  raises it; a device token is a secret it was *given*, which is different.
+- **Nothing over a network reaches `restricted` or `sacred`**, whatever it
+  presents.

@@ -239,6 +239,7 @@ clean copy to hand another community.
 |---|---|
 | **[START_HERE.md](docs/START_HERE.md)** | New to all of this. Start here |
 | **[PROTOCOL.md](docs/PROTOCOL.md)** | The BioRegional Commons manual — the rules this software enforces |
+| **[STATUS.md](docs/STATUS.md)** | Where the build actually is: what exists, what does not, and the traps that already cost time |
 | **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | How it is put together, and the reasoning behind every choice worth arguing with |
 | **[CLAUDE_CODE.md](docs/CLAUDE_CODE.md)** | Driving the whole commons from Claude Code over MCP |
 | **[LIBRARY.md](docs/LIBRARY.md)** | The offline ecoregion library — what is in a dossier, and what is deliberately left out |
