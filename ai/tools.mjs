@@ -24,6 +24,7 @@ import * as attention from '../engines/attention.mjs';
 import * as vitals from '../engines/vitals.mjs';
 import * as neighbours from '../engines/neighbours.mjs';
 import * as turning from '../engines/turning.mjs';
+import * as landseat from '../engines/landseat.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -1129,6 +1130,42 @@ export const TOOLS = [
     handler: (i) => turning.seasons(ch(i)),
   },
 
+  // ---------- the land, at the council table ----------
+  {
+    name: 'land_seat_brief',
+    description:
+      'What the land is doing, for whoever is writing the Land Seat report on a council item: ' +
+      'the latest gage reading and whether it is stale, any official hazard alert, what people ' +
+      'have noticed lately, critical observations with no project behind them, and where the ' +
+      'season has got to. Entirely local — database plus solar equations computed on this ' +
+      'machine — so a council meeting with no wifi can still seat the land. It returns MATERIAL, ' +
+      'not a drafted report: the Land Seat is a person speaking for a place, and it also names ' +
+      'the two things no database can supply (downstream effects, and what is not known).',
+    input_schema: S({ chapter_id: str(''), place_id: str('Defaults to the chapter anchor') }),
+    handler: (i) => landseat.brief(ch(i), { place_id: i.place_id ?? null }),
+  },
+  {
+    name: 'quest_score',
+    description:
+      'Stage 6 for one project: how urgent, regenerative, feasible and maintainable it is, each ' +
+      'read from records that already exist rather than self-assessed. A project with an open ' +
+      'required gate, a red flag or no maintenance owner has NO overall score at all — not a low ' +
+      'one — because the manual says a high score never overrides those, and a number that sorts ' +
+      'will eventually be read as "nearly ready".',
+    input_schema: S({ quest_id: str('') }, ['quest_id']),
+    handler: (i) => quest.score(i.quest_id),
+  },
+  {
+    name: 'seasonal_priorities',
+    description:
+      'Stage 6\'s required output: the seasonal priority list. Ranks every open project that can ' +
+      'be ranked and lists separately the ones held back by a gate, a flag or a missing ' +
+      'maintenance owner — because "what should we do next" and "what is stopping what we already ' +
+      'chose" are the same conversation.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => quest.priorities(ch(i)),
+  },
+
   // ---------- what this locality already publishes ----------
   {
     name: 'discover_local_data',
@@ -1490,7 +1527,39 @@ export function anthropicTools() {
   return TOOLS.map(({ name, description, input_schema }) => ({ name, description, input_schema }));
 }
 
-export async function runTool(name, input = {}) {
+/**
+ * Tools whose use "materially shapes a public report, map, plan, match, or
+ * recommendation" — the manual's own phrase, and the trigger for logging.
+ *
+ * A deliberately short list. Logging every read would bury the entries that
+ * matter under a heartbeat's worth of lookups, and the operator turns each
+ * unreviewed row into blocking work — so a noisy log would train a steward to
+ * clear it without reading, which is worse than no log.
+ *
+ * These are the writes that change what the commons says, decides, or shows
+ * to somebody outside it.
+ */
+export const MATERIAL_TOOLS = new Set([
+  'add_signal', 'open_quest', 'update_quest', 'satisfy_quest_gate', 'advance_quest',
+  'propose_decision', 'decide_council_item', 'clear_red_flag',
+  'respond_to_intake', 'submit_intake',
+  'add_indicator', 'record_measurement', 'set_baseline',
+  'publish_learning', 'approve_dataset', 'record_exchange',
+  'add_place', 'add_gathering', 'begin_here',
+  'publish_to_murmurations', 'withdraw_consent', 'record_consent',
+]);
+
+/**
+ * How this call arrived. Only an AI caller is logged.
+ *
+ * A person clicking a form in the interface is not "AI materially shaping" the
+ * commons, and recording their every action as an AI action would make the
+ * transparency register meaningless in the other direction — it would stop
+ * being a record of what the machine did.
+ */
+const AI_CALLERS = new Set(['assistant', 'mcp', 'claude-code']);
+
+export async function runTool(name, input = {}, { via = 'ui' } = {}) {
   const t = TOOL_MAP[name];
   if (!t) return { error: `unknown tool ${name}` };
   // Required fields are enforced here, not in each handler, so every caller —
@@ -1540,7 +1609,20 @@ export async function runTool(name, input = {}) {
     if (found.length) return { error: rule.error, message: rule.say(found[0]), invalid: found };
   }
   try {
-    return await t.handler(input ?? {});
+    const out = await t.handler(input ?? {});
+    // Logged AFTER the handler and only on success, because the register is a
+    // record of what the AI actually changed — an attempt the gates refused is
+    // the protocol working, not a material act, and recording it would fill the
+    // steward's review queue with things that never happened.
+    if (AI_CALLERS.has(via) && MATERIAL_TOOLS.has(name) && !out?.error) {
+      steward.recordAIAction(ch(input ?? {}), {
+        tool: name,
+        purpose: t.description?.split('.')[0]?.slice(0, 200) ?? `Ran ${name}`,
+        affected_object_rid: out?.rid ?? null,
+        via,
+      });
+    }
+    return out;
   } catch (err) {
     return { error: err.message };
   }

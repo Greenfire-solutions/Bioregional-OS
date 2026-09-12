@@ -258,6 +258,10 @@ CREATE TABLE IF NOT EXISTS decisions (
   -- every agenda carries a Land Seat report
   land_seat_report     TEXT,
   land_seat_steward    TEXT,
+  -- What the land was doing when this was proposed, frozen as JSON. The report
+  -- above is a person speaking; this is the measurement standing beside it, so
+  -- that a review years later can tell a drought decision from a wet-year one.
+  land_seat_context    TEXT,
   downstream_effects   TEXT,
   uncertainty_note     TEXT,
   red_flags            TEXT,

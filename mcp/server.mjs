@@ -55,7 +55,7 @@ async function handle(line) {
         });
 
       case 'tools/call': {
-        const out = await runTool(params?.name, params?.arguments ?? {});
+        const out = await runTool(params?.name, params?.arguments ?? {}, { via: 'mcp' });
         return reply(id, {
           content: [{ type: 'text', text: JSON.stringify(out, null, 2).slice(0, 200000) }],
           isError: !!out?.error,

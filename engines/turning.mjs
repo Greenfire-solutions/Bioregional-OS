@@ -36,6 +36,7 @@ import { all, one, run, create, LATEST_MEASUREMENT } from '../core/db.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 import { whatsNext } from './operator.mjs';
 import { carrying } from './attention.mjs';
+import { priorities } from './quest.mjs';
 import { vitals } from './vitals.mjs';
 
 /**
@@ -201,12 +202,16 @@ export function openSeason(chapterId, { name, priorities } = {}) {
       season: open,
     };
   }
-  // The priority list is stage 6's required output. Offered from the operator
-  // rather than invented: these are the things already blocking, each citing
-  // its own protocol rule.
-  const suggested = safely(() => whatsNext(chapterId))?.items
+  // The priority list is stage 6's required output, so it comes from stage 6.
+  // Projects that can be ranked, ranked — then whatever the operator says is
+  // blocking, because a season whose list is only its blockages has no
+  // direction and a season that ignores them has no honesty.
+  const stage6 = safely(() => priorities(chapterId));
+  const ranked = (stage6?.ranked ?? []).slice(0, 5).map((r) => r.quest);
+  const blocking = safely(() => whatsNext(chapterId))?.items
     ?.filter((i) => i.kind === 'blocking' || i.kind === 'slipped')
-    ?.slice(0, 7)?.map((i) => i.title) ?? [];
+    ?.slice(0, 7 - ranked.length)?.map((i) => i.title) ?? [];
+  const suggested = [...ranked, ...blocking];
 
   const row = create('seasons', 'season', chapterId, {
     chapter_id: chapterId,

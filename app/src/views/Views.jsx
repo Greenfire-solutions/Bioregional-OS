@@ -1,5 +1,6 @@
 import React from 'react';
 import TheGround, { BaselineOffer } from '../components/TheGround.jsx';
+import LandSeat from '../components/LandSeat.jsx';
 import {
   CheckCircle2, XCircle, AlertTriangle, Droplets, Users, Scale,
   RefreshCw, BookOpen, Shield, Clock, MapPin,
@@ -243,6 +244,10 @@ export function Council({ decisions, due, onAct }) {
       <H sub="Every agenda item carries a Land Seat report. Irreversible items need a heavier method.">
         Council
       </H>
+
+      {/* Above the agenda, because the report is written here and read later.
+          The measurements were always on this machine and never on this page. */}
+      <LandSeat />
       {!!due?.length && (
         <Card className="border-[#E4C9C2] bg-[#FBF1EE]">
           <div className="flex items-center gap-2 text-xs font-medium text-[var(--clay)]">

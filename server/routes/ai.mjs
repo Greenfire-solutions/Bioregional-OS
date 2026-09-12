@@ -63,7 +63,7 @@ export async function aiStream(req, res) {
       const results = [];
       for (const tu of toolUses) {
         send('tool', { name: tu.name, input: tu.input });
-        const out = await runTool(tu.name, tu.input);
+        const out = await runTool(tu.name, tu.input, { via: 'assistant' });
         send('tool_result', { name: tu.name, summary: summarize(out) });
         results.push({
           type: 'tool_result',

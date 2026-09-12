@@ -7,6 +7,7 @@
 // from, so a steward can argue with it.
 import { all, one } from '../core/db.mjs';
 import { carrying, placeAttention } from './attention.mjs';
+import { priorities } from './quest.mjs';
 
 // blocking  — other work cannot proceed until this moves
 // slipped   — a commitment already made has passed its date
@@ -134,6 +135,29 @@ export function whatsNext(chapterId) {
       });
     }
   }
+
+  // ── Stage 6: Prioritize ─────────────────────────────────────────────────
+  // The only stage of the twelve that never appeared in this list. Its required
+  // output is a seasonal priority list, and a chapter carrying several open
+  // projects with no stated order is not neutral between them — it is deciding
+  // by whoever asks loudest, which is the thing a priority list exists to stop.
+  try {
+    const pri = priorities(chapterId);
+    if (pri.total >= 2 && pri.ranked.length >= 2) {
+      const season = one(
+        `SELECT name FROM seasons WHERE chapter_id=? AND closed_at IS NULL LIMIT 1`, chapterId);
+      if (!season) {
+        add({
+          kind: 'gap', stage: 'Prioritize',
+          title: `${pri.total} projects are open and none of them is the season's priority`,
+          detail: `Ranked highest right now: ${pri.ranked[0].quest}. ` +
+                  `${pri.blocked.length} held back by a gate or a flag.`,
+          rule: 'What is urgent, regenerative, feasible, and maintainable?',
+          action: { tool: 'open_season', input: {} },
+        });
+      }
+    }
+  } catch { /* no quests yet */ }
 
   // ── Stage 5: Convene — decisions due, red flags open ────────────────────
   for (const d of all(

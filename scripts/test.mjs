@@ -21,7 +21,9 @@ import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend, credits } 
 import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
+import { GATES as QUEST_GATES } from '../engines/quest.mjs';
 import { vitals } from '../engines/vitals.mjs';
+import { brief as landSeatBrief } from '../engines/landseat.mjs';
 import { neighbours, summarise, refresh as refreshNeighbours } from '../engines/neighbours.mjs';
 import { classifyPeer } from '../adapters/murmurations.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
@@ -143,12 +145,37 @@ check('a gate does not close on a checkbox',
   refused(await runTool('satisfy_quest_gate',
     { quest_id: q.id, gate: 'land_access', evidence: '', reviewed_by: '' }), 'evidence'));
 
-for (const gate of ['rights_holder_consent', 'land_access', 'permits_insurance',
-                    'maintenance_owner', 'affected_party_process']) {
+// Every gate the manual names, not a subset. Four of the nine — indigenous
+// consent, youth safeguarding, ecological assessment and data consent — were
+// declared in the schema and never created on any quest, so nothing was ever
+// blocked pending an ecological assessment in a bioregional OS. Read from
+// quest.mjs rather than listed here, so this can never silently fall behind
+// the protocol again.
+check('every gate the protocol names is created on a new quest',
+  (await runTool('quest_gates', { quest_id: q.id })).length === QUEST_GATES.length,
+  `${(await runTool('quest_gates', { quest_id: q.id })).length} of ${QUEST_GATES.length}`);
+check('the ecological assessment gate is one of them',
+  (await runTool('quest_gates', { quest_id: q.id })).some((g) => g.gate === 'ecological_assessment'));
+
+// A gate that does not apply still closes on a REASON and a named person —
+// which is the whole argument for requiring all nine rather than defaulting
+// the awkward four to optional. The record is of somebody having considered it.
+const NOT_APPLICABLE = {
+  indigenous_consent: 'Consulted NATHPO listing; no tribal historic preservation interest recorded for this parcel.',
+  youth_safeguarding: 'Not applicable — no minors involved in a culvert survey.',
+  ecological_assessment: 'Walked with the county ecologist 12 March; no listed species on the reach.',
+  data_consent: 'Not applicable — no personal data collected.',
+};
+for (const gate of QUEST_GATES) {
   await runTool('satisfy_quest_gate', {
-    quest_id: q.id, gate, evidence: 'Signed agreement on file.', reviewed_by: 'R. Alvarez',
+    quest_id: q.id, gate,
+    evidence: NOT_APPLICABLE[gate] ?? 'Signed agreement on file.',
+    reviewed_by: 'R. Alvarez',
   });
 }
+check('a gate that does not apply closes on a reason, not a shrug',
+  (await runTool('quest_gates', { quest_id: q.id }))
+    .find((g) => g.gate === 'youth_safeguarding')?.evidence.includes('no minors'));
 const stillBlocked = await runTool('check_quest_advance', { quest_id: q.id, to_stage: 'prototype' });
 check('gates closed but no maintenance owner still blocks build',
   stillBlocked.ok === false && stillBlocked.blocked.some((b) => /maintenance owner|smallest/.test(b)));
@@ -1092,6 +1119,142 @@ check('the intake promise states itself in words a person can read',
   check('no query picks the latest reading without a deterministic tiebreak',
     loose.length === 0,
     `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak — ties resolve arbitrarily`);
+}
+
+// ── The land, at the council table ────────────────────────────────────────
+// Every agenda item has always required a Land Seat report, and the report has
+// always been free text validated for non-emptiness. The OS held the gage
+// reading, the hazard alerts and the season, and none of it reached the field —
+// so a steward wrote the report from memory while the machine beside them held
+// the measurements.
+{
+  const b = landSeatBrief('test');
+  check('the Land Seat brief carries what the land is doing',
+    'water' in b && Array.isArray(b.hazards) && 'season' in b, JSON.stringify(Object.keys(b)));
+  // It is material, not a draft. A generated paragraph is nobody speaking, and
+  // the Land Seat is a person speaking for a place.
+  check('the brief offers material, not a written report',
+    !('report' in b) && !('draft' in b) && /not the report/i.test(b.note ?? ''));
+  // Two of the five things the protocol asks for cannot be read from any
+  // database. A brief that quietly omitted them would read as complete.
+  check('the brief names what no database can supply',
+    b.must_be_spoken_by_a_person.map((x) => x.field).join(',')
+      === 'downstream_effects,uncertainty_note');
+  check('and it computes the season without a network',
+    b.season === null || typeof b.season.next_turn === 'string');
+
+  // The context is frozen onto the decision, so a review years later can tell a
+  // drought decision from a wet-year one.
+  const withLand = await runTool('propose_decision', {
+    chapter_id: 'test', title: 'Close the lower crossing in low water', method: 'consent',
+    land_seat_report: 'Creek is low, banks exposed, recovery time uncertain.',
+    land_seat_steward: 'R. Alvarez',
+  });
+  const stored = one('SELECT land_seat_context FROM decisions WHERE id=?', withLand.id);
+  check('a proposal freezes what the land was doing at the time',
+    !!stored?.land_seat_context && JSON.parse(stored.land_seat_context).captured_at,
+    String(stored?.land_seat_context).slice(0, 80));
+  check('the frozen context is the measurement, not the report',
+    JSON.parse(stored.land_seat_context).sentence !== undefined &&
+    !JSON.parse(stored.land_seat_context).land_seat_report);
+
+  // It must never block a proposal. The report is the requirement; this is
+  // corroboration, and a commons with no located place still has councils.
+  await runTool('create_chapter', {
+    id: 'no-ground', name: 'No Ground', scale: 'site',
+    represents: 'itself', does_not_represent: 'anyone else',
+  });
+  const groundless = await runTool('propose_decision', {
+    chapter_id: 'no-ground', title: 'Adopt the charter', method: 'consent',
+    land_seat_report: 'No ground located yet; this decision does not touch land.',
+  });
+  check('a chapter with no located place can still hold a council',
+    !!groundless.id, JSON.stringify(groundless).slice(0, 120));
+}
+
+// ── Stage 6: a score that cannot override what it is not allowed to ───────
+// The manual refers to a "project score" exactly once — in the sentence saying
+// a high one never overrides a red flag. The rule was enforced and the score
+// never existed, so the safeguard guarded nothing.
+{
+  const sq = await runTool('open_quest', { chapter_id: 'test', title: 'Scored project' });
+  const blockedScore = await runTool('quest_score', { quest_id: sq.id });
+  // The property, not the wording: a blocked project has NO composite. A low
+  // number still sorts, and anything that sorts is eventually read as
+  // "nearly ready".
+  check('a project with open gates has no score at all, not a low one',
+    blockedScore.overall === null && blockedScore.blocked.length > 0,
+    JSON.stringify({ overall: blockedScore.overall, blocked: blockedScore.blocked.length }));
+  check('and the parts are still reported, so it can be improved',
+    typeof blockedScore.parts.feasible === 'number' &&
+    typeof blockedScore.parts.maintainable === 'number');
+
+  for (const gate of QUEST_GATES) {
+    await runTool('satisfy_quest_gate', {
+      quest_id: sq.id, gate, evidence: 'Reviewed and recorded.', reviewed_by: 'M. Okafor',
+    });
+  }
+  await runTool('update_quest', {
+    quest_id: sq.id, maintenance_owner: 'S. Chen',
+    smallest_experiment: 'One reach, one season.',
+    desired_condition: 'Exposed bank length falls by a quarter.',
+  });
+  const open = await runTool('quest_score', { quest_id: sq.id });
+  check('a project with nothing blocking it gets one',
+    typeof open.overall === 'number' && open.overall >= 0 && open.overall <= 1,
+    JSON.stringify(open.overall));
+  check('the score names its own weakest part rather than one number',
+    ['urgent', 'regenerative', 'feasible', 'maintainable'].includes(open.weakest));
+
+  // Nothing here may be self-assessed — there is no input a person fills in to
+  // make their project look urgent.
+  const { TOOLS: ALL_TOOLS } = await import('../ai/tools.mjs');
+  const scoreTool = ALL_TOOLS.find((t) => t.name === 'quest_score');
+  check('nothing about the score can be typed in by the person being scored',
+    Object.keys(scoreTool.input_schema.properties).join(',') === 'quest_id');
+
+  const list = await runTool('seasonal_priorities', { chapter_id: 'test' });
+  check('the priority list keeps blocked projects visible, not hidden',
+    Array.isArray(list.ranked) && Array.isArray(list.blocked) &&
+    list.total === list.ranked.length + list.blocked.length);
+}
+
+// ── The AI logs itself, rather than being asked to volunteer ──────────────
+// The manual: log whenever AI materially shapes a public report, map, plan,
+// match or recommendation. That was implemented as a tool the assistant had to
+// choose to call ON ITSELF — so the register existed, the operator counted
+// unreviewed rows, and an assistant could open projects, close gates and
+// propose decisions without ever writing one.
+{
+  const n = () => one(`SELECT COUNT(*) n FROM ai_log WHERE chapter_id='test'`).n;
+
+  const before = n();
+  await runTool('add_signal', { chapter_id: 'test', title: 'A person typed this' });
+  check('a person using the interface is not logged as an AI action', n() === before);
+
+  await runTool('add_signal', { chapter_id: 'test', title: 'The assistant recorded this' },
+    { via: 'assistant' });
+  check('an AI writing to the commons is logged without being asked', n() === before + 1);
+
+  await runTool('list_signals', { chapter_id: 'test' }, { via: 'assistant' });
+  check('an AI reading is not a material act', n() === before + 1);
+
+  // A refused attempt is the protocol working, not something the AI did.
+  // Logging it would fill the steward's queue with things that never happened.
+  await runTool('propose_decision', { chapter_id: 'test', title: 'No land seat' }, { via: 'mcp' });
+  check('an action the gates refused is not recorded as an action', n() === before + 1);
+
+  // The row is written with NO reviewer on purpose, which is what turns it into
+  // blocking work in the operator — a check that until now could only be zero.
+  const row = one(
+    `SELECT tool, human_reviewer, correction_path FROM ai_log WHERE chapter_id='test'
+      ORDER BY created_at DESC, rowid DESC LIMIT 1`);
+  check('the log records which caller it was', /assistant|mcp/.test(row.tool), row.tool);
+  check('and leaves the reviewer empty, which is the point',
+    row.human_reviewer === null && !!row.correction_path);
+  check('an unreviewed AI action reaches the operator as work',
+    (await runTool('whats_next', { chapter_id: 'test' })).items
+      .some((i) => /no human reviewer/i.test(i.title)));
 }
 
 // ── The turning, and the three questions a database cannot answer ─────────

@@ -2,6 +2,7 @@
 // Mandate: make legitimate, transparent, repairable decisions.
 // The manual's rules are enforced here rather than left to good intentions.
 import { all, one, create, run } from '../core/db.mjs';
+import { context as landSeatContext } from './landseat.mjs';
 
 /** Decisions that need a heavier method than the one chosen. */
 const IRREVERSIBLE_METHODS = ['supermajority_consensus', 'explicit_permission'];
@@ -27,8 +28,24 @@ export function propose(chapterId, d) {
         'and a reconsideration period.',
     };
   }
+  // Freeze what the land was doing at the moment this was proposed.
+  //
+  // Not a check on the report and not a substitute for it — the report is still
+  // required and still written by a person. This is the record that makes
+  // "monitoring must change decisions" answerable later: a decision taken in
+  // the third year of a drought reads very differently once the drought breaks,
+  // and without this nobody can tell which of the two they are reading.
+  //
+  // Captured rather than fetched, so a council meeting with no wifi still gets
+  // it, and a failure here must never block a proposal — the Land Seat report
+  // is the requirement; this is the corroboration.
+  let land_seat_context = null;
+  try { land_seat_context = JSON.stringify(landSeatContext(chapterId, { place_id: d.place_id })); }
+  catch { land_seat_context = null; }
+
   return create('decisions', 'decision', chapterId,
-                { ...d, reversible: reversible ? 1 : 0, chapter_id: chapterId, status: 'proposed' });
+                { ...d, reversible: reversible ? 1 : 0, chapter_id: chapterId,
+                  status: 'proposed', land_seat_context });
 }
 
 export function decide(id, { decided_by, review_date } = {}) {
