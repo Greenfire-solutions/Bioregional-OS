@@ -25,7 +25,7 @@ instrument**:
   *"what needs doing"*, with a **Start here** card.
 - `engines/heartbeat.mjs` → the machine tends itself while it runs: locating
   places, refreshing water, watching review dates.
-- `ToolForm.jsx` → any of the 48 tools can be run from a generated form.
+- `ToolForm.jsx` → any tool in the registry can be run from a generated form.
 
 That is the right direction and it is half of the answer. The half that is
 missing is this: **everything on the Today tab is work.** Opening it costs the

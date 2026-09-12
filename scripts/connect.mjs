@@ -6,6 +6,10 @@ import { join } from 'node:path';
 import { homedir, networkInterfaces } from 'node:os';
 import QRCode from 'qrcode';
 import { ROOT, title, ok, warn, info, step, cmd, c, line } from './lib.mjs';
+// Counted from the registry, never typed. A number in prose here went stale the
+// first time a tool was added, and a wrong count in the front door is the kind of
+// small lie that makes a reader doubt the rest of the page.
+import { TOOLS } from '../ai/tools.mjs';
 
 const PORT = Number(process.env.PORT || 4180);
 const lan = (() => {
@@ -43,7 +47,7 @@ info('Already wired up. In a terminal:');
 cmd(`cd "${ROOT}"`);
 cmd('claude');
 info('Then just ask: "what is the state of the commons?"');
-info('Claude Code reads .mcp.json in this folder and gets all 23 tools automatically.');
+info(`Claude Code reads .mcp.json in this folder and gets all ${TOOLS.length} tools automatically.`);
 
 // ── 4. Claude Desktop ─────────────────────────────────────────────────────
 const desktopCfg = join(homedir(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');

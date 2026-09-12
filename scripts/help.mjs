@@ -81,6 +81,21 @@ const TOPICS = {
     note: 'It only runs while the OS is open. That is deliberate — on macOS a background timer ' +
           'cannot read your Desktop and would fail silently, which is worse than not running at all.',
   },
+  offline: {
+    title: 'Working with no internet',
+    body: [
+      ['Download the regions you live in', 'npm run data'],
+      ['...and the ones next door', 'npm run data -- --near'],
+      ['Every ecoregion in the country', 'npm run data -- --all'],
+      ['What is downloaded, what is stale', 'npm run data -- --status'],
+      ['Prove it reads with the wifi off', 'npm run data -- --offline'],
+      ['What is in one', 'docs/LIBRARY.md'],
+    ],
+    note: 'Each region is about 100 KB — plants, animals, soil, climate, water, hazards and local ' +
+          'resources. Stop it with Control + C and run it again whenever; it never refetches ' +
+          'anything still current. Threatened species are named but never located, and culture is ' +
+          'deliberately not downloaded.',
+  },
   protocol: {
     title: 'How the OS thinks',
     body: [

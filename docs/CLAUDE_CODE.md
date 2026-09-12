@@ -10,7 +10,8 @@ cd "path/to/Bioregional-OS"
 claude
 ```
 
-That's it. Claude Code now has all 49 tools. Try:
+That's it. Claude Code now has every tool in the registry — the same set the app
+itself runs on, and the same consent gates. `npm run connect` prints the count. Try:
 
 > what is the state of the commons?
 

@@ -46,11 +46,18 @@ for *this calendar day* across the whole period of record, live weather and any
 official hazard alert, and sun, moon and daylight computed on your own machine — so
 that part answers even with the wifi off. Then one line: *what did you notice?*
 
+**Every ecoregion in the country, readable with the network unplugged.** `npm run
+data` downloads a dossier per region — plants and animals ranked by how often they
+are actually seen, soil, climate normals, water, hazards, community assets — about
+100 KB each, roughly 97 MB for all 967. Threatened species are named but never
+located. Culture is deliberately not downloaded. Every run is resumable and
+refetches only what has actually gone stale.
+
 **Live ecological data.** USGS stream gages flow in as signals automatically —
 discharge and gage height, refreshed on demand, cached so the map still works
 with no internet.
 
-**Everything a person can do, Claude can do, and vice versa.** One registry of 59
+**Everything a person can do, Claude can do, and vice versa.** One registry of
 tools feeds the MCP server, the in-app assistant, the REST API *and* the forms in
 the interface — the forms are generated from the tools' own schemas. There is no
 privileged path that skips a consent gate.
@@ -76,9 +83,9 @@ ecological boundaries, refreshes water readings, and watches review dates. Not a
 launchd timer: on macOS those cannot read `~/Desktop` and fail *silently*, and a
 scheduler that lies about running is worse than none.
 
-**An AI that runs the whole thing — and cannot govern it.** 59 tools, exposed
-identically to Claude Code (over MCP), the Claude Desktop app, and an assistant
-inside the page. It reads the same data the map draws. It cannot decide
+**An AI that runs the whole thing — and cannot govern it.** Every tool in the
+registry, exposed identically to Claude Code (over MCP), the Claude Desktop app,
+and an assistant inside the page (`npm run connect` prints the live count). It reads the same data the map draws. It cannot decide
 legitimacy, rights, funding, cultural permission, safety clearance, or who
 deserves care — those refusals live in the engines, not in a prompt.
 
@@ -89,20 +96,47 @@ the Murmurations network.
 
 ---
 
-## The tabs
+## The five places in it
+
+The interface groups into five, in the order a commons actually moves: what the
+land is doing, where you are, the work, the people, and what leaves the building.
+
+**Today** — What the land is doing right now: water against its own record for
+this calendar day, weather, any official hazard alert, and sun and moon computed
+on your own machine. Then *what did you notice?*, then what your observations
+turned into, then what needs doing across all twelve stages, ranked by what
+blocks other work. Each item cites the protocol rule it comes from, so you can
+argue with it, and carries the button that fixes it.
+
+**Place**
 
 | | |
 |---|---|
-| **Today** | What the land is doing right now — water against its own record, weather, sun and moon — then what needs doing across all twelve stages, ranked by what blocks other work. Each item cites the protocol rule it comes from, and carries the button that fixes it |
-| **My Place** | Chapter identity and the ten-question Minimum Viable Chapter Test, with the specific fix for every failure |
-| **Atlas** | The 3D ecoregion map — terrain and globe, Level III and IV, relief on/off |
+| **My Place** | Chapter identity — what it represents and what it explicitly does not — the ground beneath it, and the ten-question Minimum Viable Chapter Test with the specific fix for every failure |
+| **Atlas** | The 3D ecoregion map — terrain and globe, EPA Level III and IV, relief on/off, your places and signals on top |
+
+**The work**
+
+| | |
+|---|---|
 | **Listen** | The front door. Someone brings a need; the commons answers and can be appealed |
 | **Signals** | What the land and people are showing. Human observations start unverified; USGS water refreshes itself |
 | **Quests** | Projects and their consent/safety gates. A good idea never overrides a red flag |
-| **Council** | Decisions, the Land Seat report, red flags, review dates |
 | **Measure** | Indicators, baselines and decision triggers. A reading that moves away from target says so |
+
+**Together**
+
+| | |
+|---|---|
+| **Council** | Decisions, the Land Seat report, red flags, review dates |
 | **Gatherings** | Events, scored on care provision — meals, transport, childcare, accessibility |
 | **Exchange** | Contributions as ValueFlows events. Flags a commons running on unpaid labour |
+
+**What travels**
+
+| | |
+|---|---|
+| **The card** | The week in one paste-ready block, text and PNG, for the group chat people already use. The app's job is not to become the place the group gathers |
 | **Learn** | Knowledge written so it can travel, plus the doctrine the OS runs on |
 | **Federation** | Other chapters, discovered over Murmurations |
 
@@ -132,8 +166,26 @@ clean copy to hand another community.
 | `npm run doctor -- --fix` | Diagnose and repair |
 | `npm run update` | Refresh reference data, rebuild the interface |
 | `npm run update -- --package` | Clean copy for another community, without your data |
+| `npm run data` | Download the ecoregions around you, for offline use |
+| `npm run data -- --status` | What is downloaded, what has gone stale |
 | `npm run seed -- --reset` | Start over with the example commons |
-| `npm test` | 29 protocol tests — proves the gates actually refuse |
+| `npm test` | The protocol test suite — proves the gates actually refuse |
+
+---
+
+## The documentation
+
+| | |
+|---|---|
+| **[START_HERE.md](docs/START_HERE.md)** | New to all of this. Start here |
+| **[PROTOCOL.md](docs/PROTOCOL.md)** | The BioRegional Commons manual — the rules this software enforces |
+| **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** | How it is put together, and the reasoning behind every choice worth arguing with |
+| **[CLAUDE_CODE.md](docs/CLAUDE_CODE.md)** | Driving the whole commons from Claude Code over MCP |
+| **[LIBRARY.md](docs/LIBRARY.md)** | The offline ecoregion library — what is in a dossier, and what is deliberately left out |
+| **[DATA_SOURCES.md](docs/DATA_SOURCES.md)** | The endpoint-verified catalogue of open data behind the Atlas |
+| **[INTEROP.md](docs/INTEROP.md)** | What it connects to, and the licensing reasoning for integrating by protocol rather than by copying code |
+| **[DAILY_USE.md](docs/DAILY_USE.md)** | Why it is built to give before it asks, and what it refuses to do — no streaks, no points, no feed |
+| **[SOCIAL_LAYER.md](docs/SOCIAL_LAYER.md)** | Why the app's job is to produce the thing pasted into the group chat, not to become the group chat |
 
 ---
 
@@ -151,10 +203,11 @@ EPA Ecoregions, USGS WBD and NWIS, Murmurations, ValueFlows/REA, KOI-net,
 CoMapeo, farmOS/OpenTEAM, MapLibre, deck.gl. The licensing reasoning and the full
 table are in **[docs/INTEROP.md](docs/INTEROP.md)**.
 
-Ten of the twelve Atlas layers are still empty. The endpoint-verified catalogue of
-free and open data that fills them — soil, plants and medicinal uses, phenology,
-hazards, care infrastructure — and the design for wiring it in without creating a
-second path, is in **[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)**.
+Eleven of the twelve Atlas layers now carry live data — soil, plants and medicinal
+uses, phenology, hazards, care infrastructure. The twelfth is the chapter's own
+work, and is correctly empty until there is some. The endpoint-verified catalogue
+behind them, and the design for adding a source without creating a second path, is
+in **[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)**.
 
 The protocol comes from the Green Fire **BioRegional Commons** manual
 (**[docs/PROTOCOL.md](docs/PROTOCOL.md)**) and the civic doctrine of the Green
