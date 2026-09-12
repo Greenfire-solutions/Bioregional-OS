@@ -240,3 +240,18 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
   .print-meta { font-size: 9pt; color: #555; }
 }
 @media screen { .print-only { display: none; } }
+
+
+/* ── The one thing on the map that moves ──────────────────────────────────
+   A blocked project, and nothing else. Slow, shallow, and once every three
+   seconds: if everything pulsed, nothing would be moving, and a map that
+   twitches is a map people stop looking at. Honoured only when the reader has
+   not asked for stillness — vestibular disorders are real and a moving pin is
+   not worth a headache. */
+@keyframes bros-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(176,106,84,0.28); }
+  50%      { box-shadow: 0 0 0 7px rgba(176,106,84,0.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="bros-pulse"] { animation: none !important; }
+}

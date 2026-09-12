@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { MapView, _GlobeView as GlobeView, COORDINATE_SYSTEM } from '@deck.gl/core';
-import { GeoJsonLayer, SolidPolygonLayer, TextLayer, IconLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, SolidPolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
 import { Globe, Mountain, Layers, Loader2 } from 'lucide-react';
-import { KIND, KIND_ORDER, markerSVG, badgeColor } from '../mapKinds.js';
+import { KIND, KIND_ORDER, markerSVG } from '../mapKinds.js';
+import MapMarkers from './MapMarkers.jsx';
 import { callTool } from '../api.js';
 
 // Carto's Positron — an open basemap style that needs no API key.
@@ -39,6 +40,22 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(null);
   const [features, setFeatures] = useState([]);
+  const [picked, setPicked] = useState(null);
+  // The canvas's own size, measured rather than assumed: the map column
+  // changes width whenever the detail panel opens, and a projection computed
+  // against the wrong width puts every marker in the wrong place.
+  const wrapRef = useRef(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([e]) => {
+      const r = e.contentRect;
+      setBox({ width: Math.round(r.width), height: Math.round(r.height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // Instrument readings are OFF by default. There are 68 of them against 5
   // observations in the example commons — a map showing both at once is a map
   // of the gage, and what a person noticed disappears underneath what a machine
@@ -148,78 +165,34 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     // The place LABELS are kept, because a name beside a point is not a second
     // copy of the point. They now follow the same switch as the places.
 
-    if (mode === 'terrain' && kindsOn.has('place') && places.length) {
-      L.push(new TextLayer({
-        id: 'place-labels', data: places.filter((p) => p.lat != null && p.lng != null),
-        getPosition: (d) => [d.lng, d.lat], getText: (d) => d.name,
-        getSize: 12, getColor: [233, 243, 236], getPixelOffset: [0, -22],
-        fontFamily: 'ui-sans-serif, system-ui', background: true,
-        getBackgroundColor: [8, 15, 13, 220], backgroundPadding: [6, 4],
-        parameters: { depthTest: false },
-      }));
-    }
-
-    // ── Everything a commons is doing, on the ground it is doing it on ─────
-    // Drawn last so it sits above the terrain, and ordered by each kind's own
-    // `z` so a project is never hidden under a gage reading. Sorting rather
-    // than one layer per kind keeps picking in a single pass, which is what
-    // makes a click land on the thing under the cursor rather than the thing
-    // that happened to be added last.
-    const shown = features
-      .filter((f) => kindsOn.has(f.kind))
-      .sort((a, b) => (KIND[a.kind]?.z ?? 0) - (KIND[b.kind]?.z ?? 0));
-
-    if (shown.length) {
-      L.push(new IconLayer({
-        id: 'commons-features',
-        data: shown,
-        pickable: true,
-        getPosition: (d) => [d.lng, d.lat],
-        getIcon: (d) => ({
-          url: markerSVG(d.kind, { blocked: d.state === 'blocked', precise: d.precise !== false }),
-          width: 64, height: 64, anchorX: 32, anchorY: 32, mask: false,
-        }),
-        getSize: (d) => KIND[d.kind]?.size ?? 18,
-        sizeUnits: 'pixels',
-        // Never scaled by zoom. A marker that shrinks to a pixel when you zoom
-        // out is a marker you cannot find, and finding things is the point.
-        sizeMinPixels: 10,
-        // Above the extruded ecoregions. deck.gl buries point layers under
-        // extruded polygons otherwise — the trap already documented for the
-        // signal layers below.
-        parameters: { depthTest: false },
-        onHover: (i) => setHover(i.object ? {
-          x: i.x, y: i.y,
-          title: i.object.title,
-          sub: [i.object.sub, i.object.precise === false ? 'at the centre of its place' : null]
-            .filter(Boolean).join(' · '),
-          kind: KIND[i.object.kind]?.label ?? i.object.kind,
-        } : null),
-        onClick: (i) => i.object && onSelect?.({ type: 'feature', item: i.object }),
-        updateTriggers: { getIcon: [shown.map((f) => `${f.kind}${f.state}${f.precise}`).join()] },
-      }));
-
-      // The badge, on top of the marker: how many things are in a project's
-      // way, how many days a need has waited, who said they are coming. The
-      // whole reason it is drawn rather than left to the tooltip is that it has
-      // to be readable WITHOUT hovering — a map you have to interrogate one
-      // pin at a time is a list with extra steps.
-      const badged = shown.filter((f) => f.badge);
-      if (badged.length) {
-        L.push(new TextLayer({
-          id: 'commons-badges',
-          data: badged,
+    // The markers used to be drawn here, as SVG icons in the canvas with a
+    // number stamped over each one. Text inside a texture cannot reflow, a
+    // shape cannot grow to fit a label, and neither can transition — so a "9"
+    // sat crammed in a diamond next to a "24" in a circle, under two permanent
+    // black label boxes, and none of it responded to a pointer.
+    //
+    // They are HTML now, in MapMarkers.jsx, positioned over this canvas through
+    // the same viewport deck is rendering with. Everything a person put on the
+    // map is a handful of rows, so the cost is nothing and the control is total.
+    //
+    // Globe mode keeps a plain dot layer: WebMercatorViewport cannot project a
+    // globe, and rather than quietly putting markers in the wrong place it
+    // draws something simpler and honest about being simpler.
+    if (mode === 'globe' && features.length) {
+      const shown = features.filter((f) => kindsOn.has(f.kind) && f.lat != null && f.lng != null);
+      if (shown.length) {
+        L.push(new ScatterplotLayer({
+          id: 'globe-features', data: shown, pickable: true,
+          radiusUnits: 'pixels', getRadius: 5, radiusMinPixels: 3,
           getPosition: (d) => [d.lng, d.lat],
-          getText: (d) => String(d.badge),
-          getSize: 11,
-          getColor: (d) => badgeColor(d.kind, d.state === 'blocked'),
-          fontFamily: 'ui-sans-serif, system-ui',
-          fontWeight: 700,
-          getTextAnchor: 'middle',
-          getAlignmentBaseline: 'center',
+          getFillColor: (d) => {
+            const k = KIND[d.kind] ?? KIND.observation;
+            return d.state === 'blocked' && k.blockedColor ? k.blockedColor : k.color;
+          },
+          getLineColor: [8, 15, 13], lineWidthMinPixels: 1.5, stroked: true,
           parameters: { depthTest: false },
-          pickable: false,
-          updateTriggers: { getColor: [badged.map((f) => f.state).join()] },
+          onClick: (i) => i.object && onSelect?.({ type: 'feature', item: i.object }),
+          updateTriggers: { getFillColor: [shown.map((f) => f.state).join()] },
         }));
       }
     }
@@ -245,7 +218,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     : new MapView({ id: 'map', controller: true });
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#1C2421]"
+    <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-[#1C2421]"
          onMouseLeave={() => setHover(null)}>
       <DeckGL
         views={views}
@@ -259,6 +232,14 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           <Map reuseMaps mapStyle={BASEMAP} attributionControl={{ compact: true }} />
         )}
       </DeckGL>
+
+      {mode === 'terrain' && (
+        <MapMarkers
+          view={view} width={box.width} height={box.height}
+          features={features} kindsOn={kindsOn} selectedId={picked}
+          onPick={(f) => { setPicked(f.id); onSelect?.({ type: 'feature', item: f }); }}
+        />
+      )}
 
       {/* controls */}
       <div className="absolute left-3 top-3 flex flex-col gap-2">
@@ -287,9 +268,9 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           than under it. Credit that is covered is credit not given, and the
           ecoregion layer's licence requires it — so the two are given
           non-overlapping space at every width rather than only on a desktop. */}
-      <div className="absolute bottom-3 left-3 z-10 max-h-[15rem] overflow-y-auto rounded
-                      border border-[var(--line)] bg-[var(--paper)]/95 p-2 shadow-sm backdrop-blur">
-        <div className="mb-1 px-1 text-[9px] uppercase tracking-wide text-[var(--ink-3)]">
+      <div className="absolute bottom-3 left-3 z-20 max-h-[15rem] overflow-y-auto rounded-lg
+                      border border-[var(--line)] bg-[var(--paper)]/80 p-1.5 shadow-lg backdrop-blur-md">
+        <div className="mb-1 px-1.5 text-[9px] uppercase tracking-[0.08em] text-[var(--ink-3)]">
           On the map
         </div>
         <div className="flex flex-col gap-0.5">
@@ -305,14 +286,20 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
                 })}
                 disabled={!n}
                 title={KIND[k].what}
-                className={`flex items-center gap-1.5 rounded px-1.5 py-1 text-left text-[10px]
-                            transition-colors disabled:opacity-35 ${
-                  on ? 'text-[var(--ink)] hover:bg-[var(--paper-2)]'
-                     : 'text-[var(--ink-3)] hover:bg-[var(--paper-2)]'}`}>
-                <img src={markerSVG(k, { precise: true })} alt=""
-                     className={`h-3.5 w-3.5 shrink-0 ${on ? '' : 'opacity-30 grayscale'}`} />
+                className={`group flex items-center gap-2 rounded-full px-1.5 py-1 text-left
+                            text-[10px] transition-all duration-150 disabled:opacity-30 ${
+                  on ? 'bg-[var(--paper-2)] text-[var(--ink)]'
+                     : 'text-[var(--ink-3)] hover:bg-[var(--paper-2)]/60'}`}>
+                {/* The same glyph the marker uses, so the key is read once and
+                    the map is read forever after. */}
+                <span className="block h-2.5 w-2.5 shrink-0 rounded-full transition-all"
+                      style={{
+                        background: on ? `rgb(${KIND[k].color.join(',')})` : 'transparent',
+                        border: `2px solid rgb(${KIND[k].color.join(',')})`,
+                        opacity: on ? 1 : 0.35,
+                      }} />
                 <span className="whitespace-nowrap">{KIND[k].label}</span>
-                <span className="ml-auto pl-1.5 text-[var(--ink-3)]">{n}</span>
+                <span className="ml-auto pl-2 tabular-nums text-[var(--ink-3)]">{n}</span>
               </button>
             );
           })}

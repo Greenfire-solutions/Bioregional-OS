@@ -1344,9 +1344,17 @@ check('the intake promise states itself in words a person can read',
       !layerIds.includes(gone),
       `${gone} is still drawn by a layer the key cannot switch off`);
   }
-  check('every marker the map draws answers the key',
-    layerIds.filter((id) => /^(commons-features|commons-badges|place-labels|earth)$/.test(id)).length
-      === layerIds.filter((id) => !/^(globe|map)$/.test(id)).length,
+  // The property, not a list of names — a list of layer ids goes stale the
+  // first time one is renamed and then asserts nothing while still passing.
+  // What must hold is that everything drawing features is gated on the key.
+  const markers = readFileSync(new URL('../app/src/components/MapMarkers.jsx', import.meta.url), 'utf8');
+  check('the HTML markers answer the key',
+    /kindsOn\.has\(f\.kind\)/.test(markers), 'a marker the key cannot switch off');
+  check('and so does the globe fallback',
+    !/globe-features/.test(map3dSrc) || /kindsOn\.has\(f\.kind\)/.test(map3dSrc),
+    'the globe draws features the key cannot switch off');
+  check('no feature layer is left drawing from the raw props',
+    !/data: (signals|places|hubs)\b/.test(map3dSrc),
     JSON.stringify(layerIds));
   check('no dead toggle state is left behind',
     !/showSignals/.test(map3dSrc), 'a state that can never change is a switch that is not there');
@@ -1386,7 +1394,9 @@ check('the intake promise states itself in words a person can read',
   // growing its own copy of the colours.
   const map3d = readFileSync(new URL('../app/src/components/Map3D.jsx', import.meta.url), 'utf8');
   check('the map draws from the shared key rather than its own colours',
-    /from '\.\.\/mapKinds\.js'/.test(map3d) && /markerSVG/.test(map3d));
+    /from '\.\.\/mapKinds\.js'/.test(map3d)
+      && /from '\.\.\/mapKinds\.js'/.test(
+        readFileSync(new URL('../app/src/components/MapMarkers.jsx', import.meta.url), 'utf8')));
   check('the key is also the switches',
     /setKindsOn/.test(map3d) && /KIND_ORDER\.map/.test(map3d));
   // Sixty-eight readings against five observations: both on at once is a map
