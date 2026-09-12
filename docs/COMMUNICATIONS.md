@@ -3,7 +3,13 @@
 How a chapter reaches its people, and how its people reach it. Researched
 2026-09-12 across four parallel streams — message transport under bad
 connectivity, voice, identity and sign-in, and the field record of what
-actually survives in community deployments. Roughly 200 sources.
+actually survives in community deployments, each stream citing its own sources
+inline.
+
+No count of sources is written down here, and that is this project's own rule
+rather than modesty: a number next to the word "sources" reads as the upstream
+registry in `adapters/registry.mjs`, and the suite refuses it. Prose about state
+rots and nothing tells you.
 
 This document exists because the question "should the OS send messages?" has an
 answer that is not obvious, and because two of the four streams reached opposite
