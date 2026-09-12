@@ -627,6 +627,48 @@ export const TOOLS = [
     handler: (i) => create('gatherings', 'gathering', ch(i), { ...i, chapter_id: ch(i) }),
   },
   {
+    name: 'update_gathering',
+    description:
+      'Change an existing gathering — most often to add the care provision it was missing. This ' +
+      'is the tool the care-gap report and the map point at: the only way to add care used to be ' +
+      'add_gathering, which INSERTS, so "add care to this gathering" quietly created a second ' +
+      'gathering with the same title and left the unprovisioned one exactly as it was. Only the ' +
+      'fields you pass are changed.',
+    input_schema: S({
+      gathering_id: str('Which gathering'),
+      title: str(''), starts_at: str('YYYY-MM-DD HH:MM'), location_name: str(''), description: str(''),
+      care_meals: bool('Food provided'), care_transport: bool('Transport help'),
+      care_childcare: bool('Child or elder care'), care_accessibility: bool('Accessibility accommodations'),
+      care_notes: str('What is actually on offer, and who to ask'),
+      rsvp_count: num('How many have said they are coming'),
+    }, ['gathering_id']),
+    handler: (i) => {
+      const g = one('SELECT * FROM gatherings WHERE id=?', i.gathering_id);
+      if (!g) return { error: 'not_found', message: 'No gathering with that id.' };
+      const FIELDS = ['title', 'starts_at', 'location_name', 'description', 'care_meals',
+                      'care_transport', 'care_childcare', 'care_accessibility', 'care_notes',
+                      'rsvp_count'];
+      // Only what was actually passed. An update that wrote every column would
+      // blank the fields the caller did not mention, which is how "add care"
+      // becomes "delete the description".
+      const given = FIELDS.filter((f) => i[f] !== undefined && i[f] !== null);
+      if (!given.length) {
+        return { error: 'nothing_to_update', message: `Pass at least one of: ${FIELDS.join(', ')}.` };
+      }
+      run(`UPDATE gatherings SET ${given.map((f) => `${f}=?`).join(', ')} WHERE id=?`,
+          ...given.map((f) => (typeof i[f] === 'boolean' ? (i[f] ? 1 : 0) : i[f])), i.gathering_id);
+      const after = one('SELECT * FROM gatherings WHERE id=?', i.gathering_id);
+      const care = after.care_meals + after.care_transport + after.care_childcare + after.care_accessibility;
+      return {
+        ...after, care_provided: care,
+        note: care < 2
+          ? 'Still fewer than two of four. Ecological work fails when people are exhausted, ' +
+            'excluded, unpaid, unsafe or unsupported.'
+          : null,
+      };
+    },
+  },
+  {
     name: 'add_hub',
     description: 'Register a hub — a physical or distributed node of the commons.',
     input_schema: S({

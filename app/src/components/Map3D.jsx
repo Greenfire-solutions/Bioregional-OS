@@ -283,8 +283,12 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           most useful thing about a layer is often how much of it there is —
           sixty-eight readings against five observations is the reason the
           readings start switched off. */}
-      <div className="absolute bottom-3 left-3 z-10 rounded border border-[var(--line)]
-                      bg-[var(--paper)]/95 p-2 shadow-sm backdrop-blur">
+      {/* Bottom-left, and on a narrow window the credit moves ABOVE it rather
+          than under it. Credit that is covered is credit not given, and the
+          ecoregion layer's licence requires it — so the two are given
+          non-overlapping space at every width rather than only on a desktop. */}
+      <div className="absolute bottom-3 left-3 z-10 max-h-[15rem] overflow-y-auto rounded
+                      border border-[var(--line)] bg-[var(--paper)]/95 p-2 shadow-sm backdrop-blur">
         <div className="mb-1 px-1 text-[9px] uppercase tracking-wide text-[var(--ink-3)]">
           On the map
         </div>
@@ -346,9 +350,9 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       {/* Moved out from under the key, which now occupies the bottom-left
           corner this used to have to itself. Credit that is covered up is
           credit not given — and the licence on this layer requires it. */}
-      <div className="pointer-events-none absolute bottom-6 left-3 max-w-[calc(100%-1.5rem)]
+      <div className="pointer-events-none absolute bottom-[17rem] left-3 max-w-[calc(100%-1.5rem)]
                       rounded bg-[var(--paper)]/90 px-2 py-1 text-[10px] text-[var(--ink-3)]
-                      md:left-[13.5rem]">
+                      md:bottom-6 md:left-[13.5rem]">
         Ecoregions: EPA Level III & IV (public domain) · relief is visual separation, not elevation
       </div>
     </div>

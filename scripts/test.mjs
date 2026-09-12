@@ -1197,6 +1197,76 @@ check('the intake promise states itself in words a person can read',
     /CoMapeo|QGIS/.test(unreadable.message ?? ''), unreadable.message);
 }
 
+// ── One word per button, and one place that decides the action ────────────
+// Three components each kept their own tool→label map. By the time anybody
+// compared them, eight of twenty had drifted: "Respond" and "Answer", "Open a
+// project" and "Start a project", "Resolve flag" and "Resolve the flag".
+// Nothing broke — the same button just said different things depending on
+// which screen you were standing on, which is how an interface stops feeling
+// like one thing.
+{
+  const app = (f) => readFileSync(new URL(`../app/src/${f}`, import.meta.url), 'utf8');
+  const verbs = app('verbs.js');
+
+  for (const f of ['components/Today.jsx', 'components/Commons.jsx', 'components/MapPanel.jsx']) {
+    const src = app(f);
+    check(`${f} takes its wording from verbs.js`,
+      /from '\.\.\/verbs\.js'/.test(src), 'a fourth copy of the labels');
+    check(`${f} keeps no private label map`,
+      !/const (LABELS|DO) = \{/.test(src), 'the map that drifted, back again');
+  }
+
+  // Every tool an engine offers as an action must have a verb, or the button
+  // shows a snake_case tool name at somebody.
+  const { board } = await import('../engines/board.mjs');
+  const { mapFeatures } = await import('../engines/mapboard.mjs');
+  const offered = new Set([
+    ...(board('test').todo ?? []).map((t) => t.action?.tool),
+    ...mapFeatures('test').features.map((f) => f.action?.tool),
+  ].filter(Boolean));
+  const unworded = [...offered].filter((t) => !new RegExp(`\\b${t}:`).test(verbs));
+  check('every action an engine offers has a word for its button',
+    unworded.length === 0, `no verb for: ${unworded.join(', ')}`);
+
+  // The action itself is decided in the engine, as it already is for the board.
+  // Two homes for "what to do about a blocked project" is how a rule gets
+  // fixed in one of them.
+  check('the map decides its actions in the engine, not the component',
+    mapFeatures('test').features.every((f) => f.action === null || 'tool' in f.action || 'goTo' in f.action));
+  check('and the panel no longer decides them itself',
+    !/const ACTION = \{/.test(app('components/MapPanel.jsx')));
+
+  // The one that was silently destructive: add_gathering INSERTS, so "add care
+  // to this gathering" created a SECOND gathering with the same title and left
+  // the unprovisioned one exactly as it was.
+  const g = await runTool('add_gathering', {
+    chapter_id: 'test', title: 'Care test gathering', description: 'By the falls',
+  });
+  const before = one(`SELECT COUNT(*) n FROM gatherings WHERE chapter_id='test'`).n;
+  const upd = await runTool('update_gathering',
+    { gathering_id: g.id, care_meals: true, care_transport: true });
+  check('adding care changes the gathering rather than creating another',
+    one(`SELECT COUNT(*) n FROM gatherings WHERE chapter_id='test'`).n === before,
+    'a second gathering was created');
+  check('and it actually records the care', upd.care_provided === 2, JSON.stringify(upd.care_provided));
+  // An update that wrote every column would blank what the caller did not
+  // mention — "add care" must not mean "delete the description".
+  check('an update leaves the fields it was not given alone',
+    one('SELECT description FROM gatherings WHERE id=?', g.id).description === 'By the falls');
+  check('an update with nothing to change says so',
+    (await runTool('update_gathering', { gathering_id: g.id })).error === 'nothing_to_update');
+
+  // And the map points at the update, never the insert.
+  const lowCare = mapFeatures('test').features.find((f) => f.kind === 'gathering' && f.care < 2);
+  if (lowCare) {
+    check('a gathering short of care offers the update, not a second gathering',
+      lowCare.action?.tool === 'update_gathering', JSON.stringify(lowCare.action));
+  } else {
+    skip('a gathering short of care offers the update, not a second gathering',
+      'every gathering in this fixture already has its care');
+  }
+}
+
 // ── The map, and what it is honest about ──────────────────────────────────
 // The map drew places, hubs and signals. Everything a commons actually DOES —
 // the projects, the needs, the gatherings — lived only in lists, so the one

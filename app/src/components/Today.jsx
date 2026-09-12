@@ -3,6 +3,7 @@ import {
   AlertOctagon, Clock, CircleDashed, Circle, ArrowRight, Loader2, CheckCircle2, RotateCw,
 } from 'lucide-react';
 import { callTool } from '../api.js';
+import { verb } from '../verbs.js';
 import ToolForm from './ToolForm.jsx';
 import Ground from './Ground.jsx';
 import Loops from './Loops.jsx';
@@ -179,13 +180,6 @@ export default function Today({ onChanged }) {
   );
 }
 
-const LABELS = {
-  respond_to_intake: 'Respond', locate_place: 'Locate it', ingest_water_data: 'Pull water data',
-  open_quest: 'Open a project', satisfy_quest_gate: 'Close a gate', update_quest: 'Define it',
-  add_indicator: 'Add indicator', record_measurement: 'Record a reading',
-  clear_red_flag: 'Resolve flag', decide_council_item: 'Decide', council_agenda: 'Open agenda',
-  publish_learning: 'Write it up', add_gathering: 'Add care',
-  carrying: 'Who is carrying it', place_attention: 'Where nobody has been',
-  add_place: 'Add the place', approve_dataset: 'Read the licence', open_season: 'Open the season',
-};
-const label = (tool) => LABELS[tool] ?? tool.replace(/_/g, ' ');
+// One label per tool, from ../verbs.js — there were three copies of this map
+// and eight of twenty had already drifted.
+const label = verb;

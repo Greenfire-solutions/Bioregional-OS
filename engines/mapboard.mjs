@@ -42,6 +42,46 @@ export const MAP_KINDS = Object.freeze([
   { key: 'reading', label: 'Instrument readings' },
 ]);
 
+/**
+ * The one thing worth doing to a feature, decided here.
+ *
+ * It used to be decided in the panel component, which made a second home for
+ * "what to do about a blocked project" — engines/board.mjs already returns
+ * `action: { tool, input }` on every item it emits, and the interface supplies
+ * only the wording. Two homes is how a rule gets fixed in one of them.
+ *
+ * Matched to what is actually wrong with the thing rather than offered
+ * generically: a blocked project offers the gate, a waiting need offers the
+ * answer. A map whose every pin said "see more" would be a table of contents.
+ */
+function actionFor(f) {
+  switch (f.kind) {
+    case 'project':
+      return f.state === 'blocked'
+        ? { tool: 'satisfy_quest_gate', input: { quest_id: f.id },
+            note: 'Or pass it with a reason, if it genuinely does not apply.' }
+        : { tool: 'update_quest', input: { quest_id: f.id } };
+    case 'need':
+      return { tool: 'respond_to_intake', input: { intake_id: f.id },
+               note: 'A person may submit a need, receive a response, and appeal.' };
+    case 'gathering':
+      // update_gathering, never add_gathering. The latter INSERTS, so "add care
+      // to this gathering" used to create a second gathering with the same
+      // title and leave the unprovisioned one exactly as it was.
+      return f.care != null && f.care < 2
+        ? { tool: 'update_gathering', input: { gathering_id: f.id },
+            note: 'Meals, transport, childcare, accessibility — at least two of four.' }
+        : { goTo: 'gatherings' };
+    case 'observation':
+      return { tool: 'open_quest', input: { signal_id: f.id, title: f.title },
+               note: 'Observation must lead somewhere, or it is surveillance.' };
+    case 'place': return { goTo: 'place' };
+    case 'hub': return { goTo: 'place' };
+    case 'reading': return { goTo: 'signals' };
+    default: return null;
+  }
+}
+
 export function mapFeatures(chapterId, { kinds = null } = {}) {
   if (!chapterId) return { error: 'no_chapter', features: [], kinds: MAP_KINDS };
   const want = kinds ? new Set(kinds) : null;
@@ -184,6 +224,8 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
       });
     }
   }
+
+  for (const f of out) f.action = actionFor(f);
 
   const counts = {};
   for (const f of out) counts[f.kind] = (counts[f.kind] ?? 0) + 1;

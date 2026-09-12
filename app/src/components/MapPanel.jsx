@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, MapPin, CircleAlert, ArrowRight } from 'lucide-react';
 import { KIND, markerSVG } from '../mapKinds.js';
+import { verb } from '../verbs.js';
 
 /**
  * What you clicked, opened beside the map.
@@ -19,7 +20,11 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
   if (!feature) return null;
   const k = KIND[feature.kind] ?? KIND.observation;
   const blocked = feature.state === 'blocked';
-  const act = ACTION[feature.kind]?.(feature);
+  // Decided by engines/mapboard.mjs, worded by ../verbs.js. This component
+  // used to decide both, which made it a second home for "what to do about a
+  // blocked project" and let its verbs drift from the ones on every other
+  // screen.
+  const act = feature.action;
 
   return (
     <aside className="flex h-full w-[19rem] shrink-0 flex-col overflow-y-auto border-l
@@ -77,7 +82,7 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
           <button onClick={() => (act.goTo ? onGoTo?.(act.goTo) : onAct?.(act.tool, act.input))}
             className="flex w-full items-center justify-center gap-1.5 rounded bg-[var(--moss)]
                        px-3 py-2 text-xs font-medium text-[var(--on-accent)] hover:brightness-110">
-            {act.label} <ArrowRight className="h-3.5 w-3.5" />
+            {act.goTo ? GO_TO[act.goTo] : verb(act.tool)} <ArrowRight className="h-3.5 w-3.5" />
           </button>
           {act.note && (
             <p className="mt-1.5 text-center text-[10px] leading-snug text-[var(--ink-3)]">{act.note}</p>
@@ -88,28 +93,9 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
   );
 }
 
-/**
- * The one thing worth doing to each kind of thing.
- *
- * Matched to what is actually wrong with it rather than offered generically: a
- * blocked project opens the gate that is blocking it, an unowned one asks for
- * the owner the protocol requires. A map that only ever said "see more" would
- * be a table of contents.
- */
-const ACTION = {
-  project: (f) => (f.state === 'blocked'
-    ? { tool: 'satisfy_quest_gate', input: { quest_id: f.id }, label: 'Close a gate',
-        note: 'Or pass it with a reason, if it genuinely does not apply.' }
-    : { tool: 'update_quest', input: { quest_id: f.id }, label: 'Work on this project' }),
-  need: (f) => ({ tool: 'respond_to_intake', input: { intake_id: f.id }, label: 'Answer this',
-                  note: 'A person may submit a need, receive a response, and appeal.' }),
-  gathering: (f) => (f.care != null && f.care < 2
-    ? { tool: 'add_gathering', input: { title: f.title }, label: 'Add care to this gathering' }
-    : { goTo: 'gatherings', label: 'See the gatherings' }),
-  observation: (f) => ({ tool: 'open_quest', input: { signal_id: f.id, title: f.title },
-                         label: 'Start a project from this',
-                         note: 'Observation must lead somewhere, or it is surveillance.' }),
-  place: (f) => ({ goTo: 'place', label: 'See this place in full' }),
-  hub: () => ({ goTo: 'place', label: 'See the hubs' }),
-  reading: () => ({ goTo: 'signals', label: 'See all the readings' }),
+/** Where a "go and look" action lands, said as a destination. */
+const GO_TO = {
+  place: 'See this place in full',
+  gatherings: 'See the gatherings',
+  signals: 'See all the readings',
 };

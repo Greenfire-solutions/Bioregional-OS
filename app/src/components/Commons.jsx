@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { callTool } from '../api.js';
 import ToolForm from './ToolForm.jsx';
+import { verb } from '../verbs.js';
 
 /**
  * The board.
@@ -165,7 +166,7 @@ export default function Commons({ onGoTo, onChanged }) {
                   className="flex shrink-0 items-center gap-1.5 rounded bg-[var(--moss)] px-3 py-1.5
                              text-[11px] font-medium text-white disabled:opacity-50">
                   {busy[i] ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                           : <>{DO[t.action.tool] ?? 'Do it'} <ArrowRight className="h-3 w-3" /></>}
+                           : <>{verb(t.action.tool)} <ArrowRight className="h-3 w-3" /></>}
                 </button>
               </div>
             ))}
@@ -293,17 +294,8 @@ const TONE = {
   open: 'border-[var(--line)] bg-[var(--paper-2)]',
 };
 
-// The verb on the button. A button that says the tool's name makes a person
-// translate; one that says what happens does not.
-const DO = {
-  respond_to_intake: 'Answer', locate_place: 'Locate it', ingest_water_data: 'Pull the data',
-  open_quest: 'Start a project', satisfy_quest_gate: 'Close a gate', update_quest: 'Define it',
-  add_indicator: 'Add a measure', record_measurement: 'Record a reading',
-  clear_red_flag: 'Resolve the flag', decide_council_item: 'Decide', council_agenda: 'Open the agenda',
-  publish_learning: 'Write it up', add_gathering: 'Add care', approve_dataset: 'Read the licence',
-  add_place: 'Add the place', open_season: 'Open the season', carrying: 'See who',
-  place_attention: 'See where', name_deputy: 'Name a deputy', override_gate: 'Pass it, with a reason',
-};
+// One label per tool, from ../verbs.js. This used to be a third copy of the
+// same map, already drifted from the other two in eight places.
 
 function Head({ Icon, label, note, onMore }) {
   return (
