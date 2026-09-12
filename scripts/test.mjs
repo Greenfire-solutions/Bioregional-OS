@@ -21,6 +21,7 @@ import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend, credits } 
 import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
+import { attributionFor as attrFor } from '../adapters/registry.mjs';
 import { hazardSignals, worstLevel } from '../adapters/hazards.mjs';
 import { THREATENED_SENSITIVITY } from '../adapters/life.mjs';
 import { NLCD_CLASSES } from '../adapters/soil.mjs';
@@ -266,7 +267,9 @@ check('nothing observed is verified by writing it down',
 // The archive is honest about being young, rather than showing an empty box.
 const history = thisWeekInHistory('test');
 check('an empty archive says when it stops being empty',
-  history.items.length === 0 && /needs a year/.test(history.note ?? ''), JSON.stringify(history));
+  // Asserts the meaning — nothing recorded, and the note names the year it
+  // starts filling in — rather than the sentence, which is free to be reworded.
+  history.items.length === 0 && /\b20\d{2}\b/.test(history.note ?? ''), JSON.stringify(history));
 
 // ── No two adapters may export the same name ──────────────────────────────
 // `climateNormals` was exported by both climate.mjs and phenology.mjs, returning
@@ -364,8 +367,34 @@ const withUnknown = atlasGeoJSON('test', { clearance: 'council' });
 check('an unresolvable source is named in the export, not silently omitted',
   (withUnknown.bros.unresolved_sources ?? []).includes('mystery-feed'),
   JSON.stringify(withUnknown.bros.unresolved_sources));
-check('and the notice tells the reader to check those terms before sharing',
-  /check their terms before redistributing/i.test(withUnknown.bros.notice));
+// Assert what the notice has to MEAN, not how it is worded — an earlier version
+// pinned the exact sentence and broke the moment the wording was shared between
+// two callers, which is a test failing for the wrong reason.
+check('and the notice tells the reader to check those terms before passing it on',
+  /check .*terms/i.test(withUnknown.bros.notice) &&
+  withUnknown.bros.notice.includes('mystery-feed'),
+  withUnknown.bros.notice);
+
+// A knowledge bundle travels FURTHEST — it is designed to land in another
+// commons, so an uncredited one becomes somebody else's problem rather than
+// stopping at one group chat.
+const { bundle } = await import('../adapters/koi.mjs');
+// Deliberately a PUBLIC one. The first attempt at this test grabbed whatever
+// signal came first and got a `sacred` one, which bundle() refused outright —
+// the gate doing its job and the test asking the wrong question.
+const sigRid = one(`SELECT rid FROM rids WHERE object_type='signal' AND chapter_id='test'
+                      AND sensitivity='public' LIMIT 1`)?.rid;
+if (sigRid) {
+  const b = bundle(sigRid, { clearance: 'council' });
+  check('a knowledge bundle carries its credit with it',
+    Array.isArray(b.attribution) && typeof b.notice === 'string', JSON.stringify(b).slice(0, 120));
+}
+// And the refusal above is worth asserting in its own right.
+const sacredRid = one(`SELECT rid FROM rids WHERE sensitivity='sacred' LIMIT 1`)?.rid;
+if (sacredRid) {
+  check('sacred material does not travel in a bundle at all',
+    bundle(sacredRid, { clearance: 'council' })?.error === 'withheld');
+}
 dbRun(`DELETE FROM signals WHERE id='sig-unmapped'`);
 
 // ── Layer 3: never average across units ───────────────────────────────────
@@ -1061,8 +1090,10 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
 // function. All three varieties from ARCHITECTURE.md, in one sitting, by the
 // person who wrote them down. They now test the builder directly, with known
 // ids and no network, so each one can fail.
-check('a known source resolves to its attribution',
-  /NOAA/.test(credits(['nws']).credit ?? ''), JSON.stringify(credits(['nws'])));
+check('a known source resolves to exactly what the registry says',
+  // Compared against the registry rather than against a word I happened to
+  // expect, so rewording an attribution cannot fail this for the wrong reason.
+  credits(['nws']).credit === attrFor(['nws'])[0]?.attribution, JSON.stringify(credits(['nws'])));
 check('an unregistered source is NAMED in the credit, not dropped',
   credits(['a-source-invented-tomorrow']).unresolved_sources.includes('a-source-invented-tomorrow')
   && /invented-tomorrow/.test(credits(['a-source-invented-tomorrow']).credit ?? ''),

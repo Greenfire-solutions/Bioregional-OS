@@ -577,6 +577,53 @@ export function layerCoverage(chapterId) {
   });
 }
 
+/**
+ * Which registry source wrote a signal, from the short `source_adapter` tag it
+ * carries. Tags are short ('usgs') and registry ids are long ('usgs-nwis'), so
+ * something has to join them — and a join is exactly where a credit goes
+ * missing quietly.
+ */
+export const ADAPTER_SOURCE = {
+  usgs: 'usgs-nwis', nws: 'nws', firms: 'nasa-firms', usdm: 'usdm',
+  inaturalist: 'inaturalist', gbif: 'gbif', osm: 'openstreetmap',
+};
+
+/**
+ * The credit block any artifact LEAVING THE MACHINE has to carry.
+ *
+ * A screen missing a credit is a bug a reader might notice. An artifact missing
+ * one is a licence breach in something already in someone else's hands — and a
+ * knowledge bundle is the worst case, because it is designed to travel between
+ * chapters and becomes their problem rather than stopping at one group chat.
+ *
+ * Anything unresolvable is NAMED, never dropped: an artifact missing one credit
+ * is otherwise indistinguishable from one that needed none.
+ */
+export function creditForTags(tags, { humanTags = [] } = {}) {
+  const ids = [], unresolved = [];
+  let ownWork = false;
+  for (const tag of new Set([...tags].filter(Boolean))) {
+    if (humanTags.includes(tag)) { ownWork = true; continue; }
+    const id = ADAPTER_SOURCE[tag];
+    if (id && BY_ID.has(id)) ids.push(id);
+    else unresolved.push(tag);
+  }
+  const attribution = attributionFor(ids);
+  if (ownWork) {
+    attribution.unshift({
+      source: "This chapter's own observations",
+      license: 'Held by the commons that recorded them', attribution: null, url: null,
+    });
+  }
+  return {
+    attribution,
+    unresolved_sources: unresolved.length ? unresolved : null,
+    notice: unresolved.length
+      ? `Some of this came from sources this OS could not resolve to a licence (${unresolved.join(', ')}). Check their terms before passing it on.`
+      : 'Every source here is credited above. Honour the terms shown.',
+  };
+}
+
 /** The attribution block an export has to carry. Built from what was actually used. */
 export function attributionFor(ids = []) {
   const seen = new Set();

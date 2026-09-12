@@ -6,6 +6,8 @@
 // for it — it does not silently copy your community's data.
 import { all, one } from '../core/db.mjs';
 import { makeRid, parseRid, visibleAt } from '../core/ids.mjs';
+import { creditForTags } from './registry.mjs';
+import { HUMAN_SOURCES } from '../core/provenance.mjs';
 import { createHash } from 'node:crypto';
 
 /** A manifest: what exists here, at what sensitivity, fingerprinted. */
@@ -59,6 +61,11 @@ export function bundle(rid, { clearance = 'public' } = {}) {
     source_chapter: parsed.chapterId,
     retrieved_at: new Date().toISOString(),
     contents: strip(row),
+    // A bundle is the artifact designed from the outset to TRAVEL — it does not
+    // stop at one group chat, it lands in another commons and becomes theirs.
+    // So it carries its credit with it, resolved from the registry, and names
+    // anything it could not resolve rather than passing on an unmarked gap.
+    ...creditForTags([row.source_adapter], { humanTags: [...HUMAN_SOURCES, null, undefined] }),
   };
 }
 

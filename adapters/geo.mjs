@@ -8,7 +8,8 @@ import { readFileSync } from 'node:fs';
 import { all } from '../core/db.mjs';
 import { visibleAt } from '../core/ids.mjs';
 import { humanObserved, atPlaceCentroid } from '../core/provenance.mjs';
-import { attributionFor, source as registrySource } from './registry.mjs';
+import { creditForTags } from './registry.mjs';
+import { HUMAN_SOURCES } from '../core/provenance.mjs';
 
 /** Turn a GeoJSON FeatureCollection into draft signals for review. */
 export function signalsFromGeoJSON(path, { chapterId, placeId = null, defaultCategory = 'Ecological' } = {}) {
@@ -61,45 +62,6 @@ function centroid(geom) {
 function flatten(a) {
   if (typeof a[0] === 'number') return [a];
   return a.flatMap(flatten);
-}
-
-/**
- * Which registry source wrote a signal, from the `source_adapter` tag it carries.
- *
- * The tags are short ('usgs', 'nws') and registry ids are long ('usgs-nwis',
- * 'nws'), so the two have to be joined somewhere. Unmapped tags are NOT dropped
- * — they come back as an unresolved credit that says so, because an export
- * leaving the machine with a silently missing attribution is the failure this
- * whole block exists to prevent. Loud beats absent.
- */
-const ADAPTER_SOURCE = {
-  usgs: 'usgs-nwis', nws: 'nws', firms: 'nasa-firms', usdm: 'usdm',
-  inaturalist: 'inaturalist', gbif: 'gbif', osm: 'openstreetmap',
-};
-
-function creditFor(signals) {
-  const tags = new Set(signals.map((s) => s.source_adapter).filter(Boolean));
-  const ids = [], unresolved = [];
-  let ownWork = false;
-  for (const tag of tags) {
-    if (humanObserved(tag)) { ownWork = true; continue; }
-    const id = ADAPTER_SOURCE[tag];
-    if (id && registrySource(id)) ids.push(id);
-    else unresolved.push(tag);
-  }
-  const credit = attributionFor(ids);
-  if (ownWork) {
-    credit.unshift({ source: "This chapter's own observations", license: 'Held by the commons that recorded them', attribution: null, url: null });
-  }
-  return {
-    attribution: credit,
-    // Named, never omitted. Redistributing data whose terms nobody resolved is
-    // the one mistake in this file that reaches other people.
-    unresolved_sources: unresolved.length ? unresolved : null,
-    notice: unresolved.length
-      ? `Some rows came from sources this OS could not resolve to a licence (${unresolved.join(', ')}). Check their terms before redistributing this file.`
-      : 'Every source in this file is credited above. Honour the terms shown.',
-  };
 }
 
 /**
@@ -158,7 +120,7 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
       // which for an ODbL or CC-BY source is not a tidiness problem — it is the
       // condition of being allowed to share it. Resolved from the registry, so
       // it cannot go stale the way retyped prose does.
-      ...creditFor(signals),
+      ...creditForTags(signals.map((s) => s.source_adapter), { humanTags: [...HUMAN_SOURCES, null] }),
       generated_at: new Date().toISOString(),
     },
     features,

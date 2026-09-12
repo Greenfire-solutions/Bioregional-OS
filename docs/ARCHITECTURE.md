@@ -118,9 +118,25 @@ green line with a confident name:
    up. Defence in depth is good; an assertion not earning its name is not, and
    adjacency moves. A neighbour gets refactored and the protection leaves with it.
 
-The only way to tell any of them apart from a real test is to **break the guard
+4. **Fails, but for a reason that is not the one it names.** A bundle test
+   reported "carries its credit" as broken when what it had actually proven was
+   that the sensitivity ladder holds — it had grabbed a *sacred* record and the
+   export correctly refused it. This one is the most dangerous of the four,
+   because it is red rather than green: the instinct is to make the test pass,
+   and doing so would have unhooked a working gate. A red test is evidence that
+   something is true, not evidence of what you assumed.
+
+Its common cause is **asserting phrasing instead of meaning**. A check pinned to
+the sentence `check their terms before redistributing` failed the moment the
+wording moved to `before passing it on` — nothing was broken, and the fix is to
+loosen the assertion, which is how a suite rots. Assert what a thing *means*: the
+note names a year, the credit equals what the registry holds, the record is
+refused for being sacred.
+
+The only way to tell any of these apart from a real test is to **break the guard
 and see whether the test named for it fails** — not the suite, that test. If a
-test has never failed, make it fail once on purpose.
+test has never failed, make it fail once on purpose. And when one does fail, read
+what it actually proved before believing what it claims.
 
 **A test over a derived collection needs a test that the collection is not
 empty.** `sections.every(...)` passes when there are no sections; a matcher
