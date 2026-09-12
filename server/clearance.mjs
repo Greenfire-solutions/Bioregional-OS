@@ -21,10 +21,27 @@
 // at it is the credential. Everyone else is a stranger on a network, and a
 // stranger gets what a stranger gets.
 
+import { deviceFor, touchDevice, ROLE_CLEARANCE } from '../engines/enrol.mjs';
+
 /** Everything, for the person at the keyboard. */
 export const FULL = 'sacred';
 /** What a network stranger may read. */
 export const STRANGER = 'public';
+
+/**
+ * The ceiling for anything arriving over a network, whatever it presents.
+ *
+ * `restricted` and `sacred` are the two tiers a rights holder asked for, and
+ * the connection carrying them here is plain HTTP on a shared wifi. An enrolled
+ * device raises a stranger to a member or a coordinator; it does not turn a
+ * gathering's wifi into a room where sacred material is read. If the council
+ * needs that, they use the machine — which is a sentence somebody can act on,
+ * unlike a promise about transport security this app cannot keep.
+ */
+export const NETWORK_CEILING = 'council';
+
+const LADDER = ['public', 'members', 'council', 'restricted', 'sacred'];
+const lower = (a, b) => (LADDER.indexOf(a) <= LADDER.indexOf(b) ? a : b);
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost']);
 
@@ -58,5 +75,28 @@ export function isLoopback(address) {
  * lets a stranger claim to be the steward by typing a header name.
  */
 export function clearanceFor(req) {
-  return isLoopback(req?.socket?.remoteAddress) ? FULL : STRANGER;
+  if (isLoopback(req?.socket?.remoteAddress)) return FULL;
+
+  // An enrolled device, and the distinction from the bug at the top of this
+  // file matters. `?clearance=sacred` was a CLAIM — anybody could type it. A
+  // device token is a SECRET somebody was handed in a room by a steward who
+  // decided to hand it over, and holding it is the proof. That is the ordinary
+  // difference between asserting a level and having been given one.
+  //
+  // It is read from a header rather than the query string because a URL ends up
+  // in server logs, browser history and the Referer of every outbound link, and
+  // a token in any of those is a token that has left the room it was given in.
+  const token = req?.headers?.['x-bros-device'];
+  if (!token) return STRANGER;
+  const device = deviceFor(token);
+  if (!device) return STRANGER;
+  touchDevice(device.id);
+  return lower(ROLE_CLEARANCE[device.role] ?? STRANGER, NETWORK_CEILING);
+}
+
+/** The device behind a request, for attributing what it writes. */
+export function deviceOf(req) {
+  if (isLoopback(req?.socket?.remoteAddress)) return null;
+  const token = req?.headers?.['x-bros-device'];
+  return token ? deviceFor(token) : null;
 }

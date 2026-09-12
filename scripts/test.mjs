@@ -2842,6 +2842,135 @@ check('a card from a real chapter does not cry wolf about being an example',
     `${enums.length} enum fields declared`);
 }
 
+// ── A second person can write, and it is not a sign-in ────────────────────
+// Everyone using this OS was the steward. A phone on the wifi could bring a
+// need through /join and nothing else, so a chapter was one person typing while
+// everyone else submitted to them — which is a chapter that stops when that
+// person is ill.
+//
+// Device enrolment is deliberately not accounts: no password, nothing to
+// remember, nothing to reset at eleven at night before a gathering.
+{
+  const E = await import('../engines/enrol.mjs');
+  const { clearanceFor, NETWORK_CEILING } = await import('../server/clearance.mjs');
+  const CH = 'enrol-test';
+  await runTool('create_chapter', {
+    id: CH, name: 'Enrol Test', scale: 'site',
+    represents: 'the people who signed up', does_not_represent: 'anyone else', lat: 30.2, lng: -97.8,
+  });
+
+  const inv = E.inviteDevice(CH, { role: 'member', created_by: 'Maya R.' });
+  check('an invitation is a short code somebody can read off a screen',
+    /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(inv.code), inv.code);
+  // Read aloud across a room: a character that has to be spelled out is a
+  // character that gets the enrolment abandoned.
+  check('and contains none of the letters that get misheard',
+    !/[O0I1L]/.test(inv.code), inv.code);
+
+  check('a code nobody issued is refused',
+    E.enrolDevice(CH, { code: 'ZZZZ-ZZZZ', label: 'x' }).error === 'code_not_valid');
+  check('a device with no name is refused',
+    E.enrolDevice(CH, { code: inv.code }).error === 'code_and_label_required');
+
+  const got = E.enrolDevice(CH,
+    { code: inv.code.toLowerCase(), label: "Maya's phone", person_name: 'Maya R.' });
+  check('a code typed in the wrong case still works', !!got.token, JSON.stringify(got.error));
+  check('enrolling names the device and, if offered, the person',
+    got.device.label === "Maya's phone" && got.person.display_name === 'Maya R.');
+  check('the code works exactly once',
+    E.enrolDevice(CH, { code: inv.code, label: 'a second phone' }).error === 'code_not_valid');
+
+  // THE PROPERTY THAT MATTERS MOST. This project tells people to back up and
+  // move commons.db. If the token were in it, the backup would be the key.
+  check('the token is never stored — only a hash of it',
+    !JSON.stringify(all('SELECT * FROM devices')).includes(got.token),
+    'a copy of the database would let its reader impersonate a device');
+  check('and neither is the invitation code',
+    !JSON.stringify(all('SELECT * FROM capabilities')).includes(inv.code),
+    'a copy of the database would let its reader enrol a device');
+
+  // The clearance boundary. A query parameter saying `clearance=sacred` was a
+  // CLAIM and that is why it was a vulnerability; a device token is a SECRET
+  // handed over by a steward in a room, and holding it is the proof.
+  const lan = (headers = {}) => ({ socket: { remoteAddress: '192.168.1.44' }, headers });
+  check('a stranger on the wifi is still a stranger', clearanceFor(lan()) === 'public');
+  check('and a made-up token does not change that',
+    clearanceFor(lan({ 'x-bros-device': 'not-a-real-token' })) === 'public');
+  check('an enrolled member reads members-only',
+    clearanceFor(lan({ 'x-bros-device': got.token })) === 'members');
+
+  const co = E.enrolDevice(CH,
+    { code: E.inviteDevice(CH, { role: 'coordinator' }).code, label: 'Council laptop' });
+  check('an enrolled coordinator reads council',
+    clearanceFor(lan({ 'x-bros-device': co.token })) === 'council');
+
+  // The ceiling. restricted and sacred are the two tiers a rights holder asked
+  // for, carried over plain HTTP on a shared wifi. No token turns a gathering's
+  // wifi into a room where those are read.
+  check('nothing arriving over a network reaches restricted or sacred',
+    !['restricted', 'sacred'].includes(NETWORK_CEILING)
+      && [clearanceFor(lan({ 'x-bros-device': co.token })),
+          clearanceFor(lan({ 'x-bros-device': got.token }))]
+        .every((c) => !['restricted', 'sacred'].includes(c)),
+    NETWORK_CEILING);
+  check('the steward at the machine still gets everything',
+    clearanceFor({ socket: { remoteAddress: '127.0.0.1' }, headers: {} }) === 'sacred');
+
+  // The token must never travel where a URL goes — logs, history, Referer.
+  const cl = readFileSync(new URL('../server/clearance.mjs', import.meta.url), 'utf8');
+  check('a device is read from a header, never from the query string',
+    /headers\?\.\['x-bros-device'\]/.test(cl) && !/searchParams.*device/i.test(cl));
+
+  // Revocation keeps the row. ODK's revoked users still appear as the submitter
+  // of everything they filed; deleting would orphan the work rather than undo it.
+  E.revokeDevice(got.device.id, { reason: 'phone lost on the trail' });
+  check('a revoked device stops writing immediately',
+    clearanceFor(lan({ 'x-bros-device': got.token })) === 'public');
+  const listed = E.devices(CH);
+  check('and stays on the list with its reason',
+    listed.devices.some((d) => d.id === got.device.id && !d.active && /phone lost/.test(d.label)),
+    JSON.stringify(listed.devices.map((d) => [d.label, d.active])));
+  check('the list says how many can write, not how many exist',
+    /1 device can write/.test(listed.sentence), listed.sentence);
+
+  // Revocation is enforced twice over, and each half is tested alone —
+  // otherwise a mutation that breaks one passes because the other caught it,
+  // which is how defence in depth turns into one defence nobody has checked.
+  //
+  // Half one: the timestamp. A row revoked by timestamp while its role still
+  // says "member" must not authenticate.
+  const half = E.enrolDevice(CH,
+    { code: E.inviteDevice(CH, { role: 'member' }).code, label: 'Timestamp-only revocation' });
+  check('a device is recognised before it is revoked', !!E.deviceFor(half.token));
+  dbRun(`UPDATE devices SET revoked_at=datetime('now') WHERE id=?`, half.device.id);
+  check('a revoked_at alone stops a device, even with its role untouched',
+    E.deviceFor(half.token) === null && clearanceFor(lan({ 'x-bros-device': half.token })) === 'public',
+    'only the role check was holding');
+
+  // Half two: the role. A row blocked by role with no timestamp must not
+  // authenticate either.
+  const other = E.enrolDevice(CH,
+    { code: E.inviteDevice(CH, { role: 'member' }).code, label: 'Role-only block' });
+  dbRun(`UPDATE devices SET role='blocked' WHERE id=?`, other.device.id);
+  check('a blocked role alone stops a device, even with no revoked_at',
+    E.deviceFor(other.token) === null && clearanceFor(lan({ 'x-bros-device': other.token })) === 'public',
+    'only the timestamp check was holding');
+
+  // And a role the clearance map has never heard of grants nothing, rather
+  // than falling through to whatever the map's first entry happens to be.
+  check('an unknown role reads nothing at all',
+    (E.ROLE_CLEARANCE.blocked ?? 'public') === 'public'
+      && (E.ROLE_CLEARANCE.left ?? 'public') === 'public');
+
+  // Deletion is not available anywhere.
+  let threw = null;
+  try { dbRun('DELETE FROM devices WHERE id=?', got.device.id); } catch (e) { threw = e.message; }
+  check('a device cannot be deleted, only revoked', !!threw, 'the row was removed');
+  threw = null;
+  try { dbRun(`DELETE FROM people WHERE chapter_id=?`, CH); } catch (e) { threw = e.message; }
+  check('a person cannot be deleted, only withdrawn', !!threw, 'the row was removed');
+}
+
 // ── A clearance is a fact about the connection, never a field in the request ──
 // The sensitivity ladder was enforced correctly everywhere except where the
 // level was chosen. Three routes read it from the query string, so

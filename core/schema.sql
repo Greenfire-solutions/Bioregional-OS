@@ -507,3 +507,108 @@ CREATE TABLE IF NOT EXISTS seasons (
   -- Stage 6 for the season this one opens into.
   priorities  TEXT
 );
+
+-- ---------- Local settings: values this machine generated for itself ------
+-- Not configuration a person edits. Things the OS minted and must keep, like
+-- the salt the enrolment hashes are keyed with — which exists so that a token
+-- lifted from one commons means nothing in another, and so that copying
+-- commons.db does not hand its reader the ability to enrol a device.
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  set_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------- Identity, of which there is deliberately very little ----------
+-- No accounts. No passwords. No sign-in.
+--
+-- The evidence is blunt: asked whether to create two thousand accounts for
+-- enumerators, KoboToolbox's own community said no — give each person an
+-- identifier they type in, and attribute by that. A deployment that took the
+-- credential path reported enumerators using the shared login to browse the
+-- whole database. The failure mode of credentials in this setting is
+-- account-wide exposure, not impersonation.
+--
+-- So two tables, and neither holds a secret a person has to remember.
+
+-- A person, with no credential, ever. LiteFarm calls the equivalent a "Worker
+-- Without Account": a manager creates them with a first name and no invite
+-- step, because there is nobody to click a link.
+--
+-- The reason to have this at ALL is not sign-in. It is the migration trap that
+-- Kobo documents: submissions made before attribution existed have no name
+-- attached, and no later rule can govern them. Every day of free-text
+-- maintenance_owner is data no future identity rule can reach.
+CREATE TABLE IF NOT EXISTS people (
+  id            TEXT PRIMARY KEY,
+  chapter_id    TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  display_name  TEXT NOT NULL,
+  -- OPTIONAL, and never the identity. LiteFarm had to mint synthetic
+  -- <uuid>@pseudo.com addresses purely because email was NOT NULL UNIQUE.
+  contact       TEXT,
+  contact_kind  TEXT CHECK (contact_kind IS NULL OR contact_kind IN ('phone','email','other')),
+  agent_id      TEXT REFERENCES agents(id) ON DELETE SET NULL,
+  consent_at    TEXT,
+  status        TEXT NOT NULL DEFAULT 'active'
+                CHECK (status IN ('active','left','blocked','withdrawn')),
+  withdrawn_at  TEXT,
+  enrolled_by   TEXT REFERENCES people(id) ON DELETE SET NULL,   -- a visible invite tree
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Withdrawal and blocking are STATUS CHANGES. Deletion is not available.
+-- ODK's revoked App Users "still appear as the submitter of any submissions
+-- they uploaded"; CoMapeo models BLOCKED and LEFT as roles rather than
+-- deletions, because replicated data cannot be recalled. Deleting the row
+-- would orphan the work and erase who did it, which is the opposite of
+-- honouring a withdrawal.
+CREATE TRIGGER IF NOT EXISTS people_no_delete
+BEFORE DELETE ON people
+BEGIN
+  SELECT RAISE(ABORT, 'people are never deleted — set status to withdrawn, left or blocked');
+END;
+
+-- A DEVICE, not a user. This is what actually gets enrolled.
+--
+-- ODK's lesson, learned the expensive way: nothing binds a token to a handset,
+-- so one code scans into unlimited phones. Their answer is not prevention but
+-- forensics — every submission carries a device id, and "if you see the same
+-- token used with different deviceids, you can know who shared it". So the
+-- secret is stored hashed, every write can name the device, and revocation
+-- keeps the row.
+CREATE TABLE IF NOT EXISTS devices (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  label       TEXT NOT NULL,                 -- "Maya's phone"
+  person_id   TEXT REFERENCES people(id) ON DELETE SET NULL,   -- best effort, NOT proof
+  secret_hash TEXT NOT NULL,                 -- HMAC of the token; the token is never stored
+  role        TEXT NOT NULL DEFAULT 'member'
+              CHECK (role IN ('coordinator','member','blocked','left')),
+  enrolled_by TEXT,                          -- who was at the keyboard
+  enrolled_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen   TEXT,
+  revoked_at  TEXT
+);
+
+CREATE TRIGGER IF NOT EXISTS devices_no_delete
+BEFORE DELETE ON devices
+BEGIN
+  SELECT RAISE(ABORT, 'devices are never deleted — set role to blocked and revoked_at');
+END;
+
+-- A one-time enrolment code. Single purpose, expiring, and hashed like the
+-- device secret, so the database never holds anything that would let its reader
+-- enrol a device.
+CREATE TABLE IF NOT EXISTS capabilities (
+  token_hash  TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  purpose     TEXT NOT NULL CHECK (purpose IN ('enrol_device')),
+  role        TEXT NOT NULL DEFAULT 'member'
+              CHECK (role IN ('coordinator','member')),
+  expires_at  TEXT NOT NULL,
+  uses_left   INTEGER NOT NULL DEFAULT 1,
+  created_by  TEXT,
+  redeemed_at TEXT,
+  revoked_at  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);

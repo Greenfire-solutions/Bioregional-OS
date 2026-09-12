@@ -28,6 +28,7 @@ import * as landseat from '../engines/landseat.mjs';
 import * as matching from '../engines/matching.mjs';
 import * as board from '../engines/board.mjs';
 import * as mapboard from '../engines/mapboard.mjs';
+import * as enrol from '../engines/enrol.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -1295,6 +1296,58 @@ export const TOOLS = [
     }, ['quest_id', 'gate', 'reason', 'overridden_by']),
     handler: (i) => quest.overrideGate(i.quest_id, i.gate,
       { reason: i.reason, overridden_by: i.overridden_by }),
+  },
+  {
+    name: 'invite_device',
+    description:
+      'Open an invitation for a second person to write to this commons. Returns a short code to ' +
+      'read off the screen — no account, no password, nothing for anybody to remember. The code ' +
+      'is single-use, expires in twenty minutes, and grants only the right to ASK to join, which ' +
+      'the steward already decided by showing it. It is shown ONCE and is never readable again.',
+    input_schema: S({
+      chapter_id: str(''),
+      role: { type: 'string', enum: ['member', 'coordinator'],
+        description: 'member reads members-only; coordinator also reads council' },
+      created_by: str('Who is inviting'),
+      minutes: num('How long the code lasts. Default 20.'),
+    }),
+    handler: (i) => enrol.inviteDevice(ch(i), {
+      role: i.role ?? 'member', created_by: i.created_by ?? null, minutes: i.minutes,
+    }),
+  },
+  {
+    name: 'enrol_device',
+    description:
+      'Redeem an invitation code from this device. Returns a token to keep on the device — shown ' +
+      'once, stored only as a hash, and never recoverable: a lost phone is revoked and reissued, ' +
+      'not recovered. The label is required because "Maya\'s phone" is what makes a revocation ' +
+      'list readable six months later and "device-4" is not.',
+    input_schema: S({
+      chapter_id: str(''),
+      code: str('The code from the steward\'s screen'),
+      label: str('A name for this device, e.g. "Maya\'s phone"'),
+      person_name: str('Who this device belongs to, if they want to be named'),
+    }, ['code', 'label']),
+    handler: (i) => enrol.enrolDevice(ch(i), {
+      code: i.code, label: i.label, person_name: i.person_name ?? null,
+    }),
+  },
+  {
+    name: 'list_devices',
+    description:
+      'Every device that can write to this commons, and every one that used to. Revoked devices ' +
+      'stay on the list: they are still the recorded author of everything they filed, and ' +
+      'removing the row would orphan that work rather than undo it.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => enrol.devices(ch(i)),
+  },
+  {
+    name: 'revoke_device',
+    description:
+      'Stop a device writing. It keeps everything it has already written and stays on the list — ' +
+      'a device that vanished would take the record of who did the work with it.',
+    input_schema: S({ device_id: str(''), reason: str('Why, for the record') }, ['device_id']),
+    handler: (i) => enrol.revokeDevice(i.device_id, { reason: i.reason ?? null }),
   },
   {
     name: 'name_deputy',
