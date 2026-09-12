@@ -547,12 +547,54 @@ The card carries **no media, ever** — a count and a name and a date about what
 been heard here, never a recording. Nearly everything this OS can reach is
 CC-BY-NC, and anything on a card leaves the machine.
 
-**Phase 4 — the long rhythms.** §5.6 Carrying, §5.10 The turning, §5.11 Local
-Legend for places, §5.12 The neighbours, §8 the seven numbers.
+**Phase 4 — the long rhythms. ✅ built.** §5.6 Carrying, §5.10 The turning,
+§5.11 Local Legend for places, §5.12 The neighbours, §8 the seven numbers.
 
-Every one of these enters through `ai/tools.mjs` as a single registry entry, per
-the one-registry rule — so each arrives in Claude Code, the in-app assistant and
-the REST API at the same moment it arrives in the interface.
+Every one entered through `ai/tools.mjs` as a single registry entry, per the
+one-registry rule — so each arrived in Claude Code, the in-app assistant and the
+REST API at the same moment it arrived in the interface.
+
+- `engines/attention.mjs` — §5.6 and §5.11, one file because they are the same
+  measurement pointed in opposite directions: who holds more open responsibility
+  than is fair to ask, and which ground has gone longest without anybody on it.
+  The rule that keeps the first off the wrong side of §6 is that **only open
+  obligations count** — count what people have completed and it is a scoreboard
+  with a concerned tone of voice; count what is still owed and the number FALLS
+  when work finishes, which is what a warning does and the opposite of what a
+  score does. Three things the seed data taught that the spec did not: a
+  committee in the `maintenance_owner` field is a gate satisfied on paper rather
+  than a person to relieve; only the agents table may suppress a burnout warning,
+  never a guess from the shape of a name; and three spellings of one name are one
+  person holding three things. The place half is the provenance trap again — a
+  creek with a gage on it files a reading every three hours forever, and counting
+  those as attention makes the most neglected place report as the best attended.
+- `engines/vitals.mjs` — §8. **No data is not a zero.** A chapter that has held
+  no gatherings has no care score; it does not have a care score of nought, and
+  reporting the second turns "we have not started" into "we are failing" on the
+  one page meant to say whether to keep going. There is also deliberately **no
+  total** — the instant this page carries one number, that number is what gets
+  managed. `intake.responded_at` was added for it, stamped only on the first
+  answer so that rewording a reply does not reset how long somebody waited.
+- `engines/neighbours.mjs` — §5.12, and almost entirely a set of refusals aimed
+  at §3.6. Weekly and not on opening; one line each; **no reciprocity**, so
+  nothing here generates a task or appears in `whats_next()`; and nothing from a
+  neighbour is ever written into this commons' own tables. The cadence is
+  enforced against each peer's last-read date in the database rather than by the
+  heartbeat interval, because the OS is something you start and a seven-day timer
+  inside an afternoon's process fires once and never again.
+- `engines/turning.mjs` — §5.10, the stage 11 → 12 → 6 hinge. The machine
+  computes what changed and **refuses to close a season** until a person has
+  answered what did NOT change, what unintended effects appeared, and whose
+  experience is missing. Five of the protocol's eight review questions are
+  queries; these three are not, and the last cannot be derived from a database by
+  definition. A change smaller than the error bar on its own reading is reported
+  as no change.
+
+One bug with six copies surfaced while building it: `ORDER BY measured_at DESC`
+is not deterministic, because `record_measurement` takes a DATE and a
+before-and-after pair from one field morning ties. Now written once in
+`core/db.mjs` with rowid as the tiebreak, with a test that greps for any copy
+drifting back.
 
 ---
 
