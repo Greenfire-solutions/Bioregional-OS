@@ -595,3 +595,15 @@ export async function growingYearAt(placeId, { zip = null } = {}) {
   if (r.normals?.available) registerLayer(p.chapter_id, 'nasa-power');
   return { place: { id: p.id, name: p.name }, ...r };
 }
+
+/** Atlas layers 2 and 3 — what is in the water, and where it goes. */
+export async function hydrologyAt(placeId, { radiusKm = 5, sinceYears = 3 } = {}) {
+  const p = one('SELECT * FROM places WHERE id=?', placeId);
+  if (!p) return { error: 'not_found' };
+  if (p.lat == null) return { error: 'no_coordinates' };
+  const { hydrologyHere } = await import('../adapters/hydrology.mjs');
+  const r = await hydrologyHere(p.lat, p.lng, { radiusKm, sinceYears });
+  if (r.network?.available) registerLayer(p.chapter_id, 'nhdplus-hr');
+  if (r.quality?.available) registerLayer(p.chapter_id, 'water-quality-portal');
+  return { place: { id: p.id, name: p.name }, ...r };
+}

@@ -215,6 +215,29 @@ export const SOURCES = [
     },
     expect: 'mapDate',
   },
+  {
+    id: 'water-quality-portal', layer: 3, kind: 'api', coverage: 'us',
+    name: 'Water Quality Portal', project: 'USGS, EPA and the National Water Quality Monitoring Council',
+    license: 'Public domain (US Government)',
+    attribution: 'Water Quality Portal (USGS / EPA / NWQMC)',
+    url: 'https://www.waterqualitydata.us/',
+    adapter: 'adapters/hydrology.mjs', cadence: 'weekly', sensitivity: 'public',
+    probe: 'https://www.waterqualitydata.us/data/Station/search?bBox=-97.80,30.25,-97.78,30.27&mimeType=geojson&zip=no',
+    expect: 'FeatureCollection',
+    notes: 'Answers CSV. Nitrate arrives as both mg/L as N and mg/L as NO3 in the same result set — a median across the two is meaningless and must never be taken.',
+  },
+  {
+    id: 'nhdplus-hr', layer: 2, kind: 'dataset', coverage: 'us',
+    name: 'USGS NHDPlus High Resolution', project: 'US Geological Survey',
+    license: 'Public domain (US Government)',
+    attribution: 'USGS NHDPlus High Resolution',
+    url: 'https://www.usgs.gov/national-hydrography/nhdplus-high-resolution',
+    adapter: 'adapters/hydrology.mjs', cadence: 'once per place', sensitivity: 'public',
+    probe: 'https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer/3?f=json',
+    expect: 'NetworkNHDFlowline',
+    notes: 'Layer 3 is NetworkNHDFlowline. Query by point+distance, not by bounding box — a box is wider at its corners and changes which reach is "nearest" depending on which way the creek runs.',
+  },
+
   // ── layers 7-11: the people, the memory, the growing year ───────────────
   {
     id: 'openstreetmap', layer: 8, kind: 'dataset', coverage: 'global',

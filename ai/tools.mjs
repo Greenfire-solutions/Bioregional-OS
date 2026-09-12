@@ -1183,6 +1183,31 @@ export const TOOLS = [
     },
   },
 
+  {
+    name: 'water_here',
+    description:
+      'Atlas layers 2 and 3 — what is in the water and where it goes. The nearest mapped channel ' +
+      'with its stream order and how much ground drains through it, what it flows toward, and ' +
+      'water quality sampling nearby: E. coli, nitrate, dissolved oxygen, turbidity, pH, ' +
+      'conductance, temperature. Results are grouped by characteristic AND unit and never ' +
+      'averaged across units — nitrate is reported both as N and as NO3 in the same dataset, and a ' +
+      'median across the two is a number that corresponds to no measurement. Units that look wrong ' +
+      'are flagged rather than printed as if they were concentrations.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''),
+      radius_km: num('Default 5'), since_years: num('How far back to look for sampling. Default 3.'),
+    }),
+    handler: async (i) => {
+      const opts = { radiusKm: i.radius_km ?? 5, sinceYears: i.since_years ?? 3 };
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.hydrologyAt(place, opts);
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { hydrologyHere } = await import('../adapters/hydrology.mjs');
+      return hydrologyHere(i.lat, i.lng, opts);
+    },
+  },
+
   // ---------- what needs doing ----------
   {
     name: 'whats_next',

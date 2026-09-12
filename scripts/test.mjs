@@ -323,6 +323,41 @@ const exported = atlasGeoJSON('test', { clearance: 'council' });
 check('a GeoJSON export tells QGIS how much of it is approximate',
   typeof exported.bros.features_at_place_centroid === 'number');
 
+// ── Layer 3: never average across units ───────────────────────────────────
+// Nitrate arrives in the same WQP result set as both mg/L as N and mg/L as NO3,
+// twenty samples each, on scales differing by about 4.4x. Medianing across them
+// gave 2.39 — the median of neither group, corresponding to no real
+// measurement, printed with one of the two unit labels attached. A quotable,
+// plausible, wrong number about whether water is safe to be in.
+const { groupByUnit } = await import('../adapters/hydrology.mjs');
+const nitrateRows = [
+  ...Array.from({ length: 3 }, (_, i) => ({ CharacteristicName: 'Nitrate', 'ResultMeasure/MeasureUnitCode': 'mg/l as N', ResultMeasureValue: String(1 + i), ActivityStartDate: '2024-01-0' + (i + 1), MonitoringLocationIdentifier: 'A' })),
+  ...Array.from({ length: 3 }, (_, i) => ({ CharacteristicName: 'Nitrate', 'ResultMeasure/MeasureUnitCode': 'mg/l asNO3', ResultMeasureValue: String(6 + i), ActivityStartDate: '2024-01-0' + (i + 1), MonitoringLocationIdentifier: 'B' })),
+];
+const grouped = groupByUnit(nitrateRows);
+check('one characteristic in two units is kept as two groups, never merged',
+  grouped.filter((g) => g.name === 'Nitrate').length === 2, JSON.stringify(grouped.map((g) => [g.name, g.unit, g.median])));
+check('neither group\'s median is the median of the pooled values',
+  grouped.every((g) => g.median !== 3.5), JSON.stringify(grouped.map((g) => g.median)));
+check('each group names the other units the same characteristic came in',
+  grouped.every((g) => Array.isArray(g.also_reported_in) && g.also_reported_in.length === 1));
+// The blank-cell rule, again, in a third API.
+const withBlank = groupByUnit([
+  { CharacteristicName: 'Nitrate', 'ResultMeasure/MeasureUnitCode': 'mg/l as N', ResultMeasureValue: '', ActivityStartDate: '2024-01-01' },
+  { CharacteristicName: 'Nitrate', 'ResultMeasure/MeasureUnitCode': 'mg/l as N', ResultMeasureValue: '4', ActivityStartDate: '2024-01-02' },
+]);
+check('a sample taken and not recorded is not a reading of zero',
+  withBlank[0].samples === 1 && withBlank[0].sampled_but_not_recorded === 1 && withBlank[0].median === 4,
+  JSON.stringify(withBlank[0]));
+// WQP writes 'hours' and 'None' into the unit column for some bacterial counts.
+const junk = groupByUnit([
+  { CharacteristicName: 'Escherichia coli', 'ResultMeasure/MeasureUnitCode': 'hours', ResultMeasureValue: '7', ActivityStartDate: '2024-01-01' },
+]);
+check('a time unit on a bacterial count is flagged, not printed as a concentration',
+  junk[0].unit_looks_wrong === 'hours');
+check('"None" in a unit column is read as no unit, not as a unit called None',
+  groupByUnit([{ CharacteristicName: 'pH', 'ResultMeasure/MeasureUnitCode': 'None', ResultMeasureValue: '7' }])[0].unit === null);
+
 // ── Layer 11: what may be played, and what may travel ─────────────────────
 // A recording's MEDIA licence is a different field from its observation's, and
 // the default is CC-BY-NC. Both halves of that matter and both are asserted.
