@@ -388,6 +388,11 @@ CREATE TABLE IF NOT EXISTS federation_peers (
   last_synced_at TEXT,
   status      TEXT NOT NULL DEFAULT 'known'
               CHECK (status IN ('known','connected','sharing','paused')),
+  -- One line of what they last published, and when this commons read it.
+  -- Stored rather than fetched on view: a panel that refreshes when you look at
+  -- it teaches you to look at it, which is the feed this deliberately is not.
+  summary     TEXT,
+  summary_at  TEXT,
   notes       TEXT
 );
 

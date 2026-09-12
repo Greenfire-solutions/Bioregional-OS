@@ -22,6 +22,7 @@ import * as loops from '../engines/loops.mjs';
 import * as dispatch from '../engines/dispatch.mjs';
 import * as attention from '../engines/attention.mjs';
 import * as vitals from '../engines/vitals.mjs';
+import * as neighbours from '../engines/neighbours.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -1042,6 +1043,20 @@ export const TOOLS = [
       days: num('Window for the measures that use one. Default 90.'),
     }),
     handler: (i) => vitals.vitals(ch(i), { days: i.days ?? 90 }),
+  },
+  {
+    name: 'neighbours',
+    description:
+      'What other chapters in the network have published, one line each, as this commons last ' +
+      'read it. Deliberately not live: the lines are refreshed weekly in the background, so ' +
+      'opening this shows what was already known rather than fetching. Nothing here generates ' +
+      'a task or expects a reply — it is peripheral awareness of belonging to something larger, ' +
+      'not an inbox. A neighbour\'s text is never written into this commons\' own tables.',
+    input_schema: S({
+      chapter_id: str(''),
+      limit: num('How many neighbours to list. Default 8.'),
+    }),
+    handler: (i) => neighbours.neighbours(ch(i), { limit: i.limit ?? 8 }),
   },
 
   // ---------- what this locality already publishes ----------

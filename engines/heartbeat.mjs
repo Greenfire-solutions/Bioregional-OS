@@ -11,6 +11,7 @@ import { whatsNext } from './operator.mjs';
 import { workList } from './library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 import { groundToday } from './ground.mjs';
+import { refresh as refreshNeighbours, CADENCE_DAYS } from './neighbours.mjs';
 
 const MINUTE = 60_000;
 
@@ -147,6 +148,26 @@ const TASKS = [
       if (n.error || !n.total) return null;
       const blocking = n.by_kind.blocking ?? 0;
       return `${n.total} open · ${blocking} blocking · first: ${n.first.title}`;
+    },
+  },
+  {
+    name: 'read_the_neighbours',
+    // Ticks often, fetches rarely. The cadence that matters is seven days and
+    // it is enforced inside refresh() against each peer's own last-read date,
+    // NOT by this interval — because the OS is something you start, and a
+    // seven-day timer inside a process that runs for an afternoon would fire
+    // once at launch and then never again. Age in the database survives a
+    // restart; a timer does not.
+    every: 6 * 60 * MINUTE,
+    why: `What other chapters published, once every ${CADENCE_DAYS} days. Belonging to ` +
+         'something larger is what sustains volunteer groups — and this is the ambient ' +
+         'version of it, with nothing to keep up with.',
+    async run() {
+      const r = await refreshNeighbours();
+      if (!r.read && !r.changed) return null;
+      return r.changed
+        ? `neighbours: ${r.read} read, ${r.changed} changed what they published`
+        : `neighbours: ${r.read} read`;
     },
   },
 ];

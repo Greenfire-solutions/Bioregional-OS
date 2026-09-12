@@ -51,6 +51,9 @@ const ADDED_COLUMNS = {
   intake: [
     ['responded_at', 'TEXT'],
   ],
+  federation_peers: [
+    ['summary', 'TEXT'], ['summary_at', 'TEXT'],
+  ],
 };
 
 function migrate(d) {

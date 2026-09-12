@@ -7,6 +7,7 @@ import ToolForm from './ToolForm.jsx';
 import Ground from './Ground.jsx';
 import Loops from './Loops.jsx';
 import Carrying from './Carrying.jsx';
+import Neighbours from './Neighbours.jsx';
 
 const KIND = {
   blocking: { label: 'Blocking',   icon: AlertOctagon,  cls: 'text-[var(--clay)]',  bg: 'bg-[#FBF1EE] border-[#E4C9C2]',
@@ -164,6 +165,11 @@ export default function Today({ onChanged }) {
         );
       })}
 
+      {/* Last, below the work, and easy to not read. §3.9: peripheral awareness
+          rather than a feed. Putting other chapters above this commons' own
+          tasks would be the first step to checking them instead of doing them. */}
+      <Neighbours />
+
       {form && (
         <ToolForm tool={form.tool} prefill={form.prefill}
                   onClose={() => setForm(null)}
@@ -179,5 +185,6 @@ const LABELS = {
   add_indicator: 'Add indicator', record_measurement: 'Record a reading',
   clear_red_flag: 'Resolve flag', decide_council_item: 'Decide', council_agenda: 'Open agenda',
   publish_learning: 'Write it up', add_gathering: 'Add care',
+  carrying: 'Who is carrying it', place_attention: 'Where nobody has been',
 };
 const label = (tool) => LABELS[tool] ?? tool.replace(/_/g, ' ');

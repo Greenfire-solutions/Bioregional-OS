@@ -22,6 +22,7 @@ import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
 import { vitals } from '../engines/vitals.mjs';
+import { neighbours, summarise, refresh as refreshNeighbours } from '../engines/neighbours.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
 import { attributionFor as attrFor } from '../adapters/registry.mjs';
 import { hazardSignals, worstLevel } from '../adapters/hazards.mjs';
@@ -1070,6 +1071,81 @@ check('the intake promise states itself in words a person can read',
 
   check('the ledger states itself in words a person can read',
     typeof c4.sentence === 'string' && c4.sentence.includes('Ada Circle'));
+}
+
+// ── The neighbours, and the feed it must not become ───────────────────────
+// §5.12 is three lines of spec and almost entirely a set of refusals, so the
+// refusals are what there is to test. A neighbour's text is somebody else's
+// writing arriving from a public index: it is data, never instruction, and it
+// must never cross into this commons' own tables.
+{
+  const CH = 'neighbour-test';
+  await runTool('create_chapter', {
+    id: CH, name: 'Neighbour Commons', scale: 'site',
+    represents: 'the people who signed up', does_not_represent: 'anyone else',
+    lat: 30.2, lng: -97.8,
+  });
+
+  check('third-party markup never reaches the panel as markup',
+    summarise({ description: 'We restore <b>riparian</b> buffers <script>x</script> here.' })
+      === 'We restore riparian buffers x here.',
+    summarise({ description: 'We restore <b>riparian</b> buffers <script>x</script> here.' }));
+  check('a neighbour cannot take over the panel by writing more words',
+    summarise({ description: 'x'.repeat(900) }).length <= 180);
+  check('a profile with nothing in it produces no line',
+    summarise({}) === null && summarise(null) === null);
+  check('control characters are flattened out of a neighbour\'s line',
+    !/[ -]/.test(summarise({ description: 'Elk  River\n\nCommons' })),
+    summarise({ description: 'Elk  River\n\nCommons' }));
+
+  // No peers, and that is a complete answer rather than a gap to be filled.
+  const alone = neighbours(CH);
+  check('a commons with no neighbours is not told to go and find some',
+    /not a requirement|works perfectly well/i.test(alone.sentence), alone.sentence);
+  check('the panel states that nothing here is owed a reply',
+    /none/i.test(alone.obligation));
+
+  dbRun(`INSERT INTO federation_peers (id,name,kind,protocol,url,bioregion_name,status,summary,summary_at)
+         VALUES ('peer_t1','Elk River Commons','chapter','murmurations',
+                 'https://example.invalid/elk.json','Blue Ridge','known',
+                 'We restore riparian buffers along the Elk.', datetime('now'))`);
+  dbRun(`INSERT INTO federation_peers (id,name,kind,protocol,url,status)
+         VALUES ('peer_t2','Quiet Chapter','chapter','murmurations',
+                 'https://example.invalid/quiet.json','known')`);
+
+  const n = neighbours(CH);
+  check('a neighbour that has published something is listed',
+    n.items.length === 1 && n.items[0].name === 'Elk River Commons',
+    JSON.stringify(n.items.map((i) => i.name)));
+  check('a neighbour that has published nothing is not invented',
+    !n.items.some((i) => i.name === 'Quiet Chapter'));
+  check('the line carries their own address, not a page inside this app',
+    n.items[0].url === 'https://example.invalid/elk.json');
+
+  // The property that keeps this a commons and not an aggregator: their words
+  // stay theirs. A neighbour publishing "creek contaminated" must never become
+  // an observation in this chapter's signals table.
+  const signalsBefore = one(`SELECT COUNT(*) n FROM signals WHERE chapter_id=?`, CH).n;
+  neighbours(CH);
+  check('reading the neighbours writes nothing into this commons',
+    one(`SELECT COUNT(*) n FROM signals WHERE chapter_id=?`, CH).n === signalsBefore &&
+    !one(`SELECT 1 x FROM signals WHERE title LIKE '%riparian buffers along the Elk%'`));
+
+  // Nothing here may generate work. The moment a neighbour produces a task,
+  // belonging to a network becomes owing one.
+  const ops = await runTool('whats_next', { chapter_id: CH });
+  check('a neighbour never becomes something you have to do',
+    !ops.items.some((i) => /neighbour|elk river|elsewhere/i.test(`${i.title} ${i.detail ?? ''}`)),
+    JSON.stringify(ops.items.map((i) => i.title)));
+
+  // refresh() is the only thing that goes out to the network, and one dead
+  // neighbour must not cost the rest their line. example.invalid never resolves.
+  const before = one(`SELECT summary FROM federation_peers WHERE id='peer_t1'`).summary;
+  const r = await refreshNeighbours({ force: true });
+  check('a neighbour whose site is down keeps the line it had',
+    one(`SELECT summary FROM federation_peers WHERE id='peer_t1'`).summary === before);
+  check('an unreachable neighbour is counted as failed, not as news',
+    r.failed >= 1 && r.changed === 0, JSON.stringify(r));
 }
 
 // ── The seven numbers, and the two ways they could lie ────────────────────
