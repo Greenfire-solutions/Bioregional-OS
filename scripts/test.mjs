@@ -1184,6 +1184,30 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
       !existsSync(dir) || !readdirSync(dir).some((f) => f.endsWith('.lock')));
   }
 
+  // A section that fails must not take the region with it, and the record it
+  // leaves must name the section and the upstreams — an unlabelled error in a
+  // 1052-region run is a rumour, not a diagnosis.
+  {
+    const D = await import('../adapters/dossier.mjs');
+    const src = await (await import('node:fs/promises'))
+      .readFile(new URL('../adapters/dossier.mjs', import.meta.url), 'utf8');
+    const stamps = [...src.matchAll(/stamp\('(\w+)',\s*(.*)$/gm)];
+    const unguarded = stamps
+      .filter(([, name]) => !['identity'].includes(name))
+      .filter(([, name, rest]) => !/safe\(/.test(rest) && !/sampled_points/.test(rest))
+      .map(([, name]) => name);
+    check('every fetched section is behind the failure guard',
+      unguarded.length === 0, unguarded.join(', '));
+
+    // Count lines that both call safe() and pass a section label. A tighter
+    // regex tripped on the arrow function's own parenthesis.
+    const labelled = src.split('\n')
+      .filter((l) => /safe\(/.test(l) && /,\s*'(life|climate|soil|water|resources|hazards)'\)/.test(l))
+      .length;
+    check('section failures are labelled with which section gave up', labelled >= 6,
+      `only ${labelled} labelled`);
+  }
+
   check('soil is not re-asked on the same cadence as a drought',
     (await import('../adapters/dossier.mjs')).CADENCE_DAYS.soil >
     (await import('../adapters/dossier.mjs')).CADENCE_DAYS.hazards * 100);

@@ -302,17 +302,17 @@ async function compileLocked(r, scheme, { force, sections, onProgress }) {
 
   if (want.includes('life')) {
     say('life');
-    stamp('life', await lifeAcross(r.bbox));
+    stamp('life', await safe(() => lifeAcross(r.bbox), 'life'));
   }
   if (want.includes('climate')) {
     say('climate');
-    stamp('climate', await safe(() => climateAverages(p0.lat, p0.lng)));
+    stamp('climate', await safe(() => climateAverages(p0.lat, p0.lng), 'climate'));
   }
   if (want.includes('soil')) {
     say('soil');
     const profiles = [];
     for (const pt of points) {
-      const g = await safe(() => groundProfile(pt.lat, pt.lng));
+      const g = await safe(() => groundProfile(pt.lat, pt.lng), 'soil');
       if (g && !g.error) profiles.push({ at: [pt.lat, pt.lng], ...g });
       await pause(400);
     }
@@ -322,7 +322,7 @@ async function compileLocked(r, scheme, { force, sections, onProgress }) {
     say('water');
     const water = [];
     for (const pt of points.slice(0, 2)) {
-      const h = await safe(() => hydrologyHere(pt.lat, pt.lng, { radiusKm: 25 }));
+      const h = await safe(() => hydrologyHere(pt.lat, pt.lng, { radiusKm: 25 }), 'water');
       if (h && !h.error) water.push({ at: [pt.lat, pt.lng], ...h });
       await pause(400);
     }
@@ -330,11 +330,11 @@ async function compileLocked(r, scheme, { force, sections, onProgress }) {
   }
   if (want.includes('resources')) {
     say('resources');
-    stamp('resources', await safe(() => communityHere(p0.lat, p0.lng, { radiusKm: 25 })));
+    stamp('resources', await safe(() => communityHere(p0.lat, p0.lng, { radiusKm: 25 }), 'resources'));
   }
   if (want.includes('hazards')) {
     say('hazards');
-    stamp('hazards', await safe(() => hazardsHere(p0.lat, p0.lng)));
+    stamp('hazards', await safe(() => hazardsHere(p0.lat, p0.lng), 'hazards'));
   }
   if (!d.culture) d.culture = cultureSlot(r);
 
@@ -379,8 +379,21 @@ function acquire(code, scheme, { staleMs = 15 * 60 * 1000 } = {}) {
 }
 function release(path) { try { unlinkSync(path); } catch { /* already gone */ } }
 
-async function safe(fn) {
-  try { return await fn(); } catch (err) { return { error: err.message }; }
+/**
+ * A section that fails must not take the region with it, and must say which
+ * section and which upstream gave up. An unlabelled error in a 1052-region run
+ * is not a diagnosis, it is a rumour.
+ */
+async function safe(fn, section = null) {
+  try { return await fn(); }
+  catch (err) {
+    return {
+      error: err.message,
+      failed_section: section,
+      sources: section ? (SECTION_SOURCES[section] ?? []) : [],
+      at: new Date().toISOString(),
+    };
+  }
 }
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
