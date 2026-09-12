@@ -26,6 +26,18 @@ app. Broken? `npm run doctor -- --fix`.
 
 New to this entirely → **[docs/START_HERE.md](docs/START_HERE.md)**
 
+> **What you see first is demonstration data — a fictional commons.** A fresh
+> install opens on Barton Creek in Austin, Texas: an invented chapter, invented
+> people and invented observations, used to show how the twelve stages fit
+> together. None of it is a real report, and no organization named in it has
+> anything to do with it. Click **Find my bioregion** to replace it with your own
+> place, or `npm run seed -- --reset` to start over.
+
+*Live* ecological data — water, weather, soil, species, hazards — is exactly that,
+and comes from the public sources listed in
+**[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)**. The seeded *commons* around it
+is fiction; the *land* it sits on is real.
+
 ---
 
 ## What it does
@@ -168,7 +180,7 @@ clean copy to hand another community.
 | `npm run update -- --package` | Clean copy for another community, without your data |
 | `npm run data` | Download the ecoregions around you, for offline use |
 | `npm run data -- --status` | What is downloaded, what has gone stale |
-| `npm run seed -- --reset` | Start over with the example commons |
+| `npm run seed -- --reset` | Start over with the demonstration commons (fictional) |
 | `npm test` | The protocol test suite — proves the gates actually refuse |
 
 ---
