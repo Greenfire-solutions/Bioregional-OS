@@ -1233,6 +1233,17 @@ check('whatever the card resolved appears in the text somebody pastes',
     missing.length === 0, `not mentioned: ${missing.join(', ')}`);
 }
 
+// An artifact built from the demonstration commons says so ────────────────
+// The seeded data reads like real reporting: a Critical signal describing an
+// unpermitted stormwater discharge, naming a real creek and a real city
+// department. On screen it sits under an "example data" banner. A card does not
+// — it arrives in a group chat with no context around it, and the repository is
+// public. Same rule as attribution: an artifact that travels declares what it is.
+const demoCard = await cardForTheWeek('test');
+check('a card from a real chapter does not cry wolf about being an example',
+  demoCard.is_example === false && !/DEMONSTRATION/.test(demoCard.text),
+  `is_example=${demoCard.is_example}`);
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

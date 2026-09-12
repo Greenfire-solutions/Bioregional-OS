@@ -45,6 +45,8 @@ export default function FieldSheet() {
   // A printed sheet leaves the building. If the line at the top came from an
   // upstream that asks for credit, the paper carries it too.
   const credit = ground?.credit ?? null;
+  // Paper carries none of the interface's context, so it says so itself.
+  const isExample = /Barton Creek Greenbelt Reach/.test(place) && ground?.place?.id === 'plac_07850d2a';
 
   return (
     <div className="space-y-3">
@@ -110,6 +112,7 @@ export default function FieldSheet() {
             Quote <strong>{code}</strong> so it lands in the right place and on the right date.
             <br />
             Nothing here goes on the internet.
+            {isExample && <><br /><strong>Demonstration data — a fictional commons. Nothing here is a real observation.</strong></>}
             {credit && <><br /><span className="text-[9px]">{credit}</span></>}
           </p>
           {connect?.qr && (

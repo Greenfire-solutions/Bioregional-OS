@@ -135,8 +135,19 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
   const ask = outwardAsk(chapterId);
   if (ask) sections.push({ id: 'ask', label: 'One thing anybody could do', lines: [ask.text], ask });
 
+  // The seeded commons reads like real reporting — a Critical signal describing
+  // an unpermitted stormwater discharge, naming a real creek and a real city
+  // department. That is fine on a screen carrying the "example data" banner. It
+  // is not fine in a card, because a card leaves the machine and arrives in a
+  // group chat with none of that context around it.
+  //
+  // Same rule as attribution: an artifact that travels must declare what it is.
+  const isExample = chapterId === 'barton-creek'
+    && !!one(`SELECT 1 FROM signals WHERE chapter_id=? AND title='Unpermitted Stormwater Outfall Discharge'`, chapterId);
+
   const card = {
     chapter: chapter.name,
+    is_example: isExample,
     generated_at: new Date().toISOString(),
     week_of: friendlyDate(new Date()),
     sections,
@@ -258,6 +269,10 @@ function asText(card) {
     out.push('');
   }
   out.push('Written from our own records. Nothing here is on the internet.');
+  if (card.is_example) {
+    out.push('DEMONSTRATION DATA — a fictional commons used to show how this works. ' +
+             'Nothing above is a real observation, and no real organisation is involved.');
+  }
   if (card.credit) out.push(card.credit);
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
