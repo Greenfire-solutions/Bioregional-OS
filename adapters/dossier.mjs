@@ -9,7 +9,8 @@
 //
 // It calls the existing adapters rather than re-asking their upstreams, so a
 // licence or a cadence is still declared in exactly one place (registry.mjs).
-import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, readdirSync,
+         openSync, closeSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { ROOT } from '../core/db.mjs';
 import { getJSON, qs } from './http.mjs';
@@ -251,6 +252,19 @@ export async function compile(code, { scheme = 'epa-l4', force = false, sections
   const r = region(code, { scheme });
   if (!r) return { error: `no region ${code} in scheme ${scheme}` };
 
+  // A long `npm run data -- --all` and the running OS's heartbeat can both reach
+  // for the same region. Two writers on one file is how a dossier ends up half
+  // written. Whoever gets the lock does the work; the other says so and moves on.
+  const lock = acquire(r.code, scheme);
+  if (!lock) return { region: r.code, name: r.name, skipped: 'being written by another process' };
+  try {
+    return await compileLocked(r, scheme, { force, sections, onProgress });
+  } finally { release(lock); }
+}
+
+async function compileLocked(r, scheme, { force, sections, onProgress }) {
+  const code = r.code;
+
   const existing = loadDossier(r.code, scheme);
   const want = sections ?? (force ? Object.keys(CADENCE_DAYS) : staleSections(existing));
   const d = existing ?? {
@@ -348,6 +362,23 @@ function writeDossier(r, scheme, d) {
   return path;
 }
 
+/** Exclusive create — atomic on every filesystem this runs on. */
+function acquire(code, scheme, { staleMs = 15 * 60 * 1000 } = {}) {
+  const path = join(DOSSIER_DIR, scheme, `${code.toLowerCase()}.lock`);
+  mkdirSync(dirname(path), { recursive: true });
+  try {
+    closeSync(openSync(path, 'wx'));
+    return path;
+  } catch {
+    // A lock left behind by a killed process must not block the region forever.
+    try {
+      if (Date.now() - statSync(path).mtimeMs > staleMs) { unlinkSync(path); closeSync(openSync(path, 'wx')); return path; }
+    } catch { /* someone else won the race */ }
+    return null;
+  }
+}
+function release(path) { try { unlinkSync(path); } catch { /* already gone */ } }
+
 async function safe(fn) {
   try { return await fn(); } catch (err) { return { error: err.message }; }
 }
@@ -359,7 +390,7 @@ export function coverage() {
   const count = (scheme) => {
     const dir = join(DOSSIER_DIR, scheme);
     if (!existsSync(dir)) return { downloaded: 0, bytes: 0, stale: 0 };
-    const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+    const files = readdirSync(dir).filter((f) => f.endsWith('.json'));   // never .lock
     let bytes = 0, stale = 0;
     for (const f of files) {
       const p = join(dir, f);

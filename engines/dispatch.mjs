@@ -32,6 +32,7 @@ import { humanObservedSql } from '../core/provenance.mjs';
 import { groundToday } from './ground.mjs';
 import { whatMoved, intakePromise } from './loops.mjs';
 import { whatsNext } from './operator.mjs';
+import { attributionFor } from '../adapters/registry.mjs';
 
 // Not a schema column: when a card was last produced is a fact about this
 // computer, not about the commons, and it must never travel to another chapter.
@@ -52,6 +53,10 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
 
   const ground = await groundToday(chapterId).catch(() => null);
   const sections = [];
+  // Every source that actually contributed a line to THIS card, by registry id.
+  // Collected as the card is built rather than assumed afterwards, so a card
+  // that had no weather does not credit a weather service.
+  const used = new Set();
 
   // ── 1. The land. The part nobody else in that chat can produce. ──────────
   if (ground && !ground.error) {
@@ -75,6 +80,10 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
     // that is checked rather than assumed.
     const heard = await soundFact(ground.place);
     if (heard) body.push(heard);
+
+    if (ground.weather?.source_id) used.add(ground.weather.source_id);
+    if (ground.water?.source_id) used.add(ground.water.source_id);
+    if (heard && ground.heard?.source_id) used.add(ground.heard.source_id);
 
     sections.push({ id: 'land', label: ground.place.name, lines: body.filter(Boolean) });
   }
@@ -135,6 +144,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
     // machine, and almost all the media this OS can reach is CC-BY-NC, which
     // this project does not redistribute (docs/SOCIAL_LAYER.md §3.7).
     contains_media: false,
+    ...credits([...used]),
   };
   card.text = asText(card);
   return card;
@@ -207,6 +217,36 @@ function outwardAsk(chapterId) {
   };
 }
 
+/**
+ * Credit for whatever actually fed this card.
+ *
+ * A card is not a screen. It is pasted into a group chat and forwarded, and it
+ * is already in somebody else's hands by the time anyone checks it. For a
+ * CC-BY source — Open-Meteo is one, and it is the weather everywhere outside
+ * US National Weather Service coverage — attribution is not tidiness, it is
+ * the condition of being allowed to share it at all.
+ *
+ * Anything the registry cannot resolve is NAMED rather than dropped. A card
+ * missing one credit is otherwise indistinguishable from a card that needed
+ * none, which is the shape this project keeps finding: absence reading as a
+ * clean result.
+ */
+function credits(ids) {
+  if (!ids.length) return { credit: null, sources: [], unresolved_sources: [] };
+  const resolved = attributionFor(ids);
+  const known = new Set(resolved.map((r) => r.id ?? null).filter(Boolean));
+  const unresolved = known.size ? ids.filter((i) => !known.has(i)) : [];
+  const names = resolved.map((r) => r.attribution || r.source).filter(Boolean);
+  return {
+    sources: resolved,
+    unresolved_sources: unresolved,
+    credit: [
+      names.length ? names.join(' · ') : null,
+      unresolved.length ? `Also drawn from: ${unresolved.join(', ')} — check their terms before sharing further.` : null,
+    ].filter(Boolean).join(' '),
+  };
+}
+
 /** The paste-ready block. Plain text, no markdown — chat apps mangle it. */
 function asText(card) {
   const out = [`${card.chapter} — ${card.week_of}`, ''];
@@ -216,6 +256,7 @@ function asText(card) {
     out.push('');
   }
   out.push('Written from our own records. Nothing here is on the internet.');
+  if (card.credit) out.push(card.credit);
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 

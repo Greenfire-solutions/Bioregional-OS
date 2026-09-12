@@ -59,6 +59,7 @@ async function nws(lat, lng) {
   return {
     available: true,
     source: 'NWS api.weather.gov (US federal, public domain)',
+    source_id: 'nws',
     stale: !!forecast?.stale,
     // The IANA zone of the POINT, not of this computer. Someone looking at a
     // place three timezones away should be told that place's sunset.

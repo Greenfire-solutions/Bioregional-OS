@@ -138,6 +138,7 @@ export async function gageContext(siteCode, { parameterCd = '00060' } = {}) {
   } catch (err) { out.stat_error = err.message; }
 
   out.source = 'USGS NWIS (public domain)';
+  out.source_id = 'usgs-nwis';
   return out.current == null ? null : out;
 }
 

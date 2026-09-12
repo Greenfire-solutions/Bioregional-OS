@@ -347,6 +347,27 @@ const exported = atlasGeoJSON('test', { clearance: 'council' });
 check('a GeoJSON export tells QGIS how much of it is approximate',
   typeof exported.bros.features_at_place_centroid === 'number');
 
+// This file LEAVES THE MACHINE. For an ODbL or CC-BY source, credit is not
+// tidiness — it is the condition of being allowed to share it at all. It
+// carried none until a sibling session found the same class of bug in a
+// first-run string: a licence moved out of adapter prose into the registry is
+// only safe once every surface that PRINTED the prose resolves it instead.
+check('an export always carries an attribution block',
+  Array.isArray(exported.bros.attribution), JSON.stringify(exported.bros).slice(0, 120));
+check('an export states its terms rather than leaving them to be assumed',
+  typeof exported.bros.notice === 'string' && exported.bros.notice.length > 20);
+// A source nobody can resolve must be NAMED, never quietly dropped — an export
+// missing one credit is indistinguishable from an export that needed none.
+dbRun(`INSERT INTO signals (id, chapter_id, title, category, lat, lng, source_adapter)
+       VALUES ('sig-unmapped','test','From somewhere unrecognised','Ecological',30.2,-97.7,'mystery-feed')`);
+const withUnknown = atlasGeoJSON('test', { clearance: 'council' });
+check('an unresolvable source is named in the export, not silently omitted',
+  (withUnknown.bros.unresolved_sources ?? []).includes('mystery-feed'),
+  JSON.stringify(withUnknown.bros.unresolved_sources));
+check('and the notice tells the reader to check those terms before sharing',
+  /check their terms before redistributing/i.test(withUnknown.bros.notice));
+dbRun(`DELETE FROM signals WHERE id='sig-unmapped'`);
+
 // ── Layer 3: never average across units ───────────────────────────────────
 // Nitrate arrives in the same WQP result set as both mg/L as N and mg/L as NO3,
 // twenty samples each, on scales differing by about 4.4x. Medianing across them
@@ -1002,6 +1023,24 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
       check('every section records which registry sources it drew on',
         Object.values(d.sections).every((sec) => Array.isArray(sec.sources)));
     }
+  }
+
+  // A long --all run and the OS heartbeat both write dossiers. Two writers on
+  // one file is how a dossier ends up half written.
+  {
+    const D = await import('../adapters/dossier.mjs');
+    if (D.loadDossier('30c')) {
+      const [a, b] = await Promise.all([D.compile('30c'), D.compile('30c')]);
+      check('two writers cannot compile the same region at once',
+        !!(a.skipped || b.skipped));
+      check('the one held off says so rather than failing silently',
+        /another process/.test((a.skipped ?? b.skipped) ?? ''));
+    }
+    const { readdirSync, existsSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const dir = join(D.DOSSIER_DIR, 'epa-l4');
+    check('no lock file is left behind after a compile',
+      !existsSync(dir) || !readdirSync(dir).some((f) => f.endsWith('.lock')));
   }
 
   check('soil is not re-asked on the same cadence as a drought',

@@ -129,6 +129,7 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
         // Streamed from the upstream, never copied: nearly every recording is
         // NonCommercial, so the OS links and hosts nothing.
         source: h.source ?? 'iNaturalist',
+        source_id: h.source_id ?? 'inaturalist',
         export_safe: h.export_safe === true,
       };
     }
