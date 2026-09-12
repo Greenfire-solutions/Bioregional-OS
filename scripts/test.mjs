@@ -20,6 +20,7 @@ import { lookAround, beginHere } from '../engines/firstrun.mjs';
 import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend, credits } from '../engines/dispatch.mjs';
 import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
+import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
 import { attributionFor as attrFor } from '../adapters/registry.mjs';
 import { hazardSignals, worstLevel } from '../adapters/hazards.mjs';
@@ -978,6 +979,147 @@ check('the intake promise counts what was brought and what was answered',
   promise.brought >= 1 && promise.answered >= 1, JSON.stringify(promise));
 check('the intake promise states itself in words a person can read',
   typeof promise.sentence === 'string' && promise.sentence.length > 10);
+
+// ── What is being carried, and what that must never turn into ─────────────
+// §6 refuses leaderboards of people, and a care ledger is one keystroke away
+// from being exactly that. The property that keeps them apart is not the
+// wording — it is that ONLY OPEN OBLIGATIONS COUNT. A number that falls when
+// work finishes is a warning; a number that rises is a score. So the first
+// thing asserted here is that finishing something REMOVES it.
+{
+  const newChapter = async (id) => {
+    await runTool('create_chapter', {
+      id, name: `${id} commons`, scale: 'site',
+      represents: 'the people who signed up', does_not_represent: 'anyone else',
+      lat: 30.2, lng: -97.8,
+    });
+    return id;
+  };
+  const owned = (chapter, title, owner, status = 'Open') =>
+    create('quests', 'quest', chapter, {
+      chapter_id: chapter, title, maintenance_owner: owner, status,
+    });
+
+  const CH = await newChapter('carry');
+  // Three spellings of one person. Splitting them is the dangerous direction:
+  // it reports three people comfortably holding one thing each, and the one
+  // person actually holding three disappears.
+  owned(CH, 'Bank stabilisation', 'Maya R.');
+  owned(CH, 'Understory removal', 'maya r.');
+  owned(CH, 'Path resurfacing', '  Maya R.  ');
+  owned(CH, 'Gauge board repaint', 'T. Okonkwo');
+
+  const c1 = carrying(CH);
+  check('three spellings of one name are one person carrying three things',
+    c1.people.length === 2 && c1.people[0].holding === 3,
+    JSON.stringify(c1.people.map((p) => [p.name, p.holding])));
+  check('the spelling shown back is the one the chapter uses most',
+    c1.people[0].name === 'Maya R.', c1.people[0].name);
+  check('holding more than half of everything open is raised by name',
+    c1.overloaded.includes('Maya R.'), JSON.stringify(c1.overloaded));
+
+  // The whole difference between a warning and a score, in one assertion.
+  dbRun(`UPDATE quests SET status='Complete' WHERE chapter_id=? AND title='Path resurfacing'`, CH);
+  const c2 = carrying(CH);
+  check('finishing the work takes it off the person, it does not add to a total',
+    c2.total_open === 3 && c2.people.find((p) => p.name === 'Maya R.').holding === 2,
+    JSON.stringify({ total: c2.total_open, people: c2.people.map((p) => [p.name, p.holding]) }));
+  check('below the minimum count, a majority share is not a finding',
+    !c2.overloaded.length, JSON.stringify(c2.overloaded));
+
+  // A registered organisation is the only thing allowed to suppress the
+  // warning, because a committee cannot be exhausted. It still shows its load —
+  // hiding it would make every share in the chapter wrong.
+  const ORG = await newChapter('carry-org');
+  create('agents', 'agent', ORG, {
+    chapter_id: ORG, name: 'Ridgeline Partners', vf_agent_type: 'Organization',
+  });
+  owned(ORG, 'Seed collection', 'Ridgeline Partners');
+  owned(ORG, 'Fence line survey', 'Ridgeline Partners');
+  owned(ORG, 'Culvert clearing', 'Ridgeline Partners');
+  owned(ORG, 'Water readings', 'J. Alvarez');
+
+  const c3 = carrying(ORG);
+  const org = c3.people.find((p) => p.name === 'Ridgeline Partners');
+  check('a registered organisation still shows the load it is holding',
+    org?.holding === 3 && c3.total_open === 4);
+  check('a committee is never told it is about to burn out',
+    !c3.overloaded.includes('Ridgeline Partners'), JSON.stringify(c3.overloaded));
+  check('work owned by a group is raised as a gate problem instead',
+    c3.owned_by_a_group.length === 3 && c3.owned_by_a_group.every((u) => u.certain),
+    JSON.stringify(c3.owned_by_a_group.map((u) => u.of)));
+
+  // The direction that would be a real failure: a GUESS from the shape of a
+  // name must never silence a warning about a human. A person called Ada
+  // Circle keeps hers, and merely gets an odd question attached.
+  const GUESS = await newChapter('carry-guess');
+  owned(GUESS, 'Spring monitoring', 'Ada Circle');
+  owned(GUESS, 'Trail closure signage', 'Ada Circle');
+  owned(GUESS, 'Native seed drying', 'Ada Circle');
+  owned(GUESS, 'Newsletter', 'P. Nakamura');
+
+  const c4 = carrying(GUESS);
+  const ada = c4.people.find((p) => p.name === 'Ada Circle');
+  check('a name that merely READS like a group is only a question',
+    ada?.looks_like_a_group === true && ada?.is_organisation === false);
+  check('a guess about a name never silences a burnout warning',
+    c4.overloaded.includes('Ada Circle'), JSON.stringify(c4.overloaded));
+  check('an uncertain group finding says that it is uncertain',
+    c4.owned_by_a_group.every((u) => u.certain === false));
+
+  check('the ledger states itself in words a person can read',
+    typeof c4.sentence === 'string' && c4.sentence.includes('Ada Circle'));
+}
+
+// ── Attention is what a person did, not what a sensor recorded ────────────
+// The same trap core/provenance.mjs exists for, arriving through a different
+// door and pointing the wrong way round. A creek with a USGS gage on it files
+// a reading every three hours forever. Count those as attention and the most
+// neglected place in the chapter reports as the best attended one — and says
+// so with a straight face, because nothing about the screen looks wrong.
+{
+  const CH = 'attend';
+  await runTool('create_chapter', {
+    id: CH, name: 'Attention Commons', scale: 'site',
+    represents: 'the people who signed up', does_not_represent: 'anyone else',
+    lat: 30.2, lng: -97.8,
+  });
+  const visited = create('places', 'place', CH, { chapter_id: CH, name: 'The Ford', lat: 30.2, lng: -97.8 });
+  const gaged = create('places', 'place', CH, { chapter_id: CH, name: 'The Spring', lat: 30.3, lng: -97.9 });
+
+  create('signals', 'signal', CH, {
+    chapter_id: CH, place_id: visited.id, title: 'Frogs back in the shallows',
+    author: 'S. Chen', source_adapter: 'notice',
+  });
+  for (let i = 0; i < 6; i++) {
+    create('signals', 'signal', CH, {
+      chapter_id: CH, place_id: gaged.id, title: `Discharge reading ${i}`,
+      source_adapter: 'usgs',
+    });
+  }
+
+  const a = placeAttention(CH, { days: 90 });
+  const ford = a.places.find((p) => p.name === 'The Ford');
+  const spring = a.places.find((p) => p.name === 'The Spring');
+  check('one person noticing something counts as a visit', ford.visits === 1);
+  check('six gage readings are not six visits', spring.visits === 0,
+    `The Spring reported ${spring.visits} visits from automated readings alone`);
+  check('a place with a gage on it can still be one nobody has been to',
+    spring.never_visited === true);
+
+  // Adding ground to the Atlas must not immediately accuse you of ignoring it.
+  check('a place added today is not neglected', !a.neglected.some((n) => n.name === 'The Spring'));
+  dbRun(`UPDATE places SET created_at=date('now','-200 days') WHERE id=?`, gaged.id);
+  const b = placeAttention(CH, { days: 90 });
+  check('a place nobody has been to in 200 days is',
+    b.neglected.some((n) => n.name === 'The Spring'), JSON.stringify(b.neglected.map((n) => n.name)));
+  check('the neglected place is named in words, with the number of days',
+    /The Spring/.test(b.sentence) && /\d+/.test(b.sentence), b.sentence);
+
+  // It ranks ground. Nothing it returns is a person's total.
+  check('the attention view ranks places, never people',
+    b.places.every((p) => 'name' in p && !('person' in p) && !('who' in p)));
+}
 
 // ── "Here", and why its order is a contract ───────────────────────────────
 // Five tools across two engines answer with no arguments by falling through to

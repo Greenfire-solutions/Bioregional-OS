@@ -6,6 +6,7 @@ import { callTool } from '../api.js';
 import ToolForm from './ToolForm.jsx';
 import Ground from './Ground.jsx';
 import Loops from './Loops.jsx';
+import Carrying from './Carrying.jsx';
 
 const KIND = {
   blocking: { label: 'Blocking',   icon: AlertOctagon,  cls: 'text-[var(--clay)]',  bg: 'bg-[#FBF1EE] border-[#E4C9C2]',
@@ -65,6 +66,12 @@ export default function Today({ onChanged }) {
       {/* Then what came of what people already did — before the list of what
           they have not done yet. */}
       <Loops />
+
+      {/* Then who is carrying it and where nobody has been. Above the work
+          rather than below it: the list of tasks is what asks MORE of the same
+          people, and the question of whether one of them is already holding
+          everything has to be readable before somebody volunteers for another. */}
+      <Carrying />
 
       <div className="flex items-start gap-3">
         <div className="min-w-0">

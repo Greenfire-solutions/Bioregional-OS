@@ -20,6 +20,7 @@ import * as registry from '../adapters/registry.mjs';
 import * as firstrun from '../engines/firstrun.mjs';
 import * as loops from '../engines/loops.mjs';
 import * as dispatch from '../engines/dispatch.mjs';
+import * as attention from '../engines/attention.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -995,6 +996,31 @@ export const TOOLS = [
       'has been waiting longest, and how many are past the fourteen-day mark.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => loops.intakePromise(ch(i)),
+  },
+  {
+    name: 'carrying',
+    description:
+      'Who is holding how much of the open work, and who has held the same thing longest. ' +
+      'Counts only responsibilities still owed — an open project\'s maintenance owner, a ' +
+      'pending decision\'s land seat, a recurring indicator\'s last reader — never finished ' +
+      'work, because counting what people have completed would make this a scoreboard. ' +
+      'Raises a person by name only when they hold more than half of everything open. Use it ' +
+      'to answer "is anybody carrying too much?" before somebody quietly burns out.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => attention.carrying(ch(i)),
+  },
+  {
+    name: 'place_attention',
+    description:
+      'Which ground has actually been attended to lately and which has gone longest without ' +
+      'anybody — observations, gatherings and readings a PERSON recorded, over a rolling ' +
+      'window. Automated readings are excluded: a creek with a gage on it files data every ' +
+      'three hours whether or not a human has been there. Ranks places, never people.',
+    input_schema: S({
+      chapter_id: str(''),
+      days: num('Rolling window in days. Default 90.'),
+    }),
+    handler: (i) => attention.placeAttention(ch(i), { days: i.days ?? 90 }),
   },
 
   // ---------- what this locality already publishes ----------

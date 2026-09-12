@@ -6,6 +6,7 @@
 // Nothing here invents priorities — each item cites the protocol rule it comes
 // from, so a steward can argue with it.
 import { all, one } from '../core/db.mjs';
+import { carrying, placeAttention } from './attention.mjs';
 
 // blocking  — other work cannot proceed until this moves
 // slipped   — a commitment already made has passed its date
@@ -217,6 +218,76 @@ export function whatsNext(chapterId) {
       action: { tool: 'add_gathering', input: { title: g.title } },
     });
   }
+
+  // A person carrying most of the open work is a blocking item, and the stage
+  // it belongs to is Exchange & Care — the same mandate as unpaid hours and
+  // missing childcare, arriving through a different column. It is blocking
+  // rather than open because everything that person holds is queued behind one
+  // human's remaining capacity, which is the definition the top of this file
+  // gives. The wording addresses the council, never the person: they are the
+  // last one who will raise it, and telling somebody they are overloaded is
+  // not the same as relieving them.
+  try {
+    const care = carrying(chapterId);
+    for (const name of care.overloaded ?? []) {
+      const p = care.people.find((x) => x.name === name);
+      if (!p) continue;
+      add({
+        kind: 'blocking', stage: 'Exchange',
+        title: `${p.name} is named on ${p.holding} of ${care.total_open} open responsibilities`,
+        detail: `Longest held: ${p.longest_held?.of ?? '—'}, ${p.longest_held_days} days. ` +
+                'Somebody else has to offer to take one.',
+        age_days: p.longest_held_days,
+        rule: 'Exhaustion is a failure of the commons, not of the person carrying it.',
+        action: { tool: 'carrying', input: {} },
+      });
+    }
+    // Work whose owner is a committee. A Design gap, not a care one: the
+    // maintenance-owner gate is satisfied in the field and unsatisfied in the
+    // world, and no amount of relieving anybody fixes it.
+    for (const u of (care.owned_by_a_group ?? []).slice(0, 3)) {
+      add({
+        kind: 'gap', stage: 'Design',
+        title: `${u.of} is kept alive by ${u.name}, not by a person`,
+        detail: u.certain
+          ? 'Registered as an organisation. Ask which member would notice if the work stopped.'
+          : 'That name reads like a group. If it is one person, ignore this.',
+        rule: 'No project proceeds without a named maintenance owner and an end-of-life plan.',
+        action: { tool: 'carrying', input: {} },
+      });
+    }
+    for (const l of care.held_too_long ?? []) {
+      if ((care.overloaded ?? []).includes(l.name)) continue;   // already said, louder
+      add({
+        kind: 'open', stage: 'Exchange',
+        title: `${l.name} has held the same responsibility for ${l.days} days`,
+        detail: 'Worth asking whether they still want it. Nothing is wrong.',
+        age_days: l.days,
+        rule: 'Exhaustion is a failure of the commons, not of the person carrying it.',
+        action: { tool: 'carrying', input: {} },
+      });
+    }
+  } catch { /* a chapter with no ledger yet has nobody carrying anything */ }
+
+  // Ground nobody has been to. A gap rather than a slip: no commitment was
+  // broken, and the place is not going to complain.
+  try {
+    const att = placeAttention(chapterId, { days: 90 });
+    for (const n of (att.neglected ?? []).slice(0, 3)) {
+      add({
+        kind: 'gap', stage: 'Observe',
+        title: n.never_visited
+          ? `Nobody has been to ${n.name} since it was added`
+          : `Nobody has been to ${n.name} in ${n.days_since} days`,
+        detail: n.open_work
+          ? `${n.open_work} open project${n.open_work === 1 ? '' : 's'} there.`
+          : 'Gage readings are not visits — only what a person recorded counts here.',
+        age_days: n.days_since ?? n.added_days_ago,
+        rule: 'Observation must lead somewhere, or it is surveillance of a place nobody is helping.',
+        action: { tool: 'place_attention', input: {} },
+      });
+    }
+  } catch { /* no places yet */ }
 
   // ── Stage 12: Adapt & Replicate ─────────────────────────────────────────
   for (const q of all(
