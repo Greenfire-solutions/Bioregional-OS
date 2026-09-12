@@ -1177,11 +1177,24 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
       check('the one held off says so rather than failing silently',
         /another process/.test((a.skipped ?? b.skipped) ?? ''));
     }
-    const { readdirSync, existsSync } = await import('node:fs');
+    // A leaked lock is one nobody is holding. This used to assert that NO lock
+    // file existed, which fails whenever `npm run data -- --all` is running —
+    // that is, whenever the lock is doing its job. It caught a live 13-second-old
+    // lock belonging to a healthy download and called it a leak, which is the
+    // kind of red that gets a working guard "fixed".
+    //
+    // What actually distinguishes a leak is age: dossier.mjs treats a lock older
+    // than 15 minutes as abandoned and breaks it. So a lock younger than that is
+    // somebody working, and this test's own region must be clean either way.
+    const { readdirSync, existsSync, statSync } = await import('node:fs');
     const { join } = await import('node:path');
     const dir = join(D.DOSSIER_DIR, 'epa-l4');
-    check('no lock file is left behind after a compile',
-      !existsSync(dir) || !readdirSync(dir).some((f) => f.endsWith('.lock')));
+    const locks = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.lock')) : [];
+    const abandoned = locks.filter((f) => Date.now() - statSync(join(dir, f)).mtimeMs > 15 * 60 * 1000);
+    check('no abandoned lock file is left behind after a compile',
+      abandoned.length === 0, abandoned.join(', '));
+    check('the region this test compiled released its own lock',
+      !locks.includes('30c.lock'), 'compile() did not release the lock it took');
   }
 
   // A section that fails must not take the region with it, and the record it
@@ -1466,6 +1479,62 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('nothing granted can act outside the commons',
     GRANTED.every((g) => g.startsWith('mcp__bioregional-os__') || g === 'ToolSearch'),
     GRANTED.join(', '));
+}
+
+// ── compile() has four outcomes, and every caller must know all four ─────
+// This was found twice. Fixed once in scripts/data.mjs, and the identical line
+// was still sitting in engines/heartbeat.mjs — same field, same missing guard.
+//
+// The outcome both missed is `skipped`: the region is locked because something
+// else is already writing it. That is not a rare race. dossier.mjs takes the
+// lock precisely because a long `npm run data -- --all` and the running OS's
+// heartbeat reach for the same region BY DESIGN, so the branch neither caller
+// handled is the one that fires whenever the library is being downloaded.
+//
+// In the heartbeat it was worse than a crash: `catch { return null }` turned it
+// into a quiet beat, so the task reported nothing to do, the status looked
+// healthy, and the refresh had not run.
+{
+  const { mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { compile } = await import('../adapters/dossier.mjs');
+  const { ROOT } = await import('../core/db.mjs');
+
+  // Hold the lock the way another process would, then ask for the same region.
+  const lock = join(ROOT, 'data', 'dossiers', 'epa-l3', '17.lock');
+  mkdirSync(dirname(lock), { recursive: true });
+  let held = false;
+  try { writeFileSync(lock, '', { flag: 'wx' }); held = true; } catch { /* real run holds it */ }
+
+  const r = await compile('17', { scheme: 'epa-l3' });
+  if (held) rmSync(lock, { force: true });
+
+  check('a locked region comes back skipped, with no refreshed list',
+    !!r.skipped && r.refreshed === undefined,
+    `got ${JSON.stringify(Object.keys(r))}`);
+  check('the skipped outcome is not an error',
+    !r.error, 'lock contention is being reported as a failure');
+
+  // Both consumers, enumerated. A third copy has to be added here, which is the
+  // point — the bug was two copies drifting, not one line being wrong.
+  const callers = [
+    ['scripts/data.mjs', readFileSync('scripts/data.mjs', 'utf8')],
+    ['engines/heartbeat.mjs', readFileSync('engines/heartbeat.mjs', 'utf8')],
+  ];
+  for (const [name, src] of callers) {
+    const joins = src.match(/refreshed\.join\(/g) ?? [];
+    check(`${name} joins refreshed at all (the test still points at real code)`,
+      joins.length > 0, 'this file no longer consumes compile(); drop it from the list');
+    check(`${name} handles the locked outcome`,
+      /r\.skipped/.test(src), 'a locked region will be read as a refresh');
+    check(`${name} refuses to join a list it has not checked is a list`,
+      /Array\.isArray\(r\.refreshed\)/.test(src), 'refreshed.join() is unguarded');
+  }
+  // The heartbeat's extra sin: it swallowed the crash into a quiet beat.
+  const hb = readFileSync('engines/heartbeat.mjs', 'utf8');
+  check('the library beat reports a failure instead of returning a quiet null',
+    !/\}\s*catch\s*\{\s*return null;\s*\}/.test(hb.slice(hb.indexOf('refresh_library'))),
+    'a crash in the library refresh is still indistinguishable from nothing to do');
 }
 
 // ── Report ────────────────────────────────────────────────────────────────

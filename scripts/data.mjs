@@ -103,7 +103,19 @@ async function main() {
         failed++;
       }
       else { console.log(`${c.green}✓${c.reset} ${kb(r.bytes)}  ${c.dim}${r.refreshed.join(' ')}${c.reset}`); done++; bytes += r.bytes; }
-    } catch (err) { console.log(`${c.red}✗${c.reset} ${err.message.slice(0, 60)}`); failed++; }
+    } catch (err) {
+      // The message alone is not enough to find anything. Three regions in this
+      // library failed with "Cannot read properties of undefined (reading
+      // 'join')" and the line was unfindable by reading: every section is inside
+      // safe(), dossier.mjs contains no `.join(` at all, and re-compiling those
+      // exact regions twice each succeeded. A rare fault in a six-hour run that
+      // discards its own stack is a fault nobody can ever fix, so the frame goes
+      // in the log next to the region it happened on.
+      console.log(`${c.red}✗${c.reset} ${err.message.slice(0, 60)}`);
+      const frame = (err.stack ?? '').split('\n').slice(1, 3).map((l) => l.trim()).join(' ← ');
+      if (frame) console.log(`     ${c.dim}${frame.slice(0, 160)}${c.reset}`);
+      failed++;
+    }
     await pause(300);
   }
 

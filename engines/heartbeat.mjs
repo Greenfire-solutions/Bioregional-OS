@@ -116,10 +116,26 @@ const TASKS = [
       try {
         const r = await compileDossier(t.code, { scheme: t.scheme });
         if (r.error || r.unchanged) return null;
+        // The same four outcomes scripts/data.mjs learned, in the copy that was
+        // left behind. `skipped` means a long `npm run data -- --all` already
+        // holds the lock — which is not a rare race but the DESIGNED one, since
+        // the whole point of the lock is that these two reach for the same
+        // region. This branch read it as a refresh and called .join on a field
+        // that is not there, and the catch below turned the crash into `null`:
+        // the beat reported nothing to do, looked healthy, and the library task
+        // had in fact not run at all. Waiting your turn is not failing, and it
+        // is not silence either.
+        if (r.skipped) return `${t.code} ${t.name}: waiting — ${r.skipped}`;
+        if (!Array.isArray(r.refreshed)) {
+          return `${t.code} ${t.name}: unrecognised result (${Object.keys(r).join(', ')})`;
+        }
         const left = due.length - 1;
         return `${t.code} ${t.name}: ${r.refreshed.join(', ')}` +
                (left ? ` · ${left} region${left === 1 ? '' : 's'} still to go` : ' · library current');
-      } catch { return null; }
+      } catch (err) {
+        // A crash here used to be indistinguishable from a quiet beat. Say it.
+        return `${t.code} ${t.name}: could not refresh — ${err.message}`;
+      }
     },
   },
   {
