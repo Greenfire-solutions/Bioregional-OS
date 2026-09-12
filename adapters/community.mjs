@@ -120,9 +120,8 @@ export async function communityHere(lat, lng, { radiusKm = 3, limit = 600 } = {}
 
   return {
     available: true,
-    source: 'OpenStreetMap via Overpass (ODbL)',
+    source: 'OpenStreetMap via Overpass', source_id: 'openstreetmap',
     source_id: 'openstreetmap',
-    attribution: '© OpenStreetMap contributors (ODbL)',
     cached: !!cached, stale: !!stale,
     radius_km: radiusKm,
     categories,

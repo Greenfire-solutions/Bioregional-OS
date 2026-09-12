@@ -122,7 +122,7 @@ async function openMeteo(lat, lng) {
   const d = data?.daily ?? {};
   return {
     available: true,
-    source: 'Open-Meteo (global, CC-BY-4.0, no account)',
+    source: 'Open-Meteo (global, no account)', source_id: 'open-meteo',
     stale: !!stale,
     timezone: data?.timezone ?? null,
     locality: null,

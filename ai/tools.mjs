@@ -20,6 +20,8 @@ import * as registry from '../adapters/registry.mjs';
 import * as firstrun from '../engines/firstrun.mjs';
 import * as loops from '../engines/loops.mjs';
 import * as dispatch from '../engines/dispatch.mjs';
+import * as library from '../engines/library.mjs';
+import { compile as compileDossier } from '../adapters/dossier.mjs';
 
 const S = (props, required = []) => ({ type: 'object', properties: props, required });
 const str = (description) => ({ type: 'string', description });
@@ -1242,6 +1244,110 @@ export const TOOLS = [
       'should we do?" rather than guessing.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => operator.whatsNext(ch(i)),
+  },
+
+  // ---------- the ecoregion library ----------
+  {
+    name: 'library_status',
+    description:
+      'How much of the ecoregion library is downloaded, how much is stale, and which regions this ' +
+      'chapter actually sits in. The library works with no network once downloaded.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ({
+      coverage: library.coverage(),
+      my_regions: ch(i) ? library.myRegions(ch(i)) : null,
+      work: ch(i) ? library.workList(ch(i)) : null,
+    }),
+  },
+  {
+    name: 'list_regions',
+    description:
+      'Find ecoregions in the index that ships with the software — all 967 Level IV and 85 Level ' +
+      'III. Narrow by free text, by a point, or by adjacency to another region. Entirely offline. ' +
+      'Extents are rectangular and ecoregions are not, so a point usually matches several: these ' +
+      'are candidates. For the definitive region at a point use locate_place.',
+    input_schema: S({
+      query: str('Name, code, state or biome — e.g. "Edwards", "30c", "Texas", "Great Plains"'),
+      near: { type: 'object', description: 'Only regions whose extent covers this point',
+              properties: { lat: { type: 'number' }, lng: { type: 'number' } } },
+      next_to: str('Only regions adjacent to this region code'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      downloaded_only: bool('Only regions already in the offline library'),
+      limit: num('Default 25'),
+    }),
+    handler: (i) => {
+      const scheme = i.scheme ?? 'epa-l4';
+      let pool;
+      let note = null;
+
+      if (i.next_to) {
+        pool = library.neighbours(i.next_to, { scheme, limit: 200 })
+          .map((n) => library.region(n.code, { scheme }) ?? n);
+      } else if (i.near && i.near.lat != null && i.near.lng != null) {
+        const at = library.regionsAt(i.near.lat, i.near.lng);
+        pool = scheme === 'epa-l3' ? at.level3 : at.level4;
+        note = 'Candidates by rectangular extent. Use locate_place for the authoritative boundary.';
+      } else {
+        pool = library.regions({ scheme });
+      }
+
+      const q = (i.query ?? '').toLowerCase();
+      const list = pool
+        .filter((r) => !q || `${r.code} ${r.name} ${r.level3_name ?? ''} ${r.biome ?? ''} ${(r.states ?? []).join(' ')}`
+          .toLowerCase().includes(q))
+        .map((r) => ({
+          code: r.code, name: r.name, level3_name: r.level3_name ?? r.name,
+          biome: r.biome, states: r.states,
+          downloaded: !!library.loadDossier(r.code, scheme),
+        }))
+        .filter((r) => !i.downloaded_only || r.downloaded);
+
+      return { matches: list.length, note, regions: list.slice(0, i.limit ?? 25) };
+    },
+  },
+  {
+    name: 'region_brief',
+    description:
+      'Everything known about one ecoregion — plants, animals, threatened species, soil, climate, ' +
+      'water and local resources — read entirely from disk. Works offline. If it has not been ' +
+      'downloaded yet, says so and how to get it.',
+    input_schema: S({
+      code: str('Ecoregion code, e.g. 30c'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+    }, ['code']),
+    handler: (i) => library.brief(i.code, { scheme: i.scheme ?? 'epa-l4' }),
+  },
+  {
+    name: 'find_species',
+    description:
+      'Search every downloaded ecoregion for a plant, animal, insect or fungus by common or ' +
+      'scientific name, and see which regions it is actually recorded in and how often. Entirely ' +
+      'offline. Threatened species are searchable by name; their locations are never stored.',
+    input_schema: S({ query: str('e.g. "Ashe juniper", "monarch", "Quercus"'), limit: num('Default 40') },
+                    ['query']),
+    handler: (i) => library.findSpecies(i.query, { limit: i.limit ?? 40 }),
+  },
+  {
+    name: 'download_region',
+    description:
+      'Download or refresh one ecoregion\'s dossier from the open upstreams. Only sections past ' +
+      'their refresh cadence are fetched, so calling this repeatedly is cheap. Needs a connection; ' +
+      'everything it writes is then readable forever offline.',
+    input_schema: S({
+      code: str('Ecoregion code'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      force: bool('Refetch every section even if current'),
+    }, ['code']),
+    handler: async (i) => {
+      const r = await compileDossier(i.code, { scheme: i.scheme ?? 'epa-l4', force: !!i.force });
+      if (r.error) return r;
+      return {
+        region: r.name ?? r.region, code: r.region,
+        refreshed: r.refreshed ?? [], unchanged: !!r.unchanged,
+        size_kb: r.bytes ? Math.round(r.bytes / 1024) : null,
+        note: 'Stored on disk. Readable from now on with no connection.',
+      };
+    },
   },
 ];
 

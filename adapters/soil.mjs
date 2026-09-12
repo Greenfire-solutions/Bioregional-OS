@@ -149,7 +149,7 @@ async function soilGrids(lat, lng) {
   };
   return {
     available: true,
-    source: 'ISRIC SoilGrids 2.0 (CC-BY-4.0)',
+    source: 'ISRIC SoilGrids 2.0', source_id: 'isric-soilgrids',
     source_id: 'isric-soilgrids',
     cached: !!cached, stale: !!stale,
     resolution: '250 m modelled — not a field survey',
@@ -228,7 +228,7 @@ export async function resolveElevation(lat, lng) {
   if (!Number.isFinite(v)) return { available: false, reason: 'no elevation upstream answered', source: null };
   return {
     available: true, metres: Math.round(v * 10) / 10, feet: Math.round(v * 3.28084),
-    resolution_m: null, source: 'Open-Meteo digital elevation (CC-BY-4.0)', source_id: 'open-meteo',
+    resolution_m: null, source: 'Open-Meteo digital elevation', source_id: 'open-meteo',
   };
 }
 

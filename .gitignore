@@ -20,3 +20,13 @@ app/node_modules/
 .DS_Store
 .env
 .env.local
+
+# The ecoregion library.
+# The INDEX ships with the repo — it is 314 KB and nothing works without it.
+# The DOSSIERS do not: ~100 KB each, ~97 MB for full US coverage, and every byte
+# is regenerable with `npm run data`. Putting them in git history would make the
+# repository permanently heavy for everyone who only wants their own bioregion.
+# To carry them offline, build a portable bundle: npm run data -- --bundle
+data/dossiers/
+!data/regions/
+node_modules

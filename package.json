@@ -20,7 +20,8 @@
     "mcp": "node --disable-warning=ExperimentalWarning mcp/server.mjs",
     "app:dev": "cd app && npm run dev",
     "build": "cd app && npm run build",
-    "test": "node --disable-warning=ExperimentalWarning scripts/test.mjs"
+    "test": "node --disable-warning=ExperimentalWarning scripts/test.mjs",
+    "data": "node --disable-warning=ExperimentalWarning scripts/data.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

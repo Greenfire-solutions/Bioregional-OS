@@ -8,6 +8,8 @@
 import { all, one, run, create } from '../core/db.mjs';
 import * as bio from './bioregional.mjs';
 import { whatsNext } from './operator.mjs';
+import { workList } from './library.mjs';
+import { compile as compileDossier } from '../adapters/dossier.mjs';
 import { groundToday } from './ground.mjs';
 
 const MINUTE = 60_000;
@@ -97,6 +99,27 @@ const TASKS = [
       if (!added) return null;
       return `${worst === 'Critical' ? '⚠ ' : ''}${added} new hazard signal${added === 1 ? '' : 's'}` +
              `${updated ? `, ${updated} still active` : ''}`;
+    },
+  },
+  {
+    name: 'refresh_library',
+    every: 12 * 60 * MINUTE,
+    why: 'The ecoregion library is what the chapter still has when the network is gone. ' +
+         'Each section has its own cadence, so this only fetches what has actually gone stale.',
+    async run(chapterId) {
+      const work = workList(chapterId);
+      const due = [...work.missing, ...work.stale];
+      if (!due.length) return null;
+      // One region per beat. The library is not urgent, and the upstreams are
+      // free public services — there is no reason to arrive as a burst.
+      const t = due[0];
+      try {
+        const r = await compileDossier(t.code, { scheme: t.scheme });
+        if (r.error || r.unchanged) return null;
+        const left = due.length - 1;
+        return `${t.code} ${t.name}: ${r.refreshed.join(', ')}` +
+               (left ? ` · ${left} region${left === 1 ? '' : 's'} still to go` : ' · library current');
+      } catch { return null; }
     },
   },
   {

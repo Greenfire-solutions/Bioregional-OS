@@ -239,7 +239,7 @@ export async function researchAbout(placeName, { limit = 8 } = {}) {
   const works = data?.results ?? [];
   return {
     available: true,
-    source: 'OpenAlex (CC0)', source_id: 'openalex',
+    source: 'OpenAlex', source_id: 'openalex',
     cached: !!cached, stale: !!stale,
     export_safe: true,
     total: data?.meta?.count ?? works.length,
@@ -290,8 +290,7 @@ export async function historicHere(lat, lng, { radiusKm = 5, limit = 60 } = {}) 
   }).filter((s) => s.name || s.kind);
   return {
     available: true,
-    source: 'OpenStreetMap via Overpass (ODbL)', source_id: 'openstreetmap',
-    attribution: '© OpenStreetMap contributors (ODbL)',
+    source: 'OpenStreetMap via Overpass', source_id: 'openstreetmap',
     cached: !!cached, stale: !!stale, export_safe: true,
     sites, total: sites.length,
     readable: sites.length
@@ -311,8 +310,7 @@ export async function articlesHere(lat, lng, { radiusM = 5000, limit = 12 } = {}
   const pages = data?.query?.geosearch ?? [];
   return {
     available: true,
-    source: 'Wikipedia GeoSearch (CC-BY-SA)', source_id: 'wikipedia',
-    attribution: 'Wikipedia contributors (CC-BY-SA 4.0)',
+    source: 'Wikipedia GeoSearch', source_id: 'wikipedia',
     cached: !!cached, stale: !!stale, export_safe: true,
     articles: pages.map((p) => ({
       title: p.title, distance_m: Math.round(p.dist),

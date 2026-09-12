@@ -45,7 +45,7 @@ export async function climateNormals(lat, lng, { years = 10 } = {}) {
   const driest = monthly.reduce((a, b) => ((b.mean_precip_mm ?? 1e9) < (a.mean_precip_mm ?? 1e9) ? b : a));
 
   return {
-    at: [lat, lng], years, source: 'Open-Meteo historical reanalysis (CC-BY 4.0)',
+    at: [lat, lng], years, source: 'Open-Meteo historical reanalysis', source_id: 'open-meteo',
     stale: !!stale,
     monthly,
     annual_precip_mm: Number((monthly.reduce((s2, m) => s2 + (m.mean_precip_mm ?? 0), 0)).toFixed(0)),
