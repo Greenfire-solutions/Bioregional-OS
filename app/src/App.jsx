@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, RefreshCcw, BookOpen, Shield,
-  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity,
+  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity, Home,
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
 import RegionPanel from './components/RegionPanel.jsx';
 import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
+import Commons from './components/Commons.jsx';
 import Vitals from './components/Vitals.jsx';
 import Season from './components/Season.jsx';
 import FirstRun from './components/FirstRun.jsx';
@@ -34,9 +35,14 @@ import { get, callTool } from './api.js';
 // README's description of it freely and it does not. The set is checked, the
 // prose is left to a person.
 const GROUPS = [
-  { id: 'today', label: 'Today', icon: ListChecks, sub: [
-    { id: 'today',  label: 'Today',          icon: ListChecks },
-    { id: 'vitals', label: 'How it is going', icon: Activity },
+  // The board first, and the protocol's own stages behind it. Fifteen tabs
+  // named after the twelve-stage loop is the system's filing cabinet — correct,
+  // complete, and navigable only by somebody who already knows the loop. The
+  // cabinet is still here; it is no longer what a person lands on.
+  { id: 'home', label: 'The commons', icon: Home, sub: [
+    { id: 'home',   label: 'The commons',     icon: Home },
+    { id: 'today',  label: 'Everything to do', icon: ListChecks },
+    { id: 'vitals', label: 'How it is going',  icon: Activity },
   ] },
   { id: 'place', label: 'Place', icon: Compass, sub: [
     { id: 'place', label: 'My Place', icon: Compass },
@@ -64,7 +70,7 @@ const TABS = GROUPS.flatMap((g) => g.sub);
 const groupOf = (id) => GROUPS.find((g) => g.sub.some((t) => t.id === id)) ?? GROUPS[0];
 
 export default function App() {
-  const [tab, setTab] = useState('today');
+  const [tab, setTab] = useState('home');
   const [status, setStatus] = useState(null);
   const [dash, setDash] = useState(null);
   const [places, setPlaces] = useState([]);
@@ -279,6 +285,7 @@ export default function App() {
           ) : (
             <div className="h-full overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl">
+                {tab === 'home' && <Commons onGoTo={setTab} onChanged={load} />}
                 {tab === 'today' && <Today onChanged={load} />}
                 {tab === 'vitals' && <Vitals />}
                 {tab === 'season' && <Season />}

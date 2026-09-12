@@ -26,6 +26,7 @@ import * as neighbours from '../engines/neighbours.mjs';
 import * as turning from '../engines/turning.mjs';
 import * as landseat from '../engines/landseat.mjs';
 import * as matching from '../engines/matching.mjs';
+import * as board from '../engines/board.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -1185,6 +1186,23 @@ export const TOOLS = [
       'chose" are the same conversation.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => quest.priorities(ch(i)),
+  },
+  {
+    name: 'commons_board',
+    description:
+      'One composition answering the four questions a person arrives with: where am I, what is ' +
+      'going on, who is here, and what can I do. The ground and what it is doing now, the open ' +
+      'projects with what is actually in the way of each, who is carrying what, who could help ' +
+      'with what, and the handful of things worth doing next — each with the one action that ' +
+      'does it. Entirely offline and instant: it is the first paint of the first screen and must ' +
+      'never wait on an upstream. Nothing here is new information; it is the same engines ' +
+      'arranged by what a person is looking for rather than by which protocol stage produced it.',
+    input_schema: S({
+      chapter_id: str(''),
+      actions: num('How many things to do. Default 5.'),
+      projects: num('How many projects. Default 8.'),
+    }),
+    handler: (i) => board.board(ch(i), { actions: i.actions ?? 5, projects: i.projects ?? 8 }),
   },
   {
     name: 'override_gate',

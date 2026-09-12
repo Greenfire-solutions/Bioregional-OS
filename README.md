@@ -129,10 +129,25 @@ the Murmurations network.
 
 ## The five places in it
 
-The interface groups into five, in the order a commons actually moves: what the
-land is doing, where you are, the work, the people, and what leaves the building.
+You land on **The commons** — one board answering the four questions a person
+actually arrives with, in that order: where am I, what needs doing, what is
+going on, who is here. Every thing to do carries the button that does it, not a
+link to a tab where it might be.
 
-**Today** — What the land is doing right now: water against its own record for
+Behind it, the interface groups into five, in the order a commons actually
+moves: what the land is doing, where you are, the work, the people, and what
+leaves the building. That grouping follows the protocol's twelve stages, which
+makes it complete and makes it hard to navigate until you know the loop — so it
+is where you go for the depth, and not where you start.
+
+**The commons** — The board. Where you are and what the ground is doing, the
+handful of things worth doing next with the button that does each one, every
+open project and what is actually in the way of it, who is carrying what, who
+could help with what, and what is recorded living around you. Nothing here is
+new information — it is the same engines arranged by what a person is looking
+for rather than by which stage produced it.
+
+**Everything to do** — What the land is doing right now: water against its own record for
 this calendar day, weather, any official hazard alert, and sun and moon computed
 on your own machine. Then *what did you notice?*, then what your observations
 turned into, then what needs doing across all twelve stages, ranked by what

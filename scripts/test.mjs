@@ -1197,6 +1197,66 @@ check('the intake promise states itself in words a person can read',
     /CoMapeo|QGIS/.test(unreadable.message ?? ''), unreadable.message);
 }
 
+// ── The board, and the question it is arranged around ─────────────────────
+// The front of this app was fifteen tabs named after the protocol's stages.
+// That is the system's filing cabinet — complete, correct, and navigable only
+// by somebody who already knows the twelve-stage loop. The person who designed
+// it could not tell where to click.
+{
+  const { board } = await import('../engines/board.mjs');
+
+  // Somebody with no commons yet gets ONE thing to do, and it writes nothing.
+  const nothing = board(null);
+  check('with no commons there is one thing to do and it writes nothing',
+    nothing.error === 'no_chapter' && nothing.action?.tool === 'look_around',
+    JSON.stringify(nothing.action));
+
+  const b = board('test');
+  check('the board answers where am I, what to do, what is going on, who is here',
+    b.here && Array.isArray(b.todo) && Array.isArray(b.projects) && Array.isArray(b.people),
+    JSON.stringify(Object.keys(b)));
+
+  // The land leads. A page that only ever hands somebody their own debts does
+  // not get opened twice — that is the argument of the whole daily-use spec,
+  // and the headline is where it either holds or quietly stops holding.
+  check('the headline is about the ground, not about what you owe',
+    typeof b.headline === 'string' && b.headline.length > 10
+      && !/needs doing|blocked|overdue/i.test(b.headline), b.headline);
+
+  // Every listed thing to do carries the button that does it. Not a link to a
+  // tab where the thing might be.
+  check('everything to do carries the action that does it',
+    b.todo.every((t) => t.action?.tool), JSON.stringify(b.todo.map((t) => t.action?.tool)));
+  check('and cites the rule it comes from',
+    b.todo.every((t) => typeof t.why === 'string' || t.why === null));
+
+  // Five, not thirty — and the shortening is stated rather than silent.
+  check('it shows a few things and says how many it is not showing',
+    b.todo.length <= 5 && typeof b.todo_total === 'number' && b.todo_total >= b.todo.length,
+    `${b.todo.length} of ${b.todo_total}`);
+
+  // A project card answers the question being asked, which is not its stage.
+  check('a project says what is actually in its way, not just its stage',
+    b.projects.every((p) => typeof p.state === 'string' && Array.isArray(p.blocking)));
+  check('and carries the ground it sits on',
+    b.projects.every((p) => 'ground' in p));
+
+  // Offline and instant: this is the first paint of the first screen.
+  const src = readFileSync(new URL('../engines/board.mjs', import.meta.url), 'utf8');
+  check('the board never waits on a network call',
+    !/\bawait\b|\bfetch\(|getJSON|getText/.test(src),
+    'the first screen would hang whenever an upstream is slow');
+
+  // Every action the board offers must be a tool that exists, or the button
+  // does nothing — the failure that is invisible because the screen does not
+  // change.
+  const { TOOLS: T2 } = await import('../ai/tools.mjs');
+  const names = new Set(T2.map((t) => t.name));
+  check('every button on the board reaches a tool that exists',
+    b.todo.every((t) => names.has(t.action.tool)),
+    JSON.stringify(b.todo.map((t) => t.action.tool).filter((n) => !names.has(n))));
+}
+
 // ── A gate you can pass, on your name, with a reason ──────────────────────
 // Binary refusal with no arena is the design–reality gap in code: the tool that
 // cannot be got past at nine on a Sunday is the tool that stops being used, and
