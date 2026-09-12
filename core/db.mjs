@@ -7,27 +7,45 @@ import { makeRid, newId } from './ids.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(HERE, '..');
-export const DB_PATH = process.env.BROS_DB || join(ROOT, 'data', 'commons.db');
+/**
+ * Resolved lazily, on first use — NOT at module load.
+ * ES imports are evaluated before the importing module's body runs, so a file
+ * that sets BROS_DB in its body would otherwise be too late and would silently
+ * open the real commons database. That is how a test suite eats live data.
+ */
+export function dbPath() {
+  return process.env.BROS_DB || join(ROOT, 'data', 'commons.db');
+}
 
 let _db = null;
+let _path = null;
 
 export function db() {
   if (_db) return _db;
-  mkdirSync(dirname(DB_PATH), { recursive: true });
-  _db = new DatabaseSync(DB_PATH);
+  _path = dbPath();
+  mkdirSync(dirname(_path), { recursive: true });
+  _db = new DatabaseSync(_path);
   _db.exec(readFileSync(join(HERE, 'schema.sql'), 'utf8'));
   return _db;
 }
 
 export function close() {
-  if (_db) { _db.close(); _db = null; }
+  if (_db) { _db.close(); _db = null; _path = null; }
 }
+
+/** Which file is actually open right now. */
+export function openPath() { return _path ?? dbPath(); }
 
 /** Insert a row and register its RID in one step. */
 export function create(table, objectType, chapterId, row, sensitivity = 'public') {
   const d = db();
   const id = row.id || newId(objectType.slice(0, 4));
-  const full = { ...row, id };
+  // Drop absent columns rather than writing NULL into them: an explicit NULL
+  // overrides the column DEFAULT, which is how timestamps end up violating
+  // NOT NULL. Nothing here ever needs to write NULL on insert.
+  const full = Object.fromEntries(
+    Object.entries({ ...row, id }).filter(([, v]) => v !== undefined && v !== null)
+  );
   const cols = Object.keys(full);
   const stmt = d.prepare(
     `INSERT INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`
@@ -61,5 +79,5 @@ function normalize(v) {
 }
 
 export function isFresh() {
-  return !existsSync(DB_PATH);
+  return !existsSync(dbPath());
 }

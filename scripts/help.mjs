@@ -59,6 +59,28 @@ const TOPICS = {
     ],
     note: 'Nothing is uploaded anywhere. Deleting that file deletes your commons.',
   },
+  today: {
+    title: 'Knowing what to do',
+    body: [
+      ['Open the Today tab', 'It is the first tab, and it is the answer to "what now?"'],
+      ['Blocking', 'Other work cannot move until this does'],
+      ['Slipped', 'A date the commons committed to has passed'],
+      ['Missing', 'The protocol expects this to exist and it does not'],
+      ['Every item has a button', 'It opens the exact form that fixes that item'],
+      ['From the terminal instead', 'curl -s localhost:4180/api/whats-next'],
+    ],
+    note: 'Each item quotes the rule it comes from. If you disagree with the rule, the item is wrong — say so.',
+  },
+  automatic: {
+    title: 'What it does on its own',
+    body: [
+      ['While the OS is running', 'It locates places, refreshes water readings, watches review dates'],
+      ['See what it has done', 'curl -s localhost:4180/api/heartbeat'],
+      ['Turn it off', 'npm run os -- --no-heartbeat'],
+    ],
+    note: 'It only runs while the OS is open. That is deliberate — on macOS a background timer ' +
+          'cannot read your Desktop and would fail silently, which is worse than not running at all.',
+  },
   protocol: {
     title: 'How the OS thinks',
     body: [
@@ -66,6 +88,7 @@ const TOPICS = {
       ['How it plugs into other projects', 'docs/INTEROP.md'],
       ['Driving it from Claude Code', 'docs/CLAUDE_CODE.md'],
       ['Are we actually a functioning chapter?', 'Open the "My Place" tab'],
+      ['Prove the rules really are enforced', 'npm test'],
     ],
     note: 'The OS refuses some things on purpose: a council item without a Land Seat report, ' +
           'a project reaching build with open consent gates, paid work with unacknowledged terms.',

@@ -1,28 +1,36 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw,
-  BookOpen, Shield, Flame, PanelRightClose, PanelRightOpen,
+  Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, BookOpen, Shield,
+  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus,
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
 import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
-import { MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation } from './views/Views.jsx';
+import Today from './components/Today.jsx';
+import ToolForm from './components/ToolForm.jsx';
+import {
+  MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
+} from './views/Views.jsx';
 import { get, callTool } from './api.js';
 
+// Each tab names the loop stage it serves, and the tool that adds to it.
 const TABS = [
-  { id: 'place', label: 'My Place', icon: Compass },
-  { id: 'atlas', label: 'Atlas', icon: MapIcon },
-  { id: 'signals', label: 'Signals', icon: Radio },
-  { id: 'quests', label: 'Quests', icon: Flag },
-  { id: 'council', label: 'Council', icon: Scale },
-  { id: 'gatherings', label: 'Gatherings', icon: Users },
-  { id: 'exchange', label: 'Exchange', icon: RefreshCw },
-  { id: 'learn', label: 'Learn', icon: BookOpen },
+  { id: 'today',      label: 'Today',      icon: ListChecks },
+  { id: 'place',      label: 'My Place',   icon: Compass },
+  { id: 'atlas',      label: 'Atlas',      icon: MapIcon,   add: 'add_place',        addLabel: 'Add a place' },
+  { id: 'listen',     label: 'Listen',     icon: Ear,       add: 'submit_intake',    addLabel: 'Bring a need' },
+  { id: 'signals',    label: 'Signals',    icon: Radio,     add: 'add_signal',       addLabel: 'Record an observation' },
+  { id: 'quests',     label: 'Quests',     icon: Flag,      add: 'open_quest',       addLabel: 'Open a project' },
+  { id: 'council',    label: 'Council',    icon: Scale,     add: 'propose_decision', addLabel: 'Propose to council' },
+  { id: 'measure',    label: 'Measure',    icon: Ruler,     add: 'add_indicator',    addLabel: 'Add an indicator' },
+  { id: 'gatherings', label: 'Gatherings', icon: Users,     add: 'add_gathering',    addLabel: 'Schedule a gathering' },
+  { id: 'exchange',   label: 'Exchange',   icon: RefreshCw, add: 'record_exchange',  addLabel: 'Log a contribution' },
+  { id: 'learn',      label: 'Learn',      icon: BookOpen,  add: 'publish_learning', addLabel: 'Write something up' },
   { id: 'federation', label: 'Federation', icon: Shield },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState('atlas');
+  const [tab, setTab] = useState('today');
   const [status, setStatus] = useState(null);
   const [dash, setDash] = useState(null);
   const [places, setPlaces] = useState([]);
@@ -35,10 +43,13 @@ export default function App() {
   const [learn, setLearn] = useState([]);
   const [peers, setPeers] = useState([]);
   const [doctrine, setDoctrine] = useState(null);
+  const [intake, setIntake] = useState([]);
+  const [indicators, setIndicators] = useState([]);
   const [gates, setGates] = useState({});
   const [focus, setFocus] = useState(null);
   const [panel, setPanel] = useState(true);
   const [discovering, setDiscovering] = useState(false);
+  const [form, setForm] = useState(null);
 
   const load = useCallback(async () => {
     const safe = (p, f) => get(p).then(f).catch(() => {});
@@ -49,6 +60,8 @@ export default function App() {
       safe('decisions', setDecisions), safe('gatherings', setGatherings),
       safe('exchange', setExchange), safe('learn', setLearn),
       safe('federation', setPeers), safe('doctrine', setDoctrine),
+      safe('intake', setIntake),
+      callTool('list_indicators', {}).then((r) => Array.isArray(r) && setIndicators(r)).catch(() => {}),
     ]);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -65,11 +78,12 @@ export default function App() {
   }
   function focusOn(coords) { setFocus(coords); setTab('atlas'); }
 
+  const active = TABS.find((t) => t.id === tab);
   const showMap = tab === 'atlas' || tab === 'place';
+  const blocking = dash?.viability ? dash.viability.total - dash.viability.passed : 0;
 
   return (
     <div className="flex h-full flex-col">
-      {/* header */}
       <header className="flex items-center gap-3 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2.5">
         <Flame className="h-5 w-5 text-[var(--gold)]" />
         <div>
@@ -79,9 +93,7 @@ export default function App() {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-3 text-[11px] text-[var(--ink-3)]">
-          {status && (
-            <span>{status.counts.places} places · {status.counts.signals} signals · {status.tools} tools</span>
-          )}
+          {status && <span>{status.counts.places} places · {status.counts.signals} signals · {status.tools} tools</span>}
           <button onClick={() => setPanel((p) => !p)}
             className="rounded border border-[var(--line)] p-1.5 hover:border-[var(--moss)]"
             title={panel ? 'Hide assistant' : 'Show assistant'}>
@@ -90,8 +102,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* nav */}
-      <nav className="scrollbar-none overflow-x-auto border-b border-[var(--line)] bg-[var(--paper-2)] px-4">
+      <nav className="scrollbar-none flex items-center gap-2 overflow-x-auto border-b border-[var(--line)] bg-[var(--paper-2)] px-4">
         <div className="flex gap-1 py-1.5">
           {TABS.map((t) => {
             const I = t.icon, on = tab === t.id;
@@ -101,13 +112,25 @@ export default function App() {
                   on ? 'bg-[var(--moss)] text-[var(--paper)]' : 'text-[var(--ink-2)] hover:bg-[var(--line-2)]'}`}>
                 <I className={`h-3.5 w-3.5 ${on ? 'text-[var(--gold)]' : 'text-[var(--ink-3)]'}`} />
                 {t.label}
+                {t.id === 'today' && blocking > 0 && (
+                  <span className={`rounded-full px-1.5 text-[10px] ${on ? 'bg-[var(--gold)] text-[var(--ink)]' : 'bg-[var(--clay)] text-white'}`}>
+                    {blocking}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
+        {active?.add && (
+          <button onClick={() => setForm({ tool: active.add })}
+            className="ml-auto mr-1 flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border
+                       border-[var(--moss)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--moss)]
+                       hover:bg-[var(--moss)] hover:text-white">
+            <Plus className="h-3.5 w-3.5" />{active.addLabel}
+          </button>
+        )}
       </nav>
 
-      {/* body */}
       <div className="flex min-h-0 flex-1">
         <main className="min-w-0 flex-1">
           {showMap ? (
@@ -125,9 +148,15 @@ export default function App() {
           ) : (
             <div className="h-full overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl">
+                {tab === 'today' && <Today onChanged={load} />}
+                {tab === 'listen' && <Listen intake={intake} />}
                 {tab === 'signals' && <Signals signals={signals} onFocus={focusOn} />}
-                {tab === 'quests' && <Quests quests={quests} gates={gates} onLoadGates={loadGates} onFocus={focusOn} />}
-                {tab === 'council' && <Council decisions={decisions} due={dash?.due_for_review} />}
+                {tab === 'quests' && <Quests quests={quests} gates={gates} onLoadGates={loadGates}
+                                             onFocus={focusOn} onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
+                {tab === 'council' && <Council decisions={decisions} due={dash?.due_for_review}
+                                               onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
+                {tab === 'measure' && <Measure indicators={indicators}
+                                               onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
                 {tab === 'gatherings' && <Gatherings gatherings={gatherings} />}
                 {tab === 'exchange' && <Exchange exchange={exchange} />}
                 {tab === 'learn' && <Learn learn={learn} doctrine={doctrine} />}
@@ -139,10 +168,16 @@ export default function App() {
 
         {panel && (
           <aside className="w-[24rem] shrink-0">
-            <Assistant configured={!!status?.ai_configured} onRefresh={load} />
+            <Assistant configured={!!status?.ai_configured} toolCount={status?.tools} onRefresh={load} />
           </aside>
         )}
       </div>
+
+      {form && (
+        <ToolForm tool={form.tool} prefill={form.prefill ?? {}}
+                  onClose={() => setForm(null)}
+                  onDone={() => setTimeout(() => { setForm(null); load(); }, 1400)} />
+      )}
 
       <Guide tab={tab} />
     </div>

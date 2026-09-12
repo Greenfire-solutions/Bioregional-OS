@@ -39,13 +39,28 @@ it. Every place resolves to its real ecoregion, biome and HUC12 watershed.
 discharge and gage height, refreshed on demand, cached so the map still works
 with no internet.
 
+**Everything a person can do, Claude can do, and vice versa.** One registry of 49
+tools feeds the MCP server, the in-app assistant, the REST API *and* the forms in
+the interface — the forms are generated from the tools' own schemas. There is no
+privileged path that skips a consent gate.
+
 **A protocol that is actually enforced.** The BioRegional Commons manual is not a
 PDF sitting next to the software; it *is* the software. A council item without a
 Land Seat report is refused. A project cannot reach the build stage with an open
 consent gate. Paid work without acknowledged terms is refused. A chapter that
 hasn't published what it does *not* represent fails its own viability test.
 
-**An AI that runs the whole thing — and cannot govern it.** 23 tools, exposed
+**It tells you what to do next.** The Today view walks all twelve stages and
+reports what is blocking, what has slipped past a date it committed to, and what
+the protocol expects to exist and doesn't — each with the rule it comes from, so
+you can argue with it, and the button that fixes it.
+
+**It tends itself while it runs.** A heartbeat locates new places against real
+ecological boundaries, refreshes water readings, and watches review dates. Not a
+launchd timer: on macOS those cannot read `~/Desktop` and fail *silently*, and a
+scheduler that lies about running is worse than none.
+
+**An AI that runs the whole thing — and cannot govern it.** 49 tools, exposed
 identically to Claude Code (over MCP), the Claude Desktop app, and an assistant
 inside the page. It reads the same data the map draws. It cannot decide
 legitimacy, rights, funding, cultural permission, safety clearance, or who
@@ -62,11 +77,14 @@ the Murmurations network.
 
 | | |
 |---|---|
+| **Today** | What needs doing across all twelve stages, ranked by what blocks other work. Each item cites the protocol rule it comes from, and carries the button that fixes it |
 | **My Place** | Chapter identity and the ten-question Minimum Viable Chapter Test, with the specific fix for every failure |
 | **Atlas** | The 3D ecoregion map — terrain and globe, Level III and IV, relief on/off |
+| **Listen** | The front door. Someone brings a need; the commons answers and can be appealed |
 | **Signals** | What the land and people are showing. Human observations start unverified; USGS water refreshes itself |
 | **Quests** | Projects and their consent/safety gates. A good idea never overrides a red flag |
 | **Council** | Decisions, the Land Seat report, red flags, review dates |
+| **Measure** | Indicators, baselines and decision triggers. A reading that moves away from target says so |
 | **Gatherings** | Events, scored on care provision — meals, transport, childcare, accessibility |
 | **Exchange** | Contributions as ValueFlows events. Flags a commons running on unpaid labour |
 | **Learn** | Knowledge written so it can travel, plus the doctrine the OS runs on |
@@ -99,6 +117,7 @@ clean copy to hand another community.
 | `npm run update` | Refresh reference data, rebuild the interface |
 | `npm run update -- --package` | Clean copy for another community, without your data |
 | `npm run seed -- --reset` | Start over with the example commons |
+| `npm test` | 29 protocol tests — proves the gates actually refuse |
 
 ---
 

@@ -9,6 +9,8 @@ import { atlasGeoJSON } from '../../adapters/geo.mjs';
 import { ecoregionPolygons, globalEcoregions } from '../../adapters/layers.mjs';
 import { exportLedger } from '../../adapters/valueflows.mjs';
 import { TOOLS, runTool } from '../../ai/tools.mjs';
+import * as heartbeat from '../../engines/heartbeat.mjs';
+import { whatsNext } from '../../engines/operator.mjs';
 import { aiStream } from './ai.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -53,6 +55,14 @@ export async function api(req, res, url) {
         protected: steward.protectedInventory(chapterId),
       };
 
+    case 'heartbeat': return heartbeat.status();
+    case 'whats-next': return whatsNext(chapterId);
+    case 'indicators': return all(
+      `SELECT i.*,
+              (SELECT value FROM measurements m WHERE m.indicator_id=i.id ORDER BY m.measured_at DESC LIMIT 1) latest_value,
+              (SELECT measured_at FROM measurements m WHERE m.indicator_id=i.id ORDER BY m.measured_at DESC LIMIT 1) latest_at,
+              (SELECT COUNT(*) FROM measurements m WHERE m.indicator_id=i.id) measurement_count
+         FROM indicators i WHERE i.chapter_id=? ORDER BY i.created_at DESC`, chapterId);
     case 'places':   return all('SELECT * FROM places WHERE chapter_id=? ORDER BY name', chapterId);
     case 'hubs':     return all('SELECT * FROM hubs WHERE chapter_id=? ORDER BY name', chapterId);
     case 'signals':  return all('SELECT * FROM signals WHERE chapter_id=? ORDER BY created_at DESC LIMIT 500', chapterId);

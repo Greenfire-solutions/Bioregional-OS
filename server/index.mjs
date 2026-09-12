@@ -13,9 +13,12 @@ import { networkInterfaces } from 'node:os';
 import { execFile } from 'node:child_process';
 import { db, ROOT } from '../core/db.mjs';
 import { api } from './routes/api.mjs';
+import * as heartbeat from '../engines/heartbeat.mjs';
+import { one } from '../core/db.mjs';
 
 const argv = process.argv.slice(2);
 const SHARE = argv.includes('--share');
+const NO_BEAT = argv.includes('--no-heartbeat');
 const OPEN = argv.includes('--open');
 const PORT = Number(process.env.PORT || 4180);
 const HOST = SHARE ? '0.0.0.0' : '127.0.0.1';
@@ -102,6 +105,7 @@ a{color:#4A5D4E}.step{border-left:3px solid #D4AF37;padding-left:1rem;margin:1.5
 
 db();
 server.listen(PORT, HOST, () => {
+  const chapter = one('SELECT id, name FROM chapters ORDER BY founded_at LIMIT 1');
   const ip = lanAddress();
   const line = '─'.repeat(52);
   console.log(`\n  🌿  BioRegional OS is running\n  ${line}`);
@@ -112,6 +116,11 @@ server.listen(PORT, HOST, () => {
   console.log(`  ${line}`);
   console.log(`  Lost? Run  npm run help   ·   Something broken?  npm run doctor`);
   console.log(`  Stop it with Control + C. Nothing leaves this machine.\n`);
+  if (chapter && !NO_BEAT) {
+    heartbeat.start(chapter.id);
+    console.log(`  Tending ${chapter.name} while this stays open — locating places, refreshing`);
+    console.log(`  water readings, watching review dates. Stop with --no-heartbeat.\n`);
+  }
   if (OPEN) execFile('open', [`http://localhost:${PORT}`], () => {});
 });
 

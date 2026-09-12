@@ -10,7 +10,7 @@ cd "path/to/Bioregional-OS"
 claude
 ```
 
-That's it. Claude Code now has all 23 tools. Try:
+That's it. Claude Code now has all 49 tools. Try:
 
 > what is the state of the commons?
 
@@ -25,6 +25,11 @@ That's it. Claude Code now has all 23 tools. Try:
 | "What ecoregions are in this bounding box?" | Queries the same layer the 3D map draws |
 | "Find our neighbours" | Searches the Murmurations network and records peers |
 | "Propose a decision about X" | Refuses without a Land Seat report — by design |
+| "What should we do today?" | `whats_next` — every stage checked, ranked by what blocks other work |
+| "Someone brought a need" | Records it, and tracks that they are owed an answer |
+| "Close the land access gate on X" | Refuses without evidence and a named reviewer |
+| "Advance that project to prototype" | Refuses, with the specific blockers, until it is ready |
+| "Record this week's reading" | Says whether it moved toward or away from the target |
 | "What can we fix first?" | Runs the Minimum Viable Chapter Test and ranks the failures |
 
 ## The guardrails are in the code, not the prompt
@@ -48,6 +53,14 @@ system prompt:
   outright.
 - **Restricted and sacred material is filtered by clearance**, and exports report
   what was withheld rather than silently dropping it.
+- **Required fields are enforced centrally**, so a tool call that omits a
+  mandatory field is refused the same way for Claude Code, the assistant, the
+  REST API and the interface.
+- **An indicator without a decision trigger is refused.** Measurement that cannot
+  change a decision is decoration.
+- **Declining an intake item without a reason is refused.**
+
+Run `npm test` to see all 29 of these exercised.
 
 ## Logging
 

@@ -7,16 +7,6 @@ import { all, one, create, run } from '../core/db.mjs';
 const IRREVERSIBLE_METHODS = ['supermajority_consensus', 'explicit_permission'];
 
 export function propose(chapterId, d) {
-  // Rights before efficiency: an irreversible decision cannot ride a light method.
-  if (!d.reversible && !IRREVERSIBLE_METHODS.includes(d.method)) {
-    return {
-      error: 'method_too_light',
-      message:
-        `An irreversible decision cannot use "${d.method}". The manual requires ` +
-        'supermajority/consensus with an affected-party process, written analysis, ' +
-        'and a reconsideration period.',
-    };
-  }
   // Every agenda item carries a Land Seat report. No report, no proposal.
   if (!d.land_seat_report) {
     return {
@@ -25,7 +15,20 @@ export function propose(chapterId, d) {
                'observations, seasonal conditions, downstream effects, uncertainty, red flags.',
     };
   }
-  return create('decisions', 'decision', chapterId, { ...d, chapter_id: chapterId, status: 'proposed' });
+  // Rights before efficiency: an irreversible decision cannot ride a light method.
+  // Absent an explicit flag a decision is reversible — the schema default.
+  const reversible = d.reversible !== false && d.reversible !== 0;
+  if (!reversible && !IRREVERSIBLE_METHODS.includes(d.method)) {
+    return {
+      error: 'method_too_light',
+      message:
+        `An irreversible decision cannot use "${d.method}". The manual requires ` +
+        'supermajority/consensus with an affected-party process, written analysis, ' +
+        'and a reconsideration period.',
+    };
+  }
+  return create('decisions', 'decision', chapterId,
+                { ...d, reversible: reversible ? 1 : 0, chapter_id: chapterId, status: 'proposed' });
 }
 
 export function decide(id, { decided_by, review_date } = {}) {

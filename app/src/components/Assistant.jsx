@@ -10,7 +10,7 @@ const SUGGESTIONS = [
   'Pull the latest water data and tell me what changed.',
 ];
 
-export default function Assistant({ configured, onRefresh }) {
+export default function Assistant({ configured, onRefresh, toolCount }) {
   const [messages, setMessages] = useState([]);     // API-shaped history
   const [display, setDisplay] = useState([]);       // what the panel renders
   const [input, setInput] = useState('');
@@ -75,8 +75,9 @@ export default function Assistant({ configured, onRefresh }) {
       {!configured && (
         <div className="border-b border-[var(--line)] bg-[#FBF7E8] px-4 py-3 text-xs text-[var(--ink-2)]">
           No <code className="rounded bg-[var(--line-2)] px-1">ANTHROPIC_API_KEY</code> set. Add one to
-          <code className="mx-1 rounded bg-[var(--line-2)] px-1">.env</code>, or drive the same 23 tools
-          from Claude Code over MCP — see <code className="rounded bg-[var(--line-2)] px-1">docs/CLAUDE_CODE.md</code>.
+          <code className="mx-1 rounded bg-[var(--line-2)] px-1">.env</code>, or drive the same
+          {' '}{toolCount ?? 'same'} tools from Claude Code over MCP — see
+          <code className="mx-1 rounded bg-[var(--line-2)] px-1">docs/CLAUDE_CODE.md</code>.
         </div>
       )}
 

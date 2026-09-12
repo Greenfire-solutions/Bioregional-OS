@@ -13,7 +13,7 @@ export const H = ({ children, sub }) => (
     {sub && <p className="mt-0.5 text-xs text-[var(--ink-2)]">{sub}</p>}
   </div>
 );
-const Pill = ({ tone = 'neutral', children }) => {
+export const Pill = ({ tone = 'neutral', children }) => {
   const tones = {
     neutral: 'bg-[var(--line-2)] text-[var(--ink-2)]',
     good: 'bg-[#E6EFE7] text-[var(--moss)]',
@@ -111,7 +111,7 @@ const Row = ({ label, value, tone }) => (
     <Pill tone={tone ?? 'neutral'}>{value}</Pill>
   </div>
 );
-const Empty = ({ children }) => (
+export const Empty = ({ children }) => (
   <div className="rounded border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--ink-2)]">{children}</div>
 );
 
@@ -164,7 +164,7 @@ export function Signals({ signals, onFocus }) {
 }
 
 // ── Quests ────────────────────────────────────────────────────────────────
-export function Quests({ quests, gates, onLoadGates, onFocus }) {
+export function Quests({ quests, gates, onLoadGates, onFocus, onAct }) {
   return (
     <div className="space-y-4">
       <H sub="A high score never overrides a red flag, missing consent, or a missing maintenance owner.">
@@ -209,8 +209,20 @@ export function Quests({ quests, gates, onLoadGates, onFocus }) {
                       <span className={x.satisfied ? 'text-[var(--ink-3)]' : 'text-[var(--ink)]'}>
                         {x.gate.replace(/_/g, ' ')}
                       </span>
+                      {!x.satisfied && onAct && (
+                        <button onClick={() => onAct('satisfy_quest_gate', { quest_id: q.id, gate: x.gate })}
+                          className="ml-auto text-[10px] text-[var(--moss)] underline">close it</button>
+                      )}
                     </div>
                   ))}
+                  {onAct && (
+                    <div className="flex gap-3 pt-1.5">
+                      <button onClick={() => onAct('update_quest', { quest_id: q.id })}
+                        className="text-[10px] text-[var(--moss)] underline">define the project</button>
+                      <button onClick={() => onAct('advance_quest', { quest_id: q.id })}
+                        className="text-[10px] text-[var(--moss)] underline">advance a stage</button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -222,7 +234,7 @@ export function Quests({ quests, gates, onLoadGates, onFocus }) {
 }
 
 // ── Council ───────────────────────────────────────────────────────────────
-export function Council({ decisions, due }) {
+export function Council({ decisions, due, onAct }) {
   return (
     <div className="space-y-4">
       <H sub="Every agenda item carries a Land Seat report. Irreversible items need a heavier method.">
@@ -258,6 +270,18 @@ export function Council({ decisions, due }) {
             <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">{d.land_seat_report}</p>
           </div>
           {d.review_date && <div className="mt-2 text-[11px] text-[var(--ink-3)]">Review: {d.review_date}</div>}
+          {onAct && (
+            <div className="mt-2 flex gap-3 border-t border-[var(--line-2)] pt-2">
+              {d.red_flags && (
+                <button onClick={() => onAct('clear_red_flag', { decision_id: d.id })}
+                  className="text-[11px] text-[var(--clay)] underline">resolve the red flag</button>
+              )}
+              {d.status !== 'decided' && (
+                <button onClick={() => onAct('decide_council_item', { decision_id: d.id })}
+                  className="text-[11px] text-[var(--moss)] underline">decide this</button>
+              )}
+            </div>
+          )}
         </Card>
       ))}
     </div>
@@ -379,3 +403,112 @@ export function Federation({ peers, onDiscover, discovering }) {
     </div>
   );
 }
+
+// ── Stage 2: Listen ───────────────────────────────────────────────────────
+export function Listen({ intake }) {
+  const waiting = intake.filter((i) => i.status === 'received');
+  const answered = intake.filter((i) => i.status !== 'received');
+  return (
+    <div className="space-y-4">
+      <H sub="The front door. Someone brings a need; the commons answers and can be appealed.">
+        Listen
+      </H>
+      {intake.length === 0 && (
+        <Empty>
+          Nothing has been brought yet. Until one person submits a need and receives a response,
+          the chapter fails its own viability test.
+        </Empty>
+      )}
+      {!!waiting.length && (
+        <div className="text-[10px] uppercase tracking-wide text-[var(--clay)]">
+          Waiting for an answer — {waiting.length}
+        </div>
+      )}
+      {[...waiting, ...answered].map((i) => (
+        <Card key={i.id} className={i.status === 'received' ? 'border-[#E4C9C2]' : ''}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone={i.status === 'received' ? 'bad' : i.status === 'declined' ? 'warn' : 'good'}>
+              {i.status.replace(/_/g, ' ')}
+            </Pill>
+            <Pill>{i.kind}</Pill>
+            {i.private ? <Pill tone="warn">private</Pill> : null}
+          </div>
+          <p className="mt-2 text-sm">{i.body}</p>
+          <div className="mt-1.5 text-[11px] text-[var(--ink-3)]">
+            {i.submitted_by || 'anonymous'}{i.affected_parties ? ` · affects: ${i.affected_parties}` : ''}
+          </div>
+          {i.response && (
+            <div className="mt-2 border-l-2 border-[var(--moss)] pl-2.5">
+              <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Response</div>
+              <p className="text-xs text-[var(--ink-2)]">{i.response}</p>
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── Stage 11: Measure ─────────────────────────────────────────────────────
+export function Measure({ indicators, onAct }) {
+  return (
+    <div className="space-y-4">
+      <H sub="An indicator without a decision trigger is decoration. Monitoring has to be able to change a decision.">
+        Measure
+      </H>
+      {indicators.length === 0 && (
+        <Empty>Nothing is being measured yet. Add an indicator with a baseline and a decision trigger.</Empty>
+      )}
+      {indicators.map((n) => {
+        const moved = n.latest_value != null && n.baseline_value != null
+          ? n.latest_value - n.baseline_value : null;
+        const wanted = n.target_value != null && n.baseline_value != null
+          ? n.target_value - n.baseline_value : null;
+        const toward = moved != null && wanted != null
+          ? (Math.sign(moved) === Math.sign(wanted) || moved === 0) : null;
+        const overdue = n.target_by && new Date(n.target_by) < new Date() && !n.measurement_count;
+        return (
+          <Card key={n.id}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone={n.measurement_count ? (toward === false ? 'bad' : 'good') : 'warn'}>
+                {n.measurement_count ? `${n.measurement_count} reading${n.measurement_count === 1 ? '' : 's'}` : 'never measured'}
+              </Pill>
+              {overdue && <Pill tone="bad">target date passed</Pill>}
+              {toward === false && <Pill tone="bad">moving away from target</Pill>}
+            </div>
+            <h3 className="mt-1.5 text-sm font-medium">{n.name}</h3>
+            <div className="mt-2 flex flex-wrap gap-4 text-xs">
+              <Stat label="Baseline" value={fmt(n.baseline_value, n.unit)} sub={n.baseline_at} />
+              <Stat label="Latest" value={n.latest_value != null ? fmt(n.latest_value, n.unit) : '—'} sub={n.latest_at} />
+              <Stat label="Target" value={fmt(n.target_value, n.unit)} sub={n.target_by} />
+            </div>
+            {n.method && <p className="mt-2 text-[11px] text-[var(--ink-3)]"><b>Method:</b> {n.method}</p>}
+            {n.decision_trigger && (
+              <div className="mt-2 rounded bg-[var(--paper-2)] px-2.5 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Decision trigger</div>
+                <p className="text-[11px] text-[var(--ink-2)]">{n.decision_trigger}</p>
+              </div>
+            )}
+            {n.stewardship_horizon && (
+              <p className="mt-1.5 text-[11px] text-[var(--ink-3)]"><b>After the project:</b> {n.stewardship_horizon}</p>
+            )}
+            {onAct && (
+              <button onClick={() => onAct('record_measurement', { indicator_id: n.id })}
+                className="mt-2 rounded border border-[var(--line)] px-2.5 py-1 text-[11px] hover:border-[var(--moss)]">
+                Record a reading
+              </button>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+const Stat = ({ label, value, sub }) => (
+  <div>
+    <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">{label}</div>
+    <div className="font-mono text-sm">{value}</div>
+    {sub && <div className="text-[10px] text-[var(--ink-3)]">{String(sub).slice(0, 10)}</div>}
+  </div>
+);
+const fmt = (v, u) => (v == null ? '—' : `${v}${u ? ' ' + u : ''}`);
