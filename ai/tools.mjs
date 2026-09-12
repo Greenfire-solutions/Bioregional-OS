@@ -20,6 +20,8 @@ import * as registry from '../adapters/registry.mjs';
 import * as firstrun from '../engines/firstrun.mjs';
 import * as loops from '../engines/loops.mjs';
 import * as dispatch from '../engines/dispatch.mjs';
+import * as library from '../engines/library.mjs';
+import { compile as compileDossier } from '../adapters/dossier.mjs';
 
 const S = (props, required = []) => ({ type: 'object', properties: props, required });
 const str = (description) => ({ type: 'string', description });
@@ -1242,6 +1244,113 @@ export const TOOLS = [
       'should we do?" rather than guessing.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => operator.whatsNext(ch(i)),
+  },
+
+  // ---------- the ecoregion library ----------
+  {
+    name: 'library_status',
+    description:
+      'How much of the ecoregion library is downloaded, how much is stale, and which regions this ' +
+      'chapter actually sits in. The library works with no network once downloaded.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ({
+      coverage: library.coverage(),
+      my_regions: ch(i) ? library.myRegions(ch(i)) : null,
+      work: ch(i) ? library.workList(ch(i)) : null,
+    }),
+  },
+  {
+    name: 'list_regions',
+    description:
+      'Search the index of all 967 Level IV and 85 Level III ecoregions by name, code, state or ' +
+      'biome. The index ships with the software and needs no network.',
+    input_schema: S({
+      query: str('Name, code, state or biome — e.g. "Edwards", "30c", "Texas", "Great Plains"'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      limit: num('Default 25'),
+    }),
+    handler: (i) => {
+      const q = (i.query ?? '').toLowerCase();
+      const list = library.regions({ scheme: i.scheme ?? 'epa-l4' })
+        .filter((r) => !q || `${r.code} ${r.name} ${r.level3_name ?? ''} ${r.biome} ${(r.states ?? []).join(' ')}`
+          .toLowerCase().includes(q))
+        .slice(0, i.limit ?? 25)
+        .map((r) => ({
+          code: r.code, name: r.name, level3_name: r.level3_name ?? r.name,
+          biome: r.biome, states: r.states,
+          downloaded: !!library.loadDossier(r.code, r.scheme ?? i.scheme ?? 'epa-l4'),
+        }));
+      return { matches: list.length, regions: list };
+    },
+  },
+  {
+    name: 'region_brief',
+    description:
+      'Everything known about one ecoregion — plants, animals, threatened species, soil, climate, ' +
+      'water and local resources — read entirely from disk. Works offline. If it has not been ' +
+      'downloaded yet, says so and how to get it.',
+    input_schema: S({
+      code: str('Ecoregion code, e.g. 30c'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+    }, ['code']),
+    handler: (i) => library.brief(i.code, { scheme: i.scheme ?? 'epa-l4' }),
+  },
+  {
+    name: 'regions_at',
+    description:
+      'Which ecoregions a point MIGHT be in, offline, from the shipped index. These are ' +
+      'candidates, not an answer: the index stores rectangular extents and ecoregions are not ' +
+      'rectangles, so several will usually overlap one point. For the definitive answer use ' +
+      'locate_place, which asks the authoritative boundary service.',
+    input_schema: S({ lat: num(''), lng: num('') }, ['lat', 'lng']),
+    handler: (i) => {
+      const r = library.regionsAt(i.lat, i.lng);
+      return {
+        candidates_level4: r.level4.map((x) => ({ code: x.code, name: x.name, level3_name: x.level3_name })),
+        candidates_level3: r.level3.map((x) => ({ code: x.code, name: x.name })),
+        note: 'Overlapping rectangular extents, offline. Use locate_place for the real boundary.',
+      };
+    },
+  },
+  {
+    name: 'find_species',
+    description:
+      'Search every downloaded ecoregion for a plant, animal, insect or fungus by common or ' +
+      'scientific name, and see which regions it is actually recorded in and how often. Entirely ' +
+      'offline. Threatened species are searchable by name; their locations are never stored.',
+    input_schema: S({ query: str('e.g. "Ashe juniper", "monarch", "Quercus"'), limit: num('Default 40') },
+                    ['query']),
+    handler: (i) => library.findSpecies(i.query, { limit: i.limit ?? 40 }),
+  },
+  {
+    name: 'neighbouring_regions',
+    description:
+      'The ecoregions next to this one — where a neighbouring chapter\'s methods are most likely ' +
+      'to transfer, and where they are not.',
+    input_schema: S({ code: str(''), limit: num('') }, ['code']),
+    handler: (i) => library.neighbours(i.code, { limit: i.limit ?? 8 }),
+  },
+  {
+    name: 'download_region',
+    description:
+      'Download or refresh one ecoregion\'s dossier from the open upstreams. Only sections past ' +
+      'their refresh cadence are fetched, so calling this repeatedly is cheap. Needs a connection; ' +
+      'everything it writes is then readable forever offline.',
+    input_schema: S({
+      code: str('Ecoregion code'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      force: bool('Refetch every section even if current'),
+    }, ['code']),
+    handler: async (i) => {
+      const r = await compileDossier(i.code, { scheme: i.scheme ?? 'epa-l4', force: !!i.force });
+      if (r.error) return r;
+      return {
+        region: r.name ?? r.region, code: r.region,
+        refreshed: r.refreshed ?? [], unchanged: !!r.unchanged,
+        size_kb: r.bytes ? Math.round(r.bytes / 1024) : null,
+        note: 'Stored on disk. Readable from now on with no connection.',
+      };
+    },
   },
 ];
 

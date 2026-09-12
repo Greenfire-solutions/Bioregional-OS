@@ -890,6 +890,49 @@ check('a bare host is still an address', !safeToSend('More at www.inaturalist.or
 check('an embedded file is still an address', !safeToSend('data:audio/mp4;base64,AAAA'));
 check('nothing to say is not something to send', !safeToSend('') && !safeToSend(null));
 
+
+// ── The ecoregion library ─────────────────────────────────────────────────
+{
+  const lib = await import('../engines/library.mjs');
+
+  check('the region index ships with the software and needs no network',
+    lib.regions().length > 900 && lib.regions({ scheme: 'epa-l3' }).length > 80);
+
+  check('a point resolves to the ecoregions that contain it, offline',
+    lib.regionsAt(30.26, -97.79).level4.some((r) => r.code === '30c'));
+
+  const notThere = lib.brief('zz-not-a-region');
+  check('an unknown region code is refused rather than invented', !!notThere.error);
+
+  const b = lib.brief('30c');
+  if (b.downloaded) {
+    check('a downloaded region reads entirely from disk', b.offline === true);
+    check('a downloaded region carries plants, animals and soil',
+      b.life.plants_recorded > 0 && b.life.animals_recorded > 0 && !!b.soil);
+    check('threatened species are counted but never located',
+      b.life.threatened_count > 0 &&
+      !JSON.stringify(await import('../adapters/dossier.mjs')
+        .then((m) => m.loadDossier('30c'))
+        .then((d) => d.life.threatened)).includes('latitude'));
+    check('offline species search finds a species in the region it lives in',
+      lib.findSpecies('Ashe juniper').results.some((r) => r.region_code === '30c'));
+    check('culture is deliberately not downloaded, and says why',
+      (await import('../adapters/dossier.mjs').then((m) => m.loadDossier('30c')))
+        .culture.status === 'not_downloaded_by_design');
+  } else {
+    check('region 30c is downloaded (run: npm run data -- --region 30c)', false,
+      'skipped — nothing downloaded yet');
+  }
+
+  const stale = lib.staleSections(null);
+  check('a region with no dossier reports every refreshable section as stale',
+    stale.includes('life') && stale.includes('soil') && !stale.includes('culture'));
+
+  check('soil is not re-asked on the same cadence as a drought',
+    (await import('../adapters/dossier.mjs')).CADENCE_DAYS.soil >
+    (await import('../adapters/dossier.mjs')).CADENCE_DAYS.hazards * 100);
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);
