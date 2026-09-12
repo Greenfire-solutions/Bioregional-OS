@@ -37,6 +37,8 @@ const VERB = {
 
   // the ground
   add_place: 'Add the place',
+  add_signal: 'Write it down',
+  add_agent: 'Name them',
   locate_place: 'Locate it',
   ingest_water_data: 'Pull the water data',
   download_region: 'Download this region',

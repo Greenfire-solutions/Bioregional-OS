@@ -64,6 +64,13 @@ A second person can write, without accounts. **Together → Devices** mints the
 code and shows it as a QR; the join page redeems it, typed or from the link's
 fragment; the token rides as a header on every call. Revocation keeps the row.
 
+### Setup cannot finish empty
+`settledIn()` in `engines/firstrun.mjs` names the three things a founded
+commons still lacks — a place with coordinates, a person, three human
+observations — and the board keeps them at the top of *What needs doing*, each
+with its button, until they exist. Gage readings never count. `settling_in`
+is the tool.
+
 ### The door the enrolment engine was protecting
 `POST /api/tool` ran every tool in the registry for whoever was on the wifi.
 The clearance layer existed and three export routes asked it; the tool route
@@ -79,25 +86,17 @@ connection's clearance, with the count reported as `withheld`.
 
 Ordered by how much each would change what a real chapter can do.
 
-**1. Setup can finish with an empty database.** The strongest finding in
-`docs/COMMUNICATIONS.md`: 93% of 12,795 Ushahidi Crowdmaps held fewer than ten
-reports and 61% were untouched defaults, and the top self-reported cause was
-social, not technical. The fix is that onboarding should not be completable
-until real local content is in — "type the three things people already noticed
-this month". About a day of work, and it is the biggest gap between *installed*
-and *used*.
-
-**2. US only.** The ecoregion index is EPA: 85 Level III, 967 Level IV.
+**1. US only.** The ecoregion index is EPA: 85 Level III, 967 Level IV.
 `data/upstream/global-ecoregions.geojson` is absent, so `look_around` outside
 the United States resolves a place and finds no ecoregion polygon. The intended
 source is RESOLVE 2017 (CC-BY) — One Earth is CC-BY-**NC** and must not be
 redistributed. See `docs/DATA_SOURCES.md`.
 
-**3. The region library is ~509 of 967 downloaded.** Regenerable and
+**2. The region library is ~509 of 967 downloaded.** Regenerable and
 gitignored. `npm run data -- --all` resumes and skips what is current. An
 uncompiled region still shows its identity and a download button.
 
-**4. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
+**3. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
 carries the whole decision. The recommendation is **inbound only** — a
 neighbour can text or speak a need and get an acknowledgement; the OS never
 broadcasts. Before any of it: `contact_channels`, shaped like `media_consent`
@@ -105,20 +104,41 @@ with `granted_at` / `withdrawable` / `withdrawn_at`, because `agents.contact`
 and `intake.contact` are free text with no channel type, no verification and no
 opt-out, and retrofitting consent onto a live roster is work nobody ever does.
 
-**5. Voice: researched, nothing built.** Secondary but first-class — capture
+**4. Voice: researched, nothing built.** Secondary but first-class — capture
 and playback, never an interaction channel. Note the blocker recorded in the
 doc: `getUserMedia` needs a secure context, so over `http://192.168.x.x` the
 `/join` page **cannot** record audio. The way round is
 `<input type="file" accept="audio/*" capture>`.
 
-**6. No sync between two stewards' machines.** `--share` is same-wifi only. The
+**5. No sync between two stewards' machines.** `--share` is same-wifi only. The
 outbox design (one append-only file per device, never the live database) is
 written up and unbuilt.
 
-**7. Nothing happens when the laptop is closed.** Deliberate and documented,
+**6. Nothing happens when the laptop is closed.** Deliberate and documented,
 and still a real constraint on what a chapter can rely on.
 
 ---
+
+## Notes for future builds
+
+Small things seen while building, deliberately left:
+
+- **Settling in is a list, not a gate.** Nothing refuses while it is
+  incomplete; the operator (`whats_next`) does not know about it, only the
+  board does. If a chapter should be *unable* to open a project or schedule a
+  gathering before it is settled, that is a protocol decision to make first.
+- **First run does not ask for the three things itself.** `begin_here` founds
+  and stops; the board picks it up on the next screen. Folding the three into
+  the first-run flow would be one screen more and is probably right.
+- **The join page's RSVP is disabled on a fresh install** because every seeded
+  gathering is in the past. Seed one relative to today.
+- **`add_agent` asks for `vf_agent_type`** in a form; the settling step
+  prefills Person, but the form still shows the field.
+- **The launcher ignores `PORT` in `.env` from Finder** on a protected folder,
+  because the bundle cannot read the file. It uses 4180. The trace line in
+  `~/Library/Logs/BioRegional OS.log` says so.
+- **The desktop layout has no narrow-width rules.** The join page is the only
+  screen designed for a small window.
 
 ## Known rough edges on the map
 

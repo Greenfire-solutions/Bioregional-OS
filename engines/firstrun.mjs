@@ -250,3 +250,63 @@ const clock = (iso, timeZone = null) => {
   try { return new Date(iso).toLocaleTimeString('en-US', opts); }
   catch { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 };
+
+// ── Settling in: the three things an installed commons needs to be a used one ──
+// The strongest finding in docs/COMMUNICATIONS.md: most deployments of this
+// kind die as untouched defaults, and the cause is social, not technical. A
+// chapter can be founded in seven seconds with nothing in it. This says what
+// is still missing before the commons is about anywhere or anyone:
+//
+//   one place with coordinates      — so the ground has somewhere to read from
+//   one person named                — so the work is not held by "the steward"
+//   three things people noticed     — human observations, never gage readings
+//
+// It writes nothing and decides nothing. The board puts the missing ones at
+// the top of "What needs doing" with the button that does each, so setup is
+// not finishable by ignoring it — but a person can still close the tab. Only
+// HUMAN observations count, by the same rule as core/provenance.mjs: a USGS
+// gage files a reading every three hours forever, and three of those would
+// make an empty commons look settled.
+import { humanObservedSql } from '../core/provenance.mjs';
+
+export const SETTLING_OBSERVATIONS = 3;
+
+export function settledIn(chapterId) {
+  if (!chapterId) return { error: 'no_chapter' };
+  const places = one(`SELECT COUNT(*) n FROM places WHERE chapter_id=? AND lat IS NOT NULL AND lng IS NOT NULL`, chapterId)?.n ?? 0;
+  const people = one(`SELECT COUNT(*) n FROM agents WHERE chapter_id=? AND vf_agent_type='Person'`, chapterId)?.n ?? 0;
+  const noticed = one(`SELECT COUNT(*) n FROM signals WHERE chapter_id=? AND ${humanObservedSql('source_adapter')}`, chapterId)?.n ?? 0;
+
+  const steps = [
+    {
+      id: 'place', done: places >= 1, have: places, need: 1,
+      title: 'Name one place you actually go',
+      detail: 'A creek, a park, a field. With coordinates, so the ground can be read from it.',
+      why: 'Everything the land can say hangs off a point on it.',
+      action: { tool: 'add_place', input: {} },
+    },
+    {
+      id: 'person', done: people >= 1, have: people, need: 1,
+      title: 'Name one person, and what they do here',
+      detail: 'Somebody other than whoever is typing. A commons held by one person stops when they do.',
+      why: 'The care ledger counts people, not a steward.',
+      action: { tool: 'add_agent', input: { vf_agent_type: 'Person' } },
+    },
+    {
+      id: 'noticed', done: noticed >= SETTLING_OBSERVATIONS, have: noticed, need: SETTLING_OBSERVATIONS,
+      title: `Write down ${SETTLING_OBSERVATIONS} things people already noticed this month`,
+      detail: noticed ? `${noticed} of ${SETTLING_OBSERVATIONS} so far.` : 'The creek was low. The redbuds came early. The culvert flooded again.',
+      why: 'Observation must lead somewhere, and an empty commons is where it leads nowhere.',
+      action: { tool: 'add_signal', input: { source: 'manual' } },
+    },
+  ];
+  const missing = steps.filter((s) => !s.done);
+  return {
+    complete: missing.length === 0,
+    steps,
+    missing: missing.map((s) => s.id),
+    sentence: missing.length === 0
+      ? 'Settled in: a place, a person, and things people noticed.'
+      : `${missing.length} thing${missing.length === 1 ? '' : 's'} before this commons is about anywhere or anyone.`,
+  };
+}

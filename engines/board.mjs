@@ -31,6 +31,7 @@ import { carrying } from './attention.mjs';
 import { whoCouldHelp } from './matching.mjs';
 import { priorities } from './quest.mjs';
 import { myRegions, brief as regionBrief } from './library.mjs';
+import { settledIn } from './firstrun.mjs';
 
 export function board(chapterId, { actions = 5, projects = 8 } = {}) {
   if (!chapterId) {
@@ -53,10 +54,20 @@ export function board(chapterId, { actions = 5, projects = 8 } = {}) {
   // starts. The rest stays one click away rather than being hidden.
   const next = safely(() => whatsNext(chapterId)) ?? { items: [], total: 0 };
   const doable = (next.items ?? []).filter((i) => i.action);
-  const todo = doable.slice(0, actions).map((i) => ({
+  // Settling in comes first, always, until it is done. An installed commons
+  // with nothing in it is the way these die (docs/COMMUNICATIONS.md), so the
+  // three things that make it about somewhere and someone are not a wizard
+  // that can be dismissed — they are the top of the list until they exist.
+  const settling = safely(() => settledIn(chapterId)) ?? { complete: true, steps: [] };
+  const settle = settling.complete ? [] : settling.steps.filter((s) => !s.done).map((s) => ({
+    title: s.title, detail: s.detail, why: s.why,
+    urgency: 'gap', stage: 'Settling in', action: s.action, age_days: null,
+  }));
+  // Inside the cap, not on top of it: five things is still five things.
+  const todo = [...settle, ...doable.slice(0, Math.max(0, actions - settle.length)).map((i) => ({
     title: i.title, detail: i.detail ?? null, why: i.rule ?? null,
     urgency: i.kind, stage: i.stage, action: i.action, age_days: i.age_days ?? null,
-  }));
+  }))];
 
   // ── What is going on ────────────────────────────────────────────────────
   // A project card has to say what state it is really in, which is not its
@@ -131,7 +142,8 @@ export function board(chapterId, { actions = 5, projects = 8 } = {}) {
       sentence: land.sentence ?? null,
     },
     todo,
-    todo_total: doable.length,
+    todo_total: doable.length + settle.length,
+    settling,
     blocked_count: (next.items ?? []).filter((i) => i.kind === 'blocking').length,
     projects: quests,
     projects_finished: finished,

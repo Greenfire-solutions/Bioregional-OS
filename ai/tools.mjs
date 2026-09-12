@@ -1025,6 +1025,16 @@ export const TOOLS = [
     }),
   },
   {
+    name: 'settling_in',
+    description:
+      'Whether this commons is about anywhere or anyone yet: one place with coordinates, one ' +
+      'person named, and three things people noticed — human observations only, never gage ' +
+      'readings. Read-only. The board puts whatever is missing at the top of what needs doing, ' +
+      'because an installed commons with nothing in it is how these die.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => firstrun.settledIn(ch(i)),
+  },
+  {
     name: 'begin_here',
     description:
       'Found a chapter at a point and resolve it against the real world in one pass. ' +

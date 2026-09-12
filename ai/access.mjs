@@ -65,7 +65,7 @@ const MEMBERS = [
   'seasonal_priorities', 'map_features', 'commons_board', 'who_could_help',
   'list_discovered', 'card_for_the_week', 'community_here', 'culture_here',
   'growing_year', 'water_here', 'whats_next', 'library_status', 'list_regions',
-  'region_brief', 'find_species',
+  'region_brief', 'find_species', 'settling_in',
   // ordinary field work
   'add_place', 'locate_place', 'ingest_water_data', 'record_measurement', 'add_indicator',
   'propose_baseline', 'set_indicator_baseline', 'add_gathering', 'update_gathering',

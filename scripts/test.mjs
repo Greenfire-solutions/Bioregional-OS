@@ -3342,6 +3342,42 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('the screen says out loud when nobody else can reach this computer', /--share/.test(devices));
 }
 
+// ── Settling in: setup cannot finish empty ────────────────────────────────
+// A chapter founded in seven seconds with nothing in it is the shape most
+// deployments of this kind die in. The board must keep the three missing
+// things at the top until they exist, and a gage must never count as a
+// person noticing something.
+{
+  const { settledIn, SETTLING_OBSERVATIONS } = await import('../engines/firstrun.mjs');
+  const { board } = await import('../engines/board.mjs');
+  const made = await runTool('create_chapter', {
+    id: 'settling-test', name: 'Settling test', scale: 'site',
+    represents: 'a test', does_not_represent: 'anything real',
+  });
+  const C = made?.id ?? made?.chapter?.id ?? 'settling-test';
+  const s0 = settledIn(C);
+  check('a freshly founded commons is not settled', s0.complete === false && s0.missing.length === 3, JSON.stringify(s0.missing));
+  check('the board puts settling in first, with a button for each',
+    board(C).todo.slice(0, 3).every((t) => t.stage === 'Settling in' && t.action?.tool), JSON.stringify(board(C).todo.slice(0, 3).map((t) => t.stage)));
+
+  // Three gage readings are not three people noticing.
+  for (let i = 0; i < SETTLING_OBSERVATIONS; i++) {
+    create('signals', 'signal', C, { chapter_id: C, title: `gage ${i}`, category: 'Hydrological', severity: 'Info', source_adapter: 'usgs' });
+  }
+  check('instrument readings do not count as things people noticed', settledIn(C).missing.includes('noticed'));
+
+  await runTool('add_place', { chapter_id: C, name: 'The creek', lat: 30.26, lng: -97.79 });
+  await runTool('add_agent', { chapter_id: C, name: 'A neighbour', vf_agent_type: 'Person', role: 'walks the creek' });
+  for (let i = 0; i < SETTLING_OBSERVATIONS; i++) {
+    await runTool('add_signal', { chapter_id: C, title: `noticed ${i}`, category: 'Ecological', severity: 'Info', source: 'manual' });
+  }
+  const s1 = settledIn(C);
+  check('a place, a person and three observations settle it', s1.complete === true, JSON.stringify(s1.missing));
+  check('and the board stops leading with it', !board(C).todo.some((t) => t.stage === 'Settling in'));
+  check('settling_in is a tool, so every surface can ask', (await runTool('settling_in', { chapter_id: C }))?.complete === true);
+  check('settledIn writes nothing', one('SELECT COUNT(*) n FROM signals WHERE chapter_id=?', C).n === SETTLING_OBSERVATIONS * 2);
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);
