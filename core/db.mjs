@@ -97,6 +97,33 @@ export function create(table, objectType, chapterId, row, sensitivity = 'public'
   return { ...full, rid: makeRid(objectType, chapterId, id) };
 }
 
+/**
+ * "The most recent reading", written once.
+ *
+ * `ORDER BY measured_at DESC` on its own is not deterministic, and the way it
+ * fails is a coin flip rather than an error. measured_at is frequently a DATE —
+ * record_measurement takes YYYY-MM-DD and defaults to today — so a
+ * before-and-after pair taken on one field morning ties, and "the latest"
+ * becomes whichever row SQLite happens to return first. That reverses the sign
+ * of a change in a season report, names the wrong person as the one still
+ * reading an indicator, and in the two places where `latest_value` and
+ * `latest_at` were separate subqueries it could pair one reading's value with a
+ * different reading's date.
+ *
+ * rowid is insertion order, which is the one thing always known and never tied.
+ * Exported rather than repeated because there were six copies of this clause
+ * and fixing five of them would have been worse than fixing none — the sixth
+ * would have disagreed with the rest in a way nothing reports.
+ */
+export const LATEST_MEASUREMENT = 'ORDER BY measured_at DESC, rowid DESC';
+
+/** The same ordering for a query that has aliased the measurements table. */
+export function latestMeasurement(alias) {
+  return alias
+    ? `ORDER BY ${alias}.measured_at DESC, ${alias}.rowid DESC`
+    : LATEST_MEASUREMENT;
+}
+
 export function all(sql, ...params) {
   return db().prepare(sql).all(...params.map(normalize));
 }

@@ -28,7 +28,7 @@
 // §5.11 is the mirror image, and §3.5 is why: rank consistency, bind it to
 // ground, and point it at PLACES so it can never become a ranking of people.
 // "Nobody has been to the Spring in 71 days" is a fact about the Spring.
-import { all, one } from '../core/db.mjs';
+import { all, one, LATEST_MEASUREMENT, latestMeasurement } from '../core/db.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 import { benefitFlow } from './exchange.mjs';
 
@@ -116,7 +116,7 @@ export function carrying(chapterId) {
     const last = one(
       `SELECT measured_by, measured_at FROM measurements
         WHERE indicator_id = ? AND measured_by IS NOT NULL AND trim(measured_by) <> ''
-        ORDER BY measured_at DESC LIMIT 1`, i.id);
+        ${LATEST_MEASUREMENT} LIMIT 1`, i.id);
     if (!last) continue;
     held.push({
       who: last.measured_by,
@@ -343,7 +343,7 @@ export function placeAttention(chapterId, { days = 90 } = {}) {
          JOIN quests q ON q.id = i.quest_id
         WHERE q.place_id = ? AND m.measured_by IS NOT NULL AND trim(m.measured_by) <> ''
           AND date(m.measured_at) >= date('now', ?)
-        ORDER BY m.measured_at DESC`, p.id, since);
+        ${latestMeasurement('m')}`, p.id, since);
 
     // The last time anybody was here, over ALL of history rather than the
     // window — otherwise every long-neglected place reports the same "never",

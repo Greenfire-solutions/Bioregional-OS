@@ -17,7 +17,7 @@
 // writes into the same signals table. A naive version of this credits a person
 // for a Heat Advisory that NOAA issued. Only human-observed signals are ever
 // attributed to a human.
-import { all, one } from '../core/db.mjs';
+import { all, one, latestMeasurement } from '../core/db.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 
 /**
@@ -81,7 +81,7 @@ export function whatMoved(chapterId, { since_days = 90, limit = 12 } = {}) {
       for (const m of all(
         `SELECT m.value, m.measured_at, m.measured_by, i.name, i.unit, i.target_value
            FROM measurements m JOIN indicators i ON i.id = m.indicator_id
-          WHERE i.quest_id = ? ORDER BY m.measured_at DESC LIMIT 3`, q.id)) {
+          WHERE i.quest_id = ? ${latestMeasurement('m')} LIMIT 3`, q.id)) {
         became.push({
           kind: 'measurement', title: m.name, at: m.measured_at,
           detail: `${m.value}${m.unit ? ` ${m.unit}` : ''}` +

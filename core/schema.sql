@@ -446,3 +446,31 @@ CREATE INDEX IF NOT EXISTS idx_quests_chapter  ON quests(chapter_id, status);
 CREATE INDEX IF NOT EXISTS idx_intake_chapter  ON intake(chapter_id, status);
 CREATE INDEX IF NOT EXISTS idx_rids_type       ON rids(object_type, chapter_id);
 CREATE INDEX IF NOT EXISTS idx_events_quest    ON exchange_events(quest_id);
+
+-- ---------- Stages 11-12: the season, closed and opened ----------
+-- The protocol's loop is seasonal, not daily. A season is closed with an impact
+-- and learning report (stage 11) and the next one opens with a priority list
+-- (stage 6, reached through stage 12's "what should stop, continue, change or
+-- travel?"). Kept as rows rather than as files because the whole point is that
+-- the NEXT season can read the last one.
+CREATE TABLE IF NOT EXISTS seasons (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,               -- 'Autumn 2026', or whatever they call it
+  opened_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  closed_at   TEXT,
+  closed_by   TEXT,
+  -- The computed half: what the database can say about what changed.
+  report      TEXT,                        -- JSON, written at close
+  -- The half no machine can answer, which is why closing refuses without them.
+  what_did_not_change TEXT,
+  unintended_effects  TEXT,
+  whose_experience_is_missing TEXT,
+  -- Stage 12, decided by people reading the report.
+  stops       TEXT,
+  continues   TEXT,
+  changes     TEXT,
+  travels     TEXT,
+  -- Stage 6 for the season this one opens into.
+  priorities  TEXT
+);

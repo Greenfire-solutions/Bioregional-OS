@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, BookOpen, Shield,
+  Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, RefreshCcw, BookOpen, Shield,
   Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity,
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
@@ -8,6 +8,7 @@ import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
 import Vitals from './components/Vitals.jsx';
+import Season from './components/Season.jsx';
 import FirstRun from './components/FirstRun.jsx';
 import Card from './components/Card.jsx';
 import ToolForm from './components/ToolForm.jsx';
@@ -50,6 +51,7 @@ const GROUPS = [
     { id: 'council',    label: 'Council',    icon: Scale,     add: 'propose_decision', addLabel: 'Propose to council' },
     { id: 'gatherings', label: 'Gatherings', icon: Users,     add: 'add_gathering',    addLabel: 'Schedule a gathering' },
     { id: 'exchange',   label: 'Exchange',   icon: RefreshCw, add: 'record_exchange',  addLabel: 'Log a contribution' },
+    { id: 'season',     label: 'The season', icon: RefreshCcw },
   ] },
   { id: 'travels', label: 'What travels', icon: Send, sub: [
     { id: 'card',       label: 'The card',   icon: Send },
@@ -270,6 +272,7 @@ export default function App() {
               <div className="mx-auto max-w-3xl">
                 {tab === 'today' && <Today onChanged={load} />}
                 {tab === 'vitals' && <Vitals />}
+                {tab === 'season' && <Season />}
                 {tab === 'listen' && <Listen intake={intake} />}
                 {tab === 'signals' && <Signals signals={signals} onFocus={focusOn} />}
                 {tab === 'quests' && <Quests quests={quests} gates={gates} onLoadGates={loadGates}

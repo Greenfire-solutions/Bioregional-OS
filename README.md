@@ -157,6 +157,7 @@ with nothing to measure yet says so rather than reporting a zero.
 | **Council** | Decisions, the Land Seat report, red flags, review dates |
 | **Gatherings** | Events, scored on care provision — meals, transport, childcare, accessibility |
 | **Exchange** | Contributions as ValueFlows events. Flags a commons running on unpaid labour |
+| **The season** | Where the twelve-stage loop actually closes. What the readings say — anything smaller than its own error bar reported as no change — then the three questions a database cannot answer: what did *not* change, what unintended effects appeared, whose experience is missing. It refuses to close without them |
 
 **What travels**
 

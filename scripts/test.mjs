@@ -1073,6 +1073,135 @@ check('the intake promise states itself in words a person can read',
     typeof c4.sentence === 'string' && c4.sentence.includes('Ada Circle'));
 }
 
+// ── "The latest reading" is written once, or it disagrees with itself ─────
+// `ORDER BY measured_at DESC` is not deterministic: record_measurement takes
+// YYYY-MM-DD and defaults to today, so a before-and-after pair from one field
+// morning ties and SQLite returns whichever row it likes. There were six copies
+// of that clause. The failure is silent and it points in every direction at
+// once — the sign of a change reverses in a season report, the wrong person is
+// named as still reading an indicator, and in the two places where latest_value
+// and latest_at were SEPARATE subqueries one reading's value could be paired
+// with another reading's date.
+{
+  const src = [
+    'engines/turning.mjs', 'engines/attention.mjs', 'engines/loops.mjs',
+    'ai/tools.mjs', 'server/routes/api.mjs',
+  ].map((f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8')).join('\n');
+  const loose = [...src.matchAll(/ORDER BY\s+(?:\w+\.)?measured_at\s+DESC(?!\s*,\s*(?:\w+\.)?rowid)/gi)];
+  check('no query picks the latest reading without a deterministic tiebreak',
+    loose.length === 0,
+    `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak — ties resolve arbitrarily`);
+}
+
+// ── The turning, and the three questions a database cannot answer ─────────
+// §5.10. The loop is seasonal and nothing in this OS ever closed it, so it ran
+// forward forever. The whole design rests on one refusal: the machine computes
+// what changed and will not close a season until a person has answered what did
+// NOT change, what unintended effects appeared, and whose experience is missing.
+// Those three are the value of a review — a report made only of what moved is a
+// progress report, and nothing has ever gone wrong in one.
+{
+  const CH = 'season-test';
+  await runTool('create_chapter', {
+    id: CH, name: 'Season Commons', scale: 'site',
+    represents: 'the people who signed up', does_not_represent: 'anyone else',
+    lat: 30.2, lng: -97.8,
+  });
+
+  check('a chapter with no season is told the loop never closes without one',
+    /never closes|nobody gets the experience/i.test((await runTool('seasons', { chapter_id: CH })).sentence));
+  check('a season needs a name the chapter will recognise',
+    refused(await runTool('open_season', { chapter_id: CH, name: '   ' }), 'name'));
+
+  const opened = await runTool('open_season', { chapter_id: CH, name: 'Autumn 2026' });
+  check('a named season opens', !!opened.id && opened.name === 'Autumn 2026');
+  check('two open seasons is refused, because neither would be reviewed',
+    refused(await runTool('open_season', { chapter_id: CH, name: 'Winter' }), 'season_already_open'));
+
+  // The refusal, and the reason it is worth having its own shape rather than
+  // the generic missing-fields one: it must hand back what it is asking about.
+  const incomplete = await runTool('close_season', {
+    chapter_id: CH,
+    what_did_not_change: 'The creek path still floods.',
+    unintended_effects: 'More dogs off lead on the new path.',
+    whose_experience_is_missing: '   ',
+  });
+  check('a season will not close on what the database can compute',
+    incomplete.error === 'review_incomplete', JSON.stringify(incomplete.error));
+  check('the refusal names the question still unanswered, not just the field',
+    incomplete.missing.length === 1 &&
+    incomplete.missing[0].question === 'Whose experience is missing?',
+    JSON.stringify(incomplete.missing));
+  check('the refusal says why a machine will not answer that one',
+    /cannot be computed by definition/i.test(incomplete.missing[0].why));
+  // The point of not listing these as `required`: the generic enforcement would
+  // have fired first and this would be an empty refusal.
+  check('the refusal hands back the review being asked about',
+    !!incomplete.review && Array.isArray(incomplete.review.changed),
+    'whoever answers the three questions would have to go and find the numbers themselves');
+  check('nothing is closed by a refused close',
+    !one(`SELECT closed_at FROM seasons WHERE id=?`, opened.id).closed_at);
+
+  // An indicator that moved less than the uncertainty on its own reading has
+  // not moved. Reporting it as change is how a commons talks itself into
+  // believing an intervention worked.
+  const sq = await runTool('open_quest', { chapter_id: CH, title: 'Bank planting' });
+  const ind = await runTool('add_indicator', {
+    chapter_id: CH, quest_id: sq.id, name: 'Exposed bank length', unit: 'm',
+    baseline_value: 40, method: 'Tape, same three transects', cadence: 'monthly',
+    decision_trigger: 'If exposed length grows after a full season, pause planting and escalate.',
+  });
+  await runTool('record_measurement', {
+    indicator_id: ind.id, value: 39.6, uncertainty: 1.5, measured_by: 'S. Chen',
+  });
+  const noisy = (await runTool('season_review', { chapter_id: CH }))
+    .changed.find((c) => c.indicator === 'Exposed bank length');
+  check('a change smaller than its own error bar is not reported as a change',
+    noisy.state === 'within_uncertainty', JSON.stringify(noisy));
+  check('the review says so in words, with the uncertainty quoted',
+    /is not a change/.test(noisy.sentence) && /1\.5/.test(noisy.sentence), noisy.sentence);
+
+  await runTool('record_measurement', {
+    indicator_id: ind.id, value: 31, uncertainty: 1.5, measured_by: 'S. Chen',
+  });
+  const real = (await runTool('season_review', { chapter_id: CH }))
+    .changed.find((c) => c.indicator === 'Exposed bank length');
+  check('a change larger than its error bar is reported as one', real.state === 'moved');
+
+  // A baseline nobody ever read against is the finding most likely to be
+  // quietly dropped from a report.
+  const q2 = await runTool('open_quest', { chapter_id: CH, title: 'Spring fencing' });
+  await runTool('add_indicator', {
+    chapter_id: CH, quest_id: q2.id, name: 'Trampled area', unit: 'm2',
+    baseline_value: 12, method: 'Pacing', cadence: 'seasonal',
+    decision_trigger: 'If trampling doubles, fence the approach instead of the spring.',
+  });
+  check('a baseline that was never read against is named, not omitted',
+    (await runTool('season_review', { chapter_id: CH }))
+      .changed.some((c) => c.indicator === 'Trampled area' && c.state === 'never_measured'));
+
+  const closed = await runTool('close_season', {
+    chapter_id: CH,
+    what_did_not_change: 'The creek path still floods at the low crossing.',
+    unintended_effects: 'More dogs off lead on the new path.',
+    whose_experience_is_missing: 'Nobody downstream of the weir has been asked.',
+    stops: 'Weekly transect walks', continues: 'Monthly bank measurement',
+    travels: 'The transect method', closed_by: 'R. Alvarez',
+  });
+  check('a season closes once a person has answered all three', !!closed.closed_at);
+  check('the three answers are kept, not just the numbers',
+    /downstream of the weir/.test(closed.whose_experience_is_missing));
+  check('the computed report is stored with them',
+    !!closed.report && Array.isArray(closed.report.changed));
+
+  const after = await runTool('seasons', { chapter_id: CH });
+  check('a closed season has no open season left behind it', after.open === null);
+  check('the closed season is remembered with its human answers',
+    after.closed.length === 1 && /dogs off lead/.test(after.closed[0].unintended_effects));
+  check('the next season can now open', !!(await runTool('open_season',
+    { chapter_id: CH, name: 'Winter 2026' })).id);
+}
+
 // ── The neighbours, and the feed it must not become ───────────────────────
 // §5.12 is three lines of spec and almost entirely a set of refusals, so the
 // refusals are what there is to test. A neighbour's text is somebody else's

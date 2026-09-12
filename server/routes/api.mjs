@@ -1,4 +1,4 @@
-import { all, one, create, run } from '../../core/db.mjs';
+import { all, one, create, run, latestMeasurement } from '../../core/db.mjs';
 import * as council from '../../engines/council.mjs';
 import * as bio from '../../engines/bioregional.mjs';
 import * as quest from '../../engines/quest.mjs';
@@ -73,8 +73,8 @@ export async function api(req, res, url) {
     case 'whats-next': return whatsNext(chapterId);
     case 'indicators': return all(
       `SELECT i.*,
-              (SELECT value FROM measurements m WHERE m.indicator_id=i.id ORDER BY m.measured_at DESC LIMIT 1) latest_value,
-              (SELECT measured_at FROM measurements m WHERE m.indicator_id=i.id ORDER BY m.measured_at DESC LIMIT 1) latest_at,
+              (SELECT value FROM measurements m WHERE m.indicator_id=i.id ${latestMeasurement('m')} LIMIT 1) latest_value,
+              (SELECT measured_at FROM measurements m WHERE m.indicator_id=i.id ${latestMeasurement('m')} LIMIT 1) latest_at,
               (SELECT COUNT(*) FROM measurements m WHERE m.indicator_id=i.id) measurement_count
          FROM indicators i WHERE i.chapter_id=? ORDER BY i.created_at DESC`, chapterId);
     case 'places':   return all('SELECT * FROM places WHERE chapter_id=? ORDER BY name', chapterId);

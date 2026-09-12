@@ -4,7 +4,7 @@
 //   • server/routes/ai.mjs → the in-app assistant, same tools, same rules
 // Handlers go through the engines, so the protocol gates apply to the AI
 // exactly as they apply to a person. The AI cannot write past a red flag.
-import { all, one, create, run } from '../core/db.mjs';
+import { all, one, create, run, latestMeasurement } from '../core/db.mjs';
 import * as council from '../engines/council.mjs';
 import * as bio from '../engines/bioregional.mjs';
 import * as quest from '../engines/quest.mjs';
@@ -23,6 +23,7 @@ import * as dispatch from '../engines/dispatch.mjs';
 import * as attention from '../engines/attention.mjs';
 import * as vitals from '../engines/vitals.mjs';
 import * as neighbours from '../engines/neighbours.mjs';
+import * as turning from '../engines/turning.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -536,8 +537,8 @@ export const TOOLS = [
     input_schema: S({ chapter_id: str(''), quest_id: str('') }),
     handler: (i) => all(
       `SELECT i.*,
-              (SELECT value FROM measurements m WHERE m.indicator_id=i.id ORDER BY m.measured_at DESC LIMIT 1) AS latest_value,
-              (SELECT measured_at FROM measurements m WHERE m.indicator_id=i.id ORDER BY m.measured_at DESC LIMIT 1) AS latest_at,
+              (SELECT value FROM measurements m WHERE m.indicator_id=i.id ${latestMeasurement('m')} LIMIT 1) AS latest_value,
+              (SELECT measured_at FROM measurements m WHERE m.indicator_id=i.id ${latestMeasurement('m')} LIMIT 1) AS latest_at,
               (SELECT COUNT(*) FROM measurements m WHERE m.indicator_id=i.id) AS measurement_count
          FROM indicators i WHERE i.chapter_id=? ${i.quest_id ? 'AND i.quest_id=?' : ''}
         ORDER BY i.created_at DESC`,
@@ -1057,6 +1058,75 @@ export const TOOLS = [
       limit: num('How many neighbours to list. Default 8.'),
     }),
     handler: (i) => neighbours.neighbours(ch(i), { limit: i.limit ?? 8 }),
+  },
+
+  // ---------- the season: stages 11, 12 and back round to 6 ----------
+  {
+    name: 'season_review',
+    description:
+      'Everything the database can say about the season so far: which indicators moved and ' +
+      'which moved less than the uncertainty on their own reading, what finished, what stopped, ' +
+      'what is still running, what was written up so it can travel, what was decided, and who ' +
+      'the work reached. Read-only — this is what a council reads BEFORE deciding what stops ' +
+      'and what continues. It never answers the three questions a machine cannot.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => turning.seasonReview(ch(i)),
+  },
+  {
+    name: 'open_season',
+    description:
+      'Open a named season, with the priority list stage 6 requires. If no priorities are ' +
+      'given, it offers what the operator says is blocking or slipped — each already citing ' +
+      'its own protocol rule. Refuses while another season is still open, because two open ' +
+      'seasons means neither ever gets reviewed.',
+    input_schema: S({
+      chapter_id: str(''),
+      name: str('What the chapter calls it — "Autumn 2026", "the low-water season"'),
+      priorities: { type: 'array', items: { type: 'string' },
+        description: 'The seasonal priority list, if the council has already decided it' },
+    }, ['name']),
+    handler: (i) => turning.openSeason(ch(i), { name: i.name, priorities: i.priorities }),
+  },
+  {
+    name: 'close_season',
+    description:
+      'Close the open season with stage 11\'s impact and learning report and stage 12\'s stop / ' +
+      'continue / change / travel. REFUSES until a person has answered the three questions the ' +
+      'database cannot: what did NOT change, what unintended effects appeared, and whose ' +
+      'experience is missing. Those three are the entire value of a review — a report made only ' +
+      'of what moved is a progress report, and nothing has ever gone wrong in one. The refusal ' +
+      'hands back the computed review so whoever answers them is not also made to go and find ' +
+      'the numbers.',
+    input_schema: S({
+      chapter_id: str(''),
+      what_did_not_change: str('What did not change?'),
+      unintended_effects: str('What unintended effects appeared?'),
+      whose_experience_is_missing: str('Whose experience is missing?'),
+      stops: str('What should stop'),
+      continues: str('What should continue or expand'),
+      changes: str('What should adapt'),
+      travels: str('What knowledge can travel to another chapter'),
+      closed_by: str('Who is closing it'),
+    // The three are NOT listed as `required` here, and that is deliberate rather
+    // than an oversight. runTool enforces required fields before a handler ever
+    // runs, so listing them would make its generic "close_season requires: ..."
+    // the only refusal a caller could ever see — and this handler's refusal is
+    // the useful one: it names each question, says WHY a machine will not answer
+    // it, and hands back the whole computed review so that whoever sits down to
+    // answer them is not also sent off to find the numbers they are answering
+    // about. The gate is not weaker; it is the same gate, worded by the engine
+    // that knows what it is guarding.
+    }),
+    handler: (i) => turning.closeSeason(ch(i), i),
+  },
+  {
+    name: 'seasons',
+    description:
+      'Every season this chapter has been through, with the three human answers each was closed ' +
+      'on. The loop is seasonal — a commons with no seasons runs forward and never closes, and ' +
+      'nobody gets the experience of having finished anything.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => turning.seasons(ch(i)),
   },
 
   // ---------- what this locality already publishes ----------
