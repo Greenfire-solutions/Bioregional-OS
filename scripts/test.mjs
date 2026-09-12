@@ -23,6 +23,7 @@ import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
 import { vitals } from '../engines/vitals.mjs';
 import { neighbours, summarise, refresh as refreshNeighbours } from '../engines/neighbours.mjs';
+import { classifyPeer } from '../adapters/murmurations.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
 import { attributionFor as attrFor } from '../adapters/registry.mjs';
 import { hazardSignals, worstLevel } from '../adapters/hazards.mjs';
@@ -1215,6 +1216,22 @@ check('the intake promise states itself in words a person can read',
     lat: 30.2, lng: -97.8,
   });
 
+  // Discovery used to file EVERY node the index returned as a `chapter`. The
+  // index answers a geographic query with whatever is near the point — asked
+  // around Austin it returns a taxi co-operative, a web host, a copywriting
+  // agency and an individual researcher — so the federation table asserted
+  // something the data never said, and the panel repeated it to a person as
+  // fact. A peer's kind may only come from what that peer itself published.
+  check('a co-operative near here is not a bioregional chapter',
+    classifyPeer({ name: 'ATX Coop Taxi', tags: ['taxi', 'cooperative'] }) === 'organisation');
+  check('a peer whose own tags claim a bioregional commons is a chapter',
+    classifyPeer({ name: 'Elk River', tags: ['bioregional', 'commons', 'regenerative'] }) === 'chapter');
+  // A name is not evidence. This one reads exactly like a chapter and may be a
+  // mailing list; the tags are a claim its publisher made, and that is all
+  // there is to go on.
+  check('a name that reads like a chapter is not evidence of one',
+    classifyPeer({ name: 'Hill Country Bioregional Network', tags: [] }) === 'unknown');
+
   check('third-party markup never reaches the panel as markup',
     summarise({ description: 'We restore <b>riparian</b> buffers <script>x</script> here.' })
       === 'We restore riparian buffers x here.',
@@ -1233,23 +1250,44 @@ check('the intake promise states itself in words a person can read',
     /not a requirement|works perfectly well/i.test(alone.sentence), alone.sentence);
   check('the panel states that nothing here is owed a reply',
     /none/i.test(alone.obligation));
+  // The wording that must never overstate the network: neighbours who are not
+  // chapters are neighbours, and saying otherwise invents a movement.
+  dbRun(`INSERT INTO federation_peers (id,name,kind,protocol,url,status,summary,summary_at)
+         VALUES ('peer_t0','A Web Host','organisation','murmurations',
+                 'https://example.invalid/host.json','known',
+                 'non-profit cooperative web hosting', datetime('now'))`);
+  check('with no chapters found, the panel says so instead of implying a network',
+    /none of them is another bioregional chapter/.test(neighbours(CH).sentence),
+    neighbours(CH).sentence);
+  dbRun(`DELETE FROM federation_peers WHERE id='peer_t0'`);
 
   dbRun(`INSERT INTO federation_peers (id,name,kind,protocol,url,bioregion_name,status,summary,summary_at)
          VALUES ('peer_t1','Elk River Commons','chapter','murmurations',
                  'https://example.invalid/elk.json','Blue Ridge','known',
                  'We restore riparian buffers along the Elk.', datetime('now'))`);
   dbRun(`INSERT INTO federation_peers (id,name,kind,protocol,url,status)
-         VALUES ('peer_t2','Quiet Chapter','chapter','murmurations',
+         VALUES ('peer_t2','Quiet Chapter','unknown','murmurations',
                  'https://example.invalid/quiet.json','known')`);
+  // What the index actually returns most of: somewhere nearby that is not a
+  // commons at all.
+  dbRun(`INSERT INTO federation_peers (id,name,kind,protocol,url,status,summary,summary_at)
+         VALUES ('peer_t3','ATX Coop Taxi','organisation','murmurations',
+                 'https://example.invalid/taxi.json','known',
+                 'Austin, TX-based taxi cooperative', datetime('now'))`);
 
   const n = neighbours(CH);
+  check('a chapter and an organisation nearby are counted apart, not together',
+    n.chapters === 1 && n.items.length === 2,
+    JSON.stringify(n.items.map((i) => [i.name, i.kind])));
+  check('the sentence says how many are actually other chapters',
+    /1 other bioregional chapter and 1 other organisation/.test(n.sentence), n.sentence);
   check('a neighbour that has published something is listed',
-    n.items.length === 1 && n.items[0].name === 'Elk River Commons',
+    n.items.some((i) => i.name === 'Elk River Commons'),
     JSON.stringify(n.items.map((i) => i.name)));
   check('a neighbour that has published nothing is not invented',
     !n.items.some((i) => i.name === 'Quiet Chapter'));
   check('the line carries their own address, not a page inside this app',
-    n.items[0].url === 'https://example.invalid/elk.json');
+    n.items.find((i) => i.name === 'Elk River Commons').url === 'https://example.invalid/elk.json');
 
   // The property that keeps this a commons and not an aggregator: their words
   // stay theirs. A neighbour publishing "creek contaminated" must never become
@@ -2013,6 +2051,84 @@ check('a card from a real chapter does not cry wolf about being an example',
     .filter(([, sp]) => Array.isArray(sp.enum)));
   check('there are enums in the registry for this guard to be about', enums.length > 20,
     `${enums.length} enum fields declared`);
+}
+
+// ── A CHECK that was widened, on a commons that already existed ────────────
+// `federation_peers.kind` allowed only chapter/network/registry/index, and
+// discovery filed EVERY node the Murmurations index returned as a chapter. The
+// index answers a geographic query with whatever is near the point — asked
+// around Austin it returns a taxi co-operative, a web host, a copywriting
+// agency and an individual researcher — so the table asserted something the
+// data never said and the panel repeated it to a person as fact.
+//
+// SQLite cannot ALTER a CHECK, so widening it means rebuilding the table, and a
+// rebuild is the migration most able to lose somebody's data quietly. This runs
+// it against a database built with the OLD shape and checks what survived.
+{
+  const { execFileSync } = await import('node:child_process');
+  const { DatabaseSync } = await import('node:sqlite');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join: j } = await import('node:path');
+
+  const dir = mkdtempSync(j(tmpdir(), 'bros-migrate-'));
+  const old = j(dir, 'old.db');
+  {
+    const d = new DatabaseSync(old);
+    d.exec(`CREATE TABLE federation_peers (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'chapter' CHECK (kind IN ('chapter','network','registry','index')),
+      protocol TEXT NOT NULL DEFAULT 'murmurations'
+        CHECK (protocol IN ('murmurations','koi','activitypub','valueflows','manual')),
+      url TEXT, bioregion_name TEXT, last_synced_at TEXT,
+      status TEXT NOT NULL DEFAULT 'known' CHECK (status IN ('known','connected','sharing','paused')),
+      notes TEXT )`);
+    for (let i = 0; i < 5; i++) {
+      d.prepare(`INSERT INTO federation_peers (id,name,kind,url,status,notes) VALUES (?,?,?,?,?,?)`)
+        .run(`p${i}`, `Peer ${i}`, 'chapter', `https://example.invalid/${i}.json`, 'known', `note ${i}`);
+    }
+    d.close();
+  }
+
+  // A separate process, because core/db.mjs opens once per process and the
+  // migration only runs on that open.
+  const probe = j(dir, 'probe.mjs');
+  writeFileSync(probe, `
+    const { all, db } = await import(${JSON.stringify(new URL('../core/db.mjs', import.meta.url).href)});
+    db();
+    const rows = all('SELECT id,name,kind,url,notes FROM federation_peers ORDER BY id');
+    const sql = all("SELECT sql FROM sqlite_master WHERE name='federation_peers'")[0].sql;
+    console.log(JSON.stringify({
+      rows: rows.length,
+      kinds: [...new Set(rows.map((r) => r.kind))],
+      notesKept: rows.every((r) => r.notes === 'note ' + r.id.slice(1)),
+      urlsKept: rows.every((r) => (r.url ?? '').endsWith('.json')),
+      widened: sql.includes("'organisation'"),
+      hasTags: /\\btags\\b/.test(sql),
+    }));
+  `);
+  const out = JSON.parse(execFileSync(process.execPath,
+    ['--disable-warning=ExperimentalWarning', probe],
+    { env: { ...process.env, BROS_DB: old }, encoding: 'utf8' }).trim().split('\n').at(-1));
+
+  check('a constraint rebuild loses no rows', out.rows === 5, JSON.stringify(out));
+  check('a constraint rebuild loses no columns it was not changing',
+    out.notesKept && out.urlsKept, JSON.stringify(out));
+  check('the widened constraint is actually in place', out.widened && out.hasTags);
+  // The claim discovery made without evidence is dropped rather than carried
+  // forward. "unknown" is the honest value until the next profile read.
+  check('kinds asserted without evidence are reset, not migrated as truth',
+    out.kinds.length === 1 && out.kinds[0] === 'unknown', JSON.stringify(out.kinds));
+
+  // Runs once. The guard reads the live CHECK, so a second open is a no-op
+  // rather than a second rebuild.
+  const again = JSON.parse(execFileSync(process.execPath,
+    ['--disable-warning=ExperimentalWarning', probe],
+    { env: { ...process.env, BROS_DB: old }, encoding: 'utf8' }).trim().split('\n').at(-1));
+  check('opening the same commons again does not rebuild it a second time',
+    again.rows === 5 && again.widened, JSON.stringify(again));
+
+  rmSync(dir, { recursive: true, force: true });
 }
 
 // ── A backup that is actually a backup ─────────────────────────────────────

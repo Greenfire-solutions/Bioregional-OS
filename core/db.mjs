@@ -52,11 +52,80 @@ const ADDED_COLUMNS = {
     ['responded_at', 'TEXT'],
   ],
   federation_peers: [
-    ['summary', 'TEXT'], ['summary_at', 'TEXT'],
+    ['summary', 'TEXT'], ['summary_at', 'TEXT'], ['tags', 'TEXT'],
   ],
 };
 
+/**
+ * Constraints that changed after a commons already existed.
+ *
+ * ALTER TABLE cannot touch a CHECK in SQLite, so widening one means rebuilding
+ * the table. That is heavier than adding a column and is only ever done when
+ * the old constraint makes the schema state something untrue — which is the
+ * case here: `federation_peers.kind` allowed only chapter/network/registry/
+ * index, so every organisation discovered in the Murmurations index was
+ * recorded as a *chapter*. The index near any given point returns taxi
+ * co-operatives, web hosts and individual people, and filing those as
+ * bioregional chapters is a claim the data does not support.
+ *
+ * Guarded by reading the live CHECK out of sqlite_master rather than by a
+ * version number, so it runs exactly once and is correct on a fresh database
+ * (where schema.sql already created the wider constraint) without being told.
+ */
+function widenPeerKind(d) {
+  const sql = d.prepare(
+    `SELECT sql FROM sqlite_master WHERE type='table' AND name='federation_peers'`).get()?.sql;
+  if (!sql || sql.includes("'organisation'")) return;      // fresh, or already done
+
+  const cols = d.prepare('PRAGMA table_info(federation_peers)').all().map((c) => c.name);
+  const list = cols.join(',');
+  d.exec('PRAGMA foreign_keys=OFF');
+  d.exec('BEGIN');
+  try {
+    d.exec(`ALTER TABLE federation_peers RENAME TO federation_peers_old`);
+    d.exec(PEERS_TABLE);
+    // Anything previously recorded as a chapter was recorded that way by
+    // discovery regardless of what it actually was, so the claim is dropped
+    // rather than carried forward. recordPeers() re-classifies from the tags
+    // on the next discovery run; until then "unknown" is the honest value.
+    d.exec(`INSERT INTO federation_peers (${list})
+            SELECT ${cols.map((c) => c === 'kind' ? "'unknown'" : c).join(',')}
+              FROM federation_peers_old`);
+    d.exec('DROP TABLE federation_peers_old');
+    d.exec('COMMIT');
+  } catch (err) {
+    d.exec('ROLLBACK');
+    throw err;
+  } finally {
+    d.exec('PRAGMA foreign_keys=ON');
+  }
+}
+
+// Kept here as well as in schema.sql because the rebuild above has to recreate
+// the table exactly as schema.sql would. Two copies of a CREATE TABLE is the
+// one duplication this file accepts, and the guard reads the LIVE constraint
+// rather than trusting either copy.
+const PEERS_TABLE = `
+CREATE TABLE IF NOT EXISTS federation_peers (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  kind        TEXT NOT NULL DEFAULT 'unknown'
+              CHECK (kind IN ('chapter','network','registry','index','organisation','unknown')),
+  protocol    TEXT NOT NULL DEFAULT 'murmurations'
+              CHECK (protocol IN ('murmurations','koi','activitypub','valueflows','manual')),
+  url         TEXT,
+  bioregion_name TEXT,
+  last_synced_at TEXT,
+  status      TEXT NOT NULL DEFAULT 'known'
+              CHECK (status IN ('known','connected','sharing','paused')),
+  summary     TEXT,
+  summary_at  TEXT,
+  tags        TEXT,
+  notes       TEXT
+)`;
+
 function migrate(d) {
+  widenPeerKind(d);
   for (const [table, columns] of Object.entries(ADDED_COLUMNS)) {
     let existing;
     try { existing = new Set(d.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)); }

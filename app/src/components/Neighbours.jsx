@@ -37,7 +37,9 @@ export default function Neighbours() {
           <Globe2 className="h-3 w-3" /> Elsewhere
         </span>
         <span className="text-[10px] text-[var(--ink-3)]">
-          what other chapters published · nothing to answer
+{data.chapters > 0
+            ? `${data.chapters} other bioregional ${data.chapters === 1 ? 'chapter' : 'chapters'} · nothing to answer`
+            : 'others near here · nothing to answer'}
         </span>
       </div>
 
@@ -50,6 +52,11 @@ export default function Neighbours() {
               <ExternalLink className="ml-0.5 inline h-2.5 w-2.5 align-baseline text-[var(--ink-3)]" />
             </a>
             {n.where && <span className="text-[var(--ink-3)]"> · {n.where}</span>}
+            {/* Only a peer whose own tags claim to be a bioregional commons is
+                marked as one. Everything else the index returned is simply
+                nearby, and saying so is the difference between belonging to a
+                network and imagining one. */}
+            {n.is_chapter && <span className="text-[var(--moss)]"> · chapter</span>}
             {/* The only thing here that is ever news, and it is a word, not a badge. */}
             {n.changed && <span className="text-[var(--ink-3)]"> · changed</span>}
             <span className="text-[var(--ink-2)]"> — {n.line}</span>

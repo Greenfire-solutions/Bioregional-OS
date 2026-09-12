@@ -379,8 +379,12 @@ CREATE TABLE IF NOT EXISTS ai_log (
 CREATE TABLE IF NOT EXISTS federation_peers (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
-  kind        TEXT NOT NULL DEFAULT 'chapter'
-              CHECK (kind IN ('chapter','network','registry','index')),
+  -- What this peer actually IS, not what discovery hoped it was. The
+  -- Murmurations index near any point answers with organisations of every
+  -- kind — taxi co-operatives, web hosts, individual people — and recording
+  -- those as bioregional chapters is a claim the data does not support.
+  kind        TEXT NOT NULL DEFAULT 'unknown'
+              CHECK (kind IN ('chapter','network','registry','index','organisation','unknown')),
   protocol    TEXT NOT NULL DEFAULT 'murmurations'
               CHECK (protocol IN ('murmurations','koi','activitypub','valueflows','manual')),
   url         TEXT,
@@ -393,6 +397,7 @@ CREATE TABLE IF NOT EXISTS federation_peers (
   -- it teaches you to look at it, which is the feed this deliberately is not.
   summary     TEXT,
   summary_at  TEXT,
+  tags        TEXT,          -- as published, so the classification can be re-derived
   notes       TEXT
 );
 

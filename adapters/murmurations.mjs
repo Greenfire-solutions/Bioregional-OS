@@ -85,6 +85,32 @@ export async function discoverNearby({ lat, lng, range = '100km', schema = 'orga
   };
 }
 
+/**
+ * What a discovered node actually is, read from what it published.
+ *
+ * The index answers a geographic query with every organisation near the point —
+ * asked around Austin it returns a taxi co-operative, a web host, a copywriting
+ * agency and an individual researcher. Recording all of those as *chapters*,
+ * which is what this did, makes the federation table assert something the data
+ * never said, and the interface then repeats it to a person as fact.
+ *
+ * A bioregional chapter is identifiable because chapterProfile() publishes
+ * `tags: ['bioregional', 'commons', 'regenerative', <scale>]`. Everything else
+ * is an organisation that happens to be nearby, which is genuinely useful to
+ * know and is simply not the same thing.
+ *
+ * Nothing is guessed from a NAME. "Hill Country Bioregional Network" reads like
+ * a chapter and may be a mailing list; the tags are a claim its publisher made,
+ * and that is the only evidence there is.
+ */
+export function classifyPeer({ tags = [], name = '' } = {}) {
+  const t = new Set((tags ?? []).map((x) => String(x).toLowerCase().trim()));
+  if (t.has('bioregional') && (t.has('commons') || t.has('regenerative'))) return 'chapter';
+  if (t.has('index') || t.has('registry')) return 'registry';
+  if (t.has('network') || t.has('federation')) return 'network';
+  return tags?.length ? 'organisation' : 'unknown';
+}
+
 /** Persist discovered peers without duplicating what we already track. */
 export function recordPeers(peers) {
   let added = 0;
@@ -93,10 +119,11 @@ export function recordPeers(peers) {
     const seen = one('SELECT id FROM federation_peers WHERE url = ?', p.url);
     if (seen) continue;
     run(
-      `INSERT INTO federation_peers (id,name,kind,protocol,url,bioregion_name,status,last_synced_at)
-       VALUES (?,?,?,?,?,?,?,datetime('now'))`,
+      `INSERT INTO federation_peers (id,name,kind,protocol,url,bioregion_name,status,tags,last_synced_at)
+       VALUES (?,?,?,?,?,?,?,?,datetime('now'))`,
       `peer_${Math.random().toString(36).slice(2, 10)}`,
-      p.name, 'chapter', 'murmurations', p.url, p.locality ?? null, 'known'
+      p.name, classifyPeer(p), 'murmurations', p.url, p.locality ?? null, 'known',
+      p.tags?.length ? JSON.stringify(p.tags) : null
     );
     added++;
   }
