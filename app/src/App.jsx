@@ -26,6 +26,10 @@ import { get, callTool } from './api.js';
 //
 // Each leaf still names the tool that adds to it, so the "add" affordance is
 // always one reach away and never a guess.
+// scripts/test.mjs asserts that every label here is named somewhere in the
+// README. Rename a tab without saying so and the suite goes red; reword the
+// README's description of it freely and it does not. The set is checked, the
+// prose is left to a person.
 const GROUPS = [
   { id: 'today', label: 'Today', icon: ListChecks, sub: [
     { id: 'today', label: 'Today', icon: ListChecks },

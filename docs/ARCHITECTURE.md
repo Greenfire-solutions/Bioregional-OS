@@ -139,6 +139,17 @@ Nobody lied; each number was true when it was typed. **Prose about state rots,
 and nothing tells you.** The suite now reads the documents and compares, so a
 count either matches the registry or the document carries no number at all.
 
+**And it concentrates in the front door.** Every count that had rotted was in
+README, the help menu, the `npm run connect` output or the Claude Code guide —
+not one was in interior prose. That is not coincidence. Interior comments get
+re-read whenever somebody works on the code beside them; the front door is
+written once, at the moment its author knows the most about the project, and is
+then never re-read by anyone who already knows the answer. **The highest-drift
+prose in any project is the prose its authors have no reason to look at again** —
+which is also the only prose a stranger reads. The same blind spot has a earlier
+form: `npm run data` and the offline ecoregion library were not stale in the
+front door, they had never been added to it at all.
+
 Its common cause is **asserting phrasing instead of meaning**. A check pinned to
 the sentence `check their terms before redistributing` failed the moment the
 wording moved to `before passing it on` — nothing was broken, and the fix is to

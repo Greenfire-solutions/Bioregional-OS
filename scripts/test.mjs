@@ -1130,30 +1130,74 @@ check('whatever the card resolved appears in the text somebody pastes',
 
 // ── Prose that states a count is prose that will be wrong ────────────────
 // Four documents claimed a tool count — 59, 49, 48 and 23 — while the registry
-// held 77. Nobody lied; each number was true when it was typed. This is the same
-// failure as a licence written into an adapter instead of resolved from the
-// registry, and the same as a coverage note describing a layer instead of
-// asserting it: PROSE ABOUT STATE ROTS, AND NOTHING TELLS YOU.
+// held 77. Nobody lied; each number was true when it was typed. Same failure as
+// a licence written into an adapter instead of resolved from the registry, and
+// as a coverage note describing a layer instead of asserting it: PROSE ABOUT
+// STATE ROTS, AND NOTHING TELLS YOU.
 //
-// So the suite reads the documents and compares. A count in prose either matches
-// the registry or the document should not carry a number at all.
+// Two kinds of number, and they need opposite rules:
+//
+//   RESOLVABLE — tools, sources. The registry knows the true value, so a stated
+//   number must equal it. Assert.
+//
+//   UNRESOLVABLE — tests. Nothing can know the count of tests while the tests
+//   are running, so a stated number can never be checked and will drift the
+//   moment anyone adds one. Refuse it outright.
+//
+// Scanned in code as well as prose, because the worst instance was not in a
+// document at all: `npm run connect` printed "all 23 tools" to a person's
+// terminal on their first day. A doc-only check would never have seen it.
 {
   const { readFileSync, readdirSync } = await import('node:fs');
   const { join } = await import('node:path');
   const { TOOLS } = await import('../ai/tools.mjs');
   const { SOURCES } = await import('../adapters/registry.mjs');
   const truth = { tools: TOOLS.length, sources: SOURCES.length };
-  const docs = ['README.md', ...readdirSync('docs').filter((f) => f.endsWith('.md')).map((f) => join('docs', f))];
-  const drifted = [];
-  for (const f of docs) {
+
+  const files = [
+    'README.md',
+    ...readdirSync('docs').filter((f) => f.endsWith('.md')).map((f) => join('docs', f)),
+    // This file is the checker and quotes the wrong numbers above by way of
+    // explanation, so it is the one place a stale count is the point.
+    ...readdirSync('scripts').filter((f) => f.endsWith('.mjs') && f !== 'test.mjs').map((f) => join('scripts', f)),
+  ];
+
+  const drifted = [], unverifiable = [];
+  for (const f of files) {
     let text;
     try { text = readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of text.matchAll(/\b(\d{2,4})\s+(tools|sources)\b/g)) {
-      if (Number(m[1]) !== truth[m[2]]) drifted.push(`${f}: "${m[1]} ${m[2]}" is now ${truth[m[2]]}`);
+    for (const m of text.matchAll(/\b(\d{2,4})\s+(tools|sources|tests)\b/g)) {
+      if (m[2] === 'tests') unverifiable.push(`${f}: "${m[1]} tests"`);
+      else if (Number(m[1]) !== truth[m[2]]) drifted.push(`${f}: "${m[1]} ${m[2]}" is now ${truth[m[2]]}`);
     }
   }
-  check('no document states a count that has drifted from the registry',
+  check('no document or script states a count that has drifted from the registry',
     drifted.length === 0, drifted.join(' · '));
+  check('nothing states a test count, which cannot be checked and will drift',
+    unverifiable.length === 0, unverifiable.join(' · '));
+}
+
+// ── The front door names every room ──────────────────────────────────────
+// The README's tab table is transcribed from GROUPS in App.jsx, and a
+// transcription is a copy. Generating it was the obvious fix and the wrong one:
+// the descriptions are editorial — "a good idea never overrides a red flag" has
+// to be written by somebody with a view, not exported from a component.
+//
+// So assert the SET and leave the prose. Add or rename a tab without saying so
+// in the README and this goes red; reword any description freely and it does
+// not. App.jsx is JSX and cannot be imported here, so the ids are read as text —
+// which is the honest shape for a check that is comparing two documents.
+{
+  const { readFileSync } = await import('node:fs');
+  const app = readFileSync('app/src/App.jsx', 'utf8');
+  const groups = app.slice(app.indexOf('const GROUPS'), app.indexOf('const TABS'));
+  const ids = [...groups.matchAll(/id:\s*'([a-z]+)'/g)].map((m) => m[1]);
+  const labels = [...groups.matchAll(/label:\s*'([^']+)'/g)].map((m) => m[1]);
+  const readme = readFileSync('README.md', 'utf8');
+  const missing = labels.filter((l) => !readme.includes(l));
+  check('every tab the interface offers is named in the README',
+    ids.length >= 13 && missing.length === 0,
+    missing.length ? `not mentioned: ${missing.join(', ')}` : `read ${ids.length} ids from GROUPS`);
 }
 
 // ── Report ────────────────────────────────────────────────────────────────
