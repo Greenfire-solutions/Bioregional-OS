@@ -5,10 +5,11 @@ and stop when it works.
 
 ## The very short version
 
-**On a Mac:** open the `bin` folder and double-click **Start BioRegional OS.command**.
-That is the whole thing. It sets itself up the first time, then opens your browser.
+**On a Mac:** double-click the **BioRegional OS** icon at the top of the folder.
+That is the whole thing. It sets itself up the first time, then opens your
+browser — and if it is already running, clicking it just opens the browser again.
 
-If a warning says the file is from an unidentified developer: right-click it,
+If a warning says the app is from an unidentified developer: right-click it,
 choose **Open**, then **Open** again. macOS only asks once.
 
 ## The typing version

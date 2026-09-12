@@ -1,0 +1,111 @@
+#!/bin/bash
+# ── BioRegional OS — the icon you double-click ─────────────────────────────
+# Starts the OS if it is not running, then opens it in your browser. If it is
+# already running, it just opens the browser. Either way: one click, no
+# terminal window, and clicking it again is always safe.
+#
+# Everything is resolved from where this bundle sits, so the folder can be
+# moved or renamed and the icon still works. It must stay at the top of the
+# project folder, next to package.json.
+#
+# Two traps this file is shaped around, both learned on another project:
+#
+#   • macOS protects ~/Desktop and ~/Documents. An app bundle Apple has not
+#     notarised is denied READ access there silently — no prompt, just an
+#     error the instant node opens a file — while WRITES still succeed, so a
+#     log appears and the launch fails. The probe below reads one file first
+#     and, when blocked, hands the job to Terminal, which already holds the
+#     permission. Never test this by running the script; test with `open`.
+#
+#   • Finder launches with almost no PATH, so `node` is not found even when
+#     it is installed. The usual homes are added explicitly.
+
+HERE="$(cd "$(dirname "$0")/../../.." && pwd)"
+export PATH="$PATH:/usr/local/bin:/opt/homebrew/bin:$HOME/.nvm/versions/node/current/bin"
+# The newest nvm node, if that is how node got here.
+for d in "$HOME"/.nvm/versions/node/*/bin; do [ -d "$d" ] && export PATH="$PATH:$d"; done
+
+PORT="${PORT:-$(grep -E '^PORT=' "$HERE/.env" 2>/dev/null | tail -1 | cut -d= -f2)}"
+PORT="${PORT:-4180}"
+URL="http://localhost:$PORT"
+# The log lives in ~/Library/Logs, not in the project: on a protected folder
+# this bundle may be unable to write there at all, and a launcher that cannot
+# say why it failed is the failure mode this file exists to avoid.
+LOG="$HOME/Library/Logs/BioRegional OS.log"
+mkdir -p "$HOME/Library/Logs" 2>/dev/null
+FALLBACK="$HERE/bin/Start BioRegional OS.command"
+# A short trace of every click, so "nothing happened" is never a mystery.
+{ printf '\n── %s  click  port=%s  here=%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$PORT" "$HERE"; } >> "$LOG" 2>/dev/null
+trace() { printf '   %s\n' "$*" >> "$LOG" 2>/dev/null; }
+
+alive() { curl -s -m 1 -o /dev/null "$URL/api/status"; }
+say() { osascript -e "display dialog \"$1\" with title \"BioRegional OS\" buttons {\"OK\"} default button 1" >/dev/null 2>&1; }
+hand_to_terminal() {
+  # Terminal already has permission to read this folder, and the .command
+  # file does the same job with a visible window — for first-time setup,
+  # which takes minutes and should be watched.
+  osascript -e "tell application \"Terminal\" to do script \"'$FALLBACK'\"" \
+            -e "tell application \"Terminal\" to activate" >/dev/null 2>&1
+}
+start_via_terminal() {
+  # The everyday case on a protected folder: start the server from a Terminal
+  # window that holds the permission, then close that window ourselves so the
+  # click still feels like one click. `disown` matters — zsh refuses to exit
+  # while a background job is attached, and the window would stay forever.
+  local cmd="cd '$HERE' && nohup node --disable-warning=ExperimentalWarning --env-file-if-exists=.env server/index.mjs >> '$LOG' 2>&1 & disown; exit"
+  WIN=$(osascript -e "tell application \"Terminal\"" \
+                  -e "  do script \"$cmd\"" \
+                  -e "  set w to id of front window" \
+                  -e "end tell" \
+                  -e "return w" 2>>"$LOG")
+}
+close_terminal_window() {
+  printf 'terminal window id: [%s]\n' "$WIN" >> "$LOG"
+  [ -n "$WIN" ] || return 0
+  osascript -e "tell application \"Terminal\" to close (every window whose id is $WIN) saving no" >> "$LOG" 2>&1
+}
+
+# Already running: just open it. This is the click most days.
+if alive; then trace "already running — opening browser"; open "$URL"; exit 0; fi
+
+# Can this bundle read the project at all? (The TCC trap.) If not, Terminal
+# does the reading: setup with a window if it is the first time, otherwise a
+# window that starts the server and closes itself.
+if ! /bin/cat "$HERE/package.json" >/dev/null 2>&1; then
+  trace "cannot read the project from this bundle (macOS privacy) — using Terminal"
+  if [ ! -d "$HERE/node_modules" ] || [ ! -d "$HERE/app/node_modules" ] || [ ! -f "$HERE/app/dist/index.html" ]; then
+    hand_to_terminal; exit 0
+  fi
+  start_via_terminal
+  trace "asked Terminal; window id [$WIN]"
+  for _ in $(seq 1 60); do alive && break; sleep 0.5; done
+  trace "alive: $(alive && echo yes || echo no)"
+  close_terminal_window
+  if alive; then open "$URL"; exit 0; fi
+  say "BioRegional OS did not start. The reason is in ~/Library/Logs/BioRegional OS.log. Try: npm run doctor -- --fix"
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  trace "node not found on PATH=$PATH"
+  say "Node is not installed yet. Opening nodejs.org — download the big green LTS button, install it, then double-click this icon again."
+  open "https://nodejs.org"; exit 1
+fi
+
+# First time here: setup takes minutes and should be watched, so it gets a window.
+if [ ! -d "$HERE/node_modules" ] || [ ! -d "$HERE/app/node_modules" ] || [ ! -f "$HERE/app/dist/index.html" ]; then
+  hand_to_terminal; exit 0
+fi
+
+cd "$HERE" || exit 1
+trace "starting node directly"
+nohup node --disable-warning=ExperimentalWarning --env-file-if-exists=.env server/index.mjs >> "$LOG" 2>&1 &
+disown
+
+for _ in $(seq 1 60); do alive && break; sleep 0.5; done
+if alive; then
+  open "$URL"
+else
+  say "BioRegional OS did not start. The reason is in ~/Library/Logs/BioRegional OS.log. Try: npm run doctor -- --fix"
+  exit 1
+fi

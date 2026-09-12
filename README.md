@@ -24,9 +24,15 @@ launcher below checks for it and tells you the same thing if it is missing.
 
 ## Start in one step
 
-**Mac:** open the unpacked folder and double-click `bin/Start BioRegional OS.command`.
-The first time, macOS may say it cannot check the file: right-click it, choose
-*Open*, then *Open* again. That happens once.
+**Mac:** open the unpacked folder and double-click **BioRegional OS** (the icon).
+It starts the OS if it is not running and opens it in your browser; if it is
+already running, it just opens the browser. Click it as often as you like.
+The first time, macOS may say it cannot check the app: right-click it, choose
+*Open*, then *Open* again. That happens once. The first run also needs a few
+minutes to set up, and does that in a Terminal window so you can watch it.
+
+`bin/Start BioRegional OS.command` does the same job with a visible window,
+if you would rather see what it is doing.
 
 **Anything else:**
 
