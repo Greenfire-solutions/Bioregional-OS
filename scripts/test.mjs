@@ -1190,14 +1190,32 @@ check('whatever the card resolved appears in the text somebody pastes',
 {
   const { readFileSync } = await import('node:fs');
   const app = readFileSync('app/src/App.jsx', 'utf8');
-  const groups = app.slice(app.indexOf('const GROUPS'), app.indexOf('const TABS'));
+
+  // The parse is checked before it is trusted, and separately, so a failure
+  // names its own cause. The first version guarded only against finding too
+  // FEW ids: rename the closing anchor and indexOf returns -1, slice(start, -1)
+  // runs to the end of the file, and the block goes from 1.5k to 13k characters
+  // — the whole component. `ids.length >= 13` is satisfied by parsing too much
+  // just as happily as by parsing correctly, so the check silently became
+  // "does the README mention every label anywhere in App.jsx", a weaker
+  // assertion wearing a stronger name. A guard against parsing too little and
+  // none against parsing too much is half a guard.
+  const start = app.indexOf('const GROUPS');
+  const end = app.indexOf('const TABS');
+  check('the GROUPS block can still be found in App.jsx',
+    start >= 0 && end > start, `start ${start}, end ${end} — an anchor was renamed`);
+
+  const groups = start >= 0 && end > start ? app.slice(start, end) : '';
   const ids = [...groups.matchAll(/id:\s*'([a-z]+)'/g)].map((m) => m[1]);
   const labels = [...groups.matchAll(/label:\s*'([^']+)'/g)].map((m) => m[1]);
+  check('the parse found the GROUPS array and not the rest of the file',
+    ids.length >= 13 && ids.length <= 30 && groups.length < 4000,
+    `${ids.length} ids across ${groups.length} characters`);
+
   const readme = readFileSync('README.md', 'utf8');
   const missing = labels.filter((l) => !readme.includes(l));
   check('every tab the interface offers is named in the README',
-    ids.length >= 13 && missing.length === 0,
-    missing.length ? `not mentioned: ${missing.join(', ')}` : `read ${ids.length} ids from GROUPS`);
+    missing.length === 0, `not mentioned: ${missing.join(', ')}`);
 }
 
 // ── Report ────────────────────────────────────────────────────────────────
