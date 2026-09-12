@@ -27,6 +27,7 @@ import * as turning from '../engines/turning.mjs';
 import * as landseat from '../engines/landseat.mjs';
 import * as matching from '../engines/matching.mjs';
 import * as board from '../engines/board.mjs';
+import * as mapboard from '../engines/mapboard.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -1186,6 +1187,24 @@ export const TOOLS = [
       'chose" are the same conversation.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => quest.priorities(ch(i)),
+  },
+  {
+    name: 'map_features',
+    description:
+      'Everything in this commons that can honestly be drawn on the map — places, hubs, open ' +
+      'projects, needs brought and still waiting, gatherings, what people noticed, and what the ' +
+      'instruments reported — each tagged with its kind and a badge worth reading before anybody ' +
+      'clicks it. Every feature says whether the coordinate is its OWN or borrowed: a need and a ' +
+      'gathering have no lat/lng in the schema, so they can only be drawn at the centre of the ' +
+      'place they belong to, and "this is here" and "this belongs to a group whose centre is ' +
+      'here" are different claims. Private needs never appear: a pin is a disclosure with a ' +
+      'location on it.',
+    input_schema: S({
+      chapter_id: str(''),
+      kinds: { type: 'array', items: { type: 'string' },
+        description: 'Only these kinds. Default all of them.' },
+    }),
+    handler: (i) => mapboard.mapFeatures(ch(i), { kinds: i.kinds?.length ? i.kinds : null }),
   },
   {
     name: 'commons_board',

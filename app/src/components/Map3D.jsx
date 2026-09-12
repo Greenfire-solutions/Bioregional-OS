@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { MapView, _GlobeView as GlobeView, COORDINATE_SYSTEM } from '@deck.gl/core';
-import { GeoJsonLayer, ScatterplotLayer, ColumnLayer, SolidPolygonLayer, TextLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, ScatterplotLayer, ColumnLayer, SolidPolygonLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
 import { Globe, Mountain, Layers, Loader2 } from 'lucide-react';
+import { KIND, KIND_ORDER, markerSVG, badgeColor } from '../mapKinds.js';
+import { callTool } from '../api.js';
 
 // Carto's Positron — an open basemap style that needs no API key.
 // Dark Matter, not Positron. The Atlas is the hero of this interface and a
@@ -45,6 +47,13 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(null);
   const [showSignals, setShowSignals] = useState(true);
+  const [features, setFeatures] = useState([]);
+  // Instrument readings are OFF by default. There are 68 of them against 5
+  // observations in the example commons — a map showing both at once is a map
+  // of the gage, and what a person noticed disappears underneath what a machine
+  // reported. Everything a person did is on; the machines are a toggle.
+  const [kindsOn, setKindsOn] = useState(
+    () => new Set(KIND_ORDER.filter((k) => k !== 'reading')));
   const fetchRef = useRef(0);
 
   const home = places[0] ?? { lat: 30.26, lng: -97.79 };
@@ -224,8 +233,82 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         }));
       }
     }
+
+    // ── Everything a commons is doing, on the ground it is doing it on ─────
+    // Drawn last so it sits above the terrain, and ordered by each kind's own
+    // `z` so a project is never hidden under a gage reading. Sorting rather
+    // than one layer per kind keeps picking in a single pass, which is what
+    // makes a click land on the thing under the cursor rather than the thing
+    // that happened to be added last.
+    const shown = features
+      .filter((f) => kindsOn.has(f.kind))
+      .sort((a, b) => (KIND[a.kind]?.z ?? 0) - (KIND[b.kind]?.z ?? 0));
+
+    if (shown.length) {
+      L.push(new IconLayer({
+        id: 'commons-features',
+        data: shown,
+        pickable: true,
+        getPosition: (d) => [d.lng, d.lat],
+        getIcon: (d) => ({
+          url: markerSVG(d.kind, { blocked: d.state === 'blocked', precise: d.precise !== false }),
+          width: 64, height: 64, anchorX: 32, anchorY: 32, mask: false,
+        }),
+        getSize: (d) => KIND[d.kind]?.size ?? 18,
+        sizeUnits: 'pixels',
+        // Never scaled by zoom. A marker that shrinks to a pixel when you zoom
+        // out is a marker you cannot find, and finding things is the point.
+        sizeMinPixels: 10,
+        // Above the extruded ecoregions. deck.gl buries point layers under
+        // extruded polygons otherwise — the trap already documented for the
+        // signal layers below.
+        parameters: { depthTest: false },
+        onHover: (i) => setHover(i.object ? {
+          x: i.x, y: i.y,
+          title: i.object.title,
+          sub: [i.object.sub, i.object.precise === false ? 'at the centre of its place' : null]
+            .filter(Boolean).join(' · '),
+          kind: KIND[i.object.kind]?.label ?? i.object.kind,
+        } : null),
+        onClick: (i) => i.object && onSelect?.({ type: 'feature', item: i.object }),
+        updateTriggers: { getIcon: [shown.map((f) => `${f.kind}${f.state}${f.precise}`).join()] },
+      }));
+
+      // The badge, on top of the marker: how many things are in a project's
+      // way, how many days a need has waited, who said they are coming. The
+      // whole reason it is drawn rather than left to the tooltip is that it has
+      // to be readable WITHOUT hovering — a map you have to interrogate one
+      // pin at a time is a list with extra steps.
+      const badged = shown.filter((f) => f.badge);
+      if (badged.length) {
+        L.push(new TextLayer({
+          id: 'commons-badges',
+          data: badged,
+          getPosition: (d) => [d.lng, d.lat],
+          getText: (d) => String(d.badge),
+          getSize: 11,
+          getColor: (d) => badgeColor(d.kind, d.state === 'blocked'),
+          fontFamily: 'ui-sans-serif, system-ui',
+          fontWeight: 700,
+          getTextAnchor: 'middle',
+          getAlignmentBaseline: 'center',
+          parameters: { depthTest: false },
+          pickable: false,
+          updateTriggers: { getColor: [badged.map((f) => f.state).join()] },
+        }));
+      }
+    }
+
     return L;
-  }, [eco, level, relief, mode, signals, hubs, places, showSignals]);
+  }, [eco, level, relief, mode, signals, hubs, places, showSignals, features, kindsOn]);
+
+  useEffect(() => {
+    let live = true;
+    callTool('map_features', {})
+      .then((r) => live && !r?.error && setFeatures(r.features ?? []))
+      .catch(() => {});
+    return () => { live = false; };
+  }, [places.length, signals.length, hubs.length]);
 
   const views = mode === 'globe'
     ? new GlobeView({ id: 'globe', controller: true, resolution: 12 })
@@ -258,8 +341,58 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         </div>
         <div className="flex overflow-hidden rounded border border-[var(--line)] bg-[var(--paper)] shadow-sm">
           <Btn active={relief} onClick={() => setRelief((v) => !v)} icon={Layers} label="Relief" />
-          <Btn active={showSignals} onClick={() => setShowSignals((v) => !v)} label="Signals" />
         </div>
+      </div>
+
+      {/* ── The key, which is also the switches ───────────────────────────
+          A legend that only explains is a legend nobody reads twice. This one
+          is the control: each row says what a symbol means AND turns it off,
+          so the question "what is that shape?" and the action "stop showing
+          me those" are the same click. Counts are on each row, because the
+          most useful thing about a layer is often how much of it there is —
+          sixty-eight readings against five observations is the reason the
+          readings start switched off. */}
+      <div className="absolute bottom-3 left-3 z-10 rounded border border-[var(--line)]
+                      bg-[var(--paper)]/95 p-2 shadow-sm backdrop-blur">
+        <div className="mb-1 px-1 text-[9px] uppercase tracking-wide text-[var(--ink-3)]">
+          On the map
+        </div>
+        <div className="flex flex-col gap-0.5">
+          {KIND_ORDER.map((k) => {
+            const n = features.filter((f) => f.kind === k).length;
+            const on = kindsOn.has(k);
+            return (
+              <button key={k}
+                onClick={() => setKindsOn((prev) => {
+                  const s2 = new Set(prev);
+                  if (s2.has(k)) s2.delete(k); else s2.add(k);
+                  return s2;
+                })}
+                disabled={!n}
+                title={KIND[k].what}
+                className={`flex items-center gap-1.5 rounded px-1.5 py-1 text-left text-[10px]
+                            transition-colors disabled:opacity-35 ${
+                  on ? 'text-[var(--ink)] hover:bg-[var(--paper-2)]'
+                     : 'text-[var(--ink-3)] hover:bg-[var(--paper-2)]'}`}>
+                <img src={markerSVG(k, { precise: true })} alt=""
+                     className={`h-3.5 w-3.5 shrink-0 ${on ? '' : 'opacity-30 grayscale'}`} />
+                <span className="whitespace-nowrap">{KIND[k].label}</span>
+                <span className="ml-auto pl-1.5 text-[var(--ink-3)]">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+        {features.some((f) => f.precise === false) && (
+          // Said once, where the shapes are explained, because a dashed hollow
+          // marker is otherwise just a marker that looks slightly different.
+          <div className="mt-1.5 flex items-start gap-1.5 border-t border-[var(--line)] px-1 pt-1.5">
+            <img src={markerSVG('gathering', { precise: false })} alt=""
+                 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span className="max-w-[9.5rem] text-[9px] leading-snug text-[var(--ink-3)]">
+              Hollow and dashed: no coordinate of its own, drawn at the centre of its place.
+            </span>
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -279,8 +412,12 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-6 left-3 rounded bg-[var(--paper)]/90 px-2 py-1
-                      text-[10px] text-[var(--ink-3)]">
+      {/* Moved out from under the key, which now occupies the bottom-left
+          corner this used to have to itself. Credit that is covered up is
+          credit not given — and the licence on this layer requires it. */}
+      <div className="pointer-events-none absolute bottom-6 left-3 max-w-[calc(100%-1.5rem)]
+                      rounded bg-[var(--paper)]/90 px-2 py-1 text-[10px] text-[var(--ink-3)]
+                      md:left-[13.5rem]">
         Ecoregions: EPA Level III & IV (public domain) · relief is visual separation, not elevation
       </div>
     </div>

@@ -1197,6 +1197,81 @@ check('the intake promise states itself in words a person can read',
     /CoMapeo|QGIS/.test(unreadable.message ?? ''), unreadable.message);
 }
 
+// ── The map, and what it is honest about ──────────────────────────────────
+// The map drew places, hubs and signals. Everything a commons actually DOES —
+// the projects, the needs, the gatherings — lived only in lists, so the one
+// view that is about a place could not show what was happening in it.
+{
+  const { mapFeatures, MAP_KINDS } = await import('../engines/mapboard.mjs');
+  const kinds = readFileSync(new URL('../app/src/mapKinds.js', import.meta.url), 'utf8');
+
+  // A kind drawn but missing from the key is a symbol nobody can read; a kind
+  // in the key and never drawn is a promise the map does not keep.
+  const drawn = MAP_KINDS.map((k) => k.key).sort();
+  const styled = [...kinds.matchAll(/^  (\w+): \{$/gm)].map((m) => m[1]).sort();
+  check('every kind the map draws has a symbol in the key',
+    drawn.every((k) => styled.includes(k)), `missing a symbol: ${drawn.filter((k) => !styled.includes(k))}`);
+  check('and every symbol in the key is a kind that gets drawn',
+    styled.every((k) => drawn.includes(k)), `in the key and never drawn: ${styled.filter((k) => !drawn.includes(k))}`);
+  const ordered = kinds.match(/KIND_ORDER = \[([^\]]*)\]/)?.[1] ?? '';
+  check('the key lists all of them and none twice',
+    drawn.every((k) => ordered.includes(`'${k}'`))
+      && ordered.split(',').length === drawn.length, ordered);
+
+  // Shape AND colour, never colour alone — roughly one man in twelve cannot
+  // separate the reds from the greens, and this map uses both to mean opposite
+  // things (a blocked project and a running one).
+  check('kinds are told apart by shape as well as colour',
+    new Set([...kinds.matchAll(/shape: '(\w+)'/g)].map((m) => m[1])).size >= 6,
+    'two kinds share a shape and rely on colour to be told apart');
+
+  const m = mapFeatures('test');
+  check('the map carries more than places and dots',
+    new Set(m.features.map((f) => f.kind)).size >= 3,
+    JSON.stringify(m.counts));
+
+  // THE CLAIM THIS FILE EXISTS FOR. A need and a gathering have no lat/lng in
+  // the schema. Drawing them at a place's centroid without saying so asserts a
+  // precision the data does not have, and nobody can see a map doing that.
+  check('every feature says whether the coordinate is its own',
+    m.features.every((f) => typeof f.precise === 'boolean'));
+  const borrowed = m.features.filter((f) => !f.precise);
+  check('and a borrowed one names where it was borrowed from',
+    borrowed.every((f) => !!f.borrowed_from), JSON.stringify(borrowed.slice(0, 2)));
+  check('a quest or observation with its own coordinate is not marked borrowed',
+    m.features.filter((f) => ['observation', 'reading'].includes(f.kind) && f.precise)
+      .every((f) => f.borrowed_from === null));
+
+  // A pin is a disclosure with a location on it.
+  const secret = await runTool('submit_intake', {
+    chapter_id: 'test', kind: 'need', private: true,
+    body: 'A private circumstance that must not appear on any map.', submitted_by: 'A neighbour',
+  });
+  check('a private need never reaches the map',
+    !JSON.stringify(mapFeatures('test')).includes('private circumstance'),
+    'a need marked private was given a pin');
+  dbRun('DELETE FROM intake WHERE id=?', secret.id);
+
+  // The badge is the thing that makes a map readable without clicking.
+  const proj = m.features.filter((f) => f.kind === 'project');
+  check('a project carries how many things are in its way, before anyone clicks',
+    proj.every((f) => f.badge === null || typeof f.badge === 'number'));
+  check('and says whether it is blocked or running',
+    proj.every((f) => ['blocked', 'running'].includes(f.state)));
+
+  // The map component must actually use the shared definitions rather than
+  // growing its own copy of the colours.
+  const map3d = readFileSync(new URL('../app/src/components/Map3D.jsx', import.meta.url), 'utf8');
+  check('the map draws from the shared key rather than its own colours',
+    /from '\.\.\/mapKinds\.js'/.test(map3d) && /markerSVG/.test(map3d));
+  check('the key is also the switches',
+    /setKindsOn/.test(map3d) && /KIND_ORDER\.map/.test(map3d));
+  // Sixty-eight readings against five observations: both on at once is a map
+  // of the gage.
+  check('instrument readings start switched off',
+    /k !== 'reading'/.test(map3d), 'the machines would bury what people noticed');
+}
+
 // ── An action has to look like a thing you press ──────────────────────────
 // "Propose to council" is the entire point of the council page, and it lived in
 // the tab strip pushed to the far right as a small outlined pill — styled as

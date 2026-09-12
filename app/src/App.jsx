@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
 import RegionPanel from './components/RegionPanel.jsx';
+import MapPanel from './components/MapPanel.jsx';
 import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
@@ -94,6 +95,7 @@ export default function App() {
   const [gates, setGates] = useState({});
   const [focus, setFocus] = useState(null);
   const [region, setRegion] = useState(null);
+  const [picked, setPicked] = useState(null);
   const [panel, setPanel] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [form, setForm] = useState(null);
@@ -277,10 +279,19 @@ export default function App() {
                          // area — so clicking one opens what is known about it
                          // instead of moving the camera.
                          if (s.type === 'ecoregion') return setRegion(s.item);
+                         // A thing the commons put on the map opens beside it
+                         // rather than flying the camera: you clicked it because
+                         // you wanted to know what it is, not to go somewhere.
+                         if (s.type === 'feature') return setPicked(s.item);
                          if (s.item.lat != null) setFocus({ lat: s.item.lat, lng: s.item.lng });
                        }} />
                 {region && <RegionPanel region={region} onClose={() => setRegion(null)} />}
               </div>
+              {picked && (
+                <MapPanel feature={picked} onClose={() => setPicked(null)}
+                          onGoTo={(t) => { setPicked(null); setTab(t); }}
+                          onAct={(tool, input) => { setPicked(null); setForm({ tool, prefill: input }); }} />
+              )}
               {tab === 'place' && (
                 <div className="w-[26rem] shrink-0 overflow-y-auto border-l border-[var(--line)] bg-[var(--paper)] p-4">
                   <MyPlace data={dash} onFocus={focusOn} />
