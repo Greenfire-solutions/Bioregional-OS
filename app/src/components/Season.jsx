@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCcw, Loader2, CheckCircle2, CircleDot, TrendingUp, EyeOff, HelpCircle } from 'lucide-react';
+import { RefreshCcw, Loader2, CheckCircle2, CircleDot, TrendingUp, EyeOff, HelpCircle, ListOrdered, Lock } from 'lucide-react';
 import { callTool } from '../api.js';
 
 /**
@@ -28,6 +28,7 @@ import { callTool } from '../api.js';
 export default function Season() {
   const [state, setState] = useState(null);
   const [review, setReview] = useState(null);
+  const [pri, setPri] = useState(null);
   const [answers, setAnswers] = useState({});
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -35,8 +36,10 @@ export default function Season() {
 
   async function load() {
     setBusy(true);
-    const [s, r] = await Promise.all([callTool('seasons', {}), callTool('season_review', {})]);
-    setState(s); setReview(r?.error ? null : r); setBusy(false);
+    const [s, r, p] = await Promise.all([
+      callTool('seasons', {}), callTool('season_review', {}), callTool('seasonal_priorities', {}),
+    ]);
+    setState(s); setReview(r?.error ? null : r); setPri(p?.error ? null : p); setBusy(false);
   }
   useEffect(() => { load(); }, []);
 
@@ -72,6 +75,55 @@ export default function Season() {
           with what uncertainty, then what should stop, continue, change or travel.
         </p>
       </div>
+
+      {/* Stage 6's required output, which the twelve-stage loop asks for and
+          nothing in this OS produced. It sits here rather than with the
+          projects because a priority list is a statement about a SEASON — and
+          it shows what is held back beside what is ranked, since "what next"
+          and "what is stopping what we already chose" are one conversation. */}
+      {pri?.total > 0 && (
+        <section className="rounded border border-[var(--line)] bg-[var(--paper-2)] px-4 py-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+            <ListOrdered className="h-3 w-3" /> What is urgent, regenerative, feasible and maintainable
+          </div>
+          <p className="text-xs leading-snug text-[var(--ink-2)]">{pri.sentence}</p>
+
+          {pri.ranked.length > 0 && (
+            <ol className="mt-2 space-y-1">
+              {pri.ranked.map((r, i) => (
+                <li key={r.id} className="flex items-baseline gap-2 text-xs">
+                  <span className="w-4 shrink-0 text-right text-[var(--ink-3)]">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">{r.quest}</span>
+                  <span className="shrink-0 text-[11px] text-[var(--ink-3)]">
+                    weakest: {r.weakest}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {pri.blocked.length > 0 && (
+            <div className="mt-2 border-t border-[var(--line)] pt-2">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+                <Lock className="h-3 w-3" /> Not ranked, and why
+              </div>
+              <ul className="space-y-0.5">
+                {pri.blocked.slice(0, 5).map((b) => (
+                  <li key={b.id} className="text-[11px] leading-snug text-[var(--ink-2)]">
+                    <span className="text-[var(--ink)]">{b.quest}</span> — {b.blocked[0]}
+                    {b.blocked.length > 1 && `, and ${b.blocked.length - 1} more`}
+                  </li>
+                ))}
+              </ul>
+              {/* The manual's sentence, as the reason there is no number here. */}
+              <p className="mt-1.5 text-[10px] leading-snug text-[var(--ink-3)]">
+                These have no score at all rather than a low one. A high project score never
+                overrides a red flag, missing consent or an absent maintenance owner.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {!open_ && (
         <section className="rounded border border-[var(--line)] bg-[var(--paper-2)] p-4">

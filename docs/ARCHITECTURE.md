@@ -257,3 +257,71 @@ community data moving.
 Add a capability by adding one entry to `ai/tools.mjs` with a handler that calls
 an engine. It appears in Claude Code, the in-app assistant and the REST API at
 once — no registration anywhere else.
+
+## The protocol and the code, checked against each other
+
+`docs/PROTOCOL.md` is the product. The code is how it is enforced. The failure
+mode that matters here is not a bug — it is a control that reads, to anyone
+auditing the manual against the source, as being in place, and enforces nothing.
+
+Four of those were found on 2026-09-12, all by a person reading the two
+documents side by side. Each had the same shape: something declared in one place
+and never reached from the other.
+
+- **A gate the schema allowed and no quest ever got.** `quest_gates` permitted
+  nine gates; `openQuest` created five. The four absent were
+  `ecological_assessment`, `indigenous_consent`, `youth_safeguarding` and
+  `data_consent` — so in a bioregional OS nothing was ever blocked pending an
+  ecological assessment, and the two consent gates that most need to exist were
+  the ones that did not. The CHECK constraint listed them, the tool's enum
+  offered them, the interface rendered them.
+
+- **A field required and unconnected.** Every council item refused without a
+  Land Seat report; the report was free text checked for non-emptiness. The
+  measurements were on the same machine and never on the same page.
+
+- **A rule enforced against a thing that did not exist.** The manual says a high
+  project score never overrides a red flag. The override was implemented. The
+  score was not.
+
+- **A log that depended on the logged party volunteering.** `ai_log` existed,
+  the operator counted unreviewed rows, the viability test checked it — and the
+  only path that wrote a row was a tool the assistant had to call on itself.
+
+The general rule, and it is the same one behind `adapters/registry.mjs` and the
+count-drift check: **a rule stated in two places will eventually be stated
+differently, and the drift is silent in the direction that flatters** — the
+document still describes the control.
+
+So the suite now compares them directly. `scripts/test.mjs` reads
+`core/schema.sql` and `docs/PROTOCOL.md` at run time and asserts:
+
+- every gate the schema allows is one a quest actually gets, and none is created
+  that the schema would refuse;
+- every decision the manual forbids AI from making is one `AI_FORBIDDEN`
+  refuses;
+- the manual still states twelve stages, and the quest pathway has one per
+  stage.
+
+Each was mutation-tested by deleting an entry and confirming the suite names the
+exact thing that drifted. When a control is added to the manual, add the row
+that checks it here — a control nothing checks is a paragraph.
+
+### Where the ecological data actually reaches governance
+
+Worth stating plainly, because it was the thinnest join in the system and is the
+one most likely to thin again:
+
+- `engines/landseat.mjs` composes what the land is doing from the database and
+  locally-computed solar equations, and `council.propose()` freezes it onto the
+  decision as `land_seat_context`. That frozen copy is what lets a review years
+  later tell a drought decision from a wet-year one.
+- The `ecological_assessment` gate blocks a quest from being built.
+- `quest.score()` reads ecological fit, baselines and decision triggers into the
+  "regenerative" component, so a project that cannot show it changed anything
+  cannot rank as though it did.
+
+Everything else the OS knows about the land — the dossiers, the Atlas, the
+region library — is still a reference surface rather than a governance input.
+That is a deliberate stopping point, not an oversight: a dataset may inform a
+decision and may never close a consent gate.

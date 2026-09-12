@@ -22,6 +22,7 @@ import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
 import { GATES as QUEST_GATES } from '../engines/quest.mjs';
+import { AI_FORBIDDEN } from '../engines/stewardship.mjs';
 import { vitals } from '../engines/vitals.mjs';
 import { brief as landSeatBrief } from '../engines/landseat.mjs';
 import { neighbours, summarise, refresh as refreshNeighbours } from '../engines/neighbours.mjs';
@@ -1119,6 +1120,54 @@ check('the intake promise states itself in words a person can read',
   check('no query picks the latest reading without a deterministic tiebreak',
     loose.length === 0,
     `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak — ties resolve arbitrarily`);
+}
+
+// ── The protocol and the code, checked against each other ─────────────────
+// Four controls were found reading as in-place and enforcing nothing, and every
+// one was found by a person comparing docs/PROTOCOL.md to the source by hand.
+// That is not a thing anybody does twice. These tests do it on every run.
+//
+// The shape is the same as the licence check and the count-drift check: a rule
+// stated in two places will eventually be stated differently, and the failure
+// is silent in the direction that flatters — the document still says the
+// control exists.
+{
+  const schema = readFileSync(new URL('../core/schema.sql', import.meta.url), 'utf8');
+  const protocol = readFileSync(new URL('../docs/PROTOCOL.md', import.meta.url), 'utf8');
+
+  // Every gate the SCHEMA allows must be one the code actually creates. This is
+  // the exact drift that let ecological_assessment sit in the CHECK constraint,
+  // in the tool's enum and in the interface, and never once exist on a quest.
+  const declared = [...schema.matchAll(/gate\s+TEXT NOT NULL\s*\n?\s*CHECK \(gate IN \(([^)]+)\)/g)]
+    .flatMap((m) => [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]));
+  check('the schema declares the gates the protocol names', declared.length === 9, declared.join(','));
+  const missing = declared.filter((g) => !QUEST_GATES.includes(g));
+  check('every gate the schema allows is one a quest actually gets',
+    missing.length === 0,
+    `declared and never created: ${missing.join(', ')}`);
+  const invented = QUEST_GATES.filter((g) => !declared.includes(g));
+  check('and no gate is created that the schema would refuse',
+    invented.length === 0, invented.join(', '));
+
+  // "AI may not decide" is a list in the manual and a list in the code. If they
+  // drift, the code enforces a shorter one and the document still promises the
+  // longer — which is the worst available direction for this particular list.
+  const section = protocol.slice(protocol.indexOf('### AI may not decide'));
+  const forbidden = [...section.slice(0, section.indexOf('\n\n', 40) + 400)
+    .matchAll(/^- (.+)$/gm)].map((m) => m[1].trim().toLowerCase());
+  check('the manual still lists what AI may not decide', forbidden.length >= 9, String(forbidden.length));
+  const uncovered = forbidden.filter((f) => !AI_FORBIDDEN.some((a) =>
+    f.includes(a) || a.split(' ').every((w) => f.includes(w))));
+  check('every decision the manual forbids is one the code refuses',
+    uncovered.length === 0, `in the manual and not in the code: ${uncovered.join('; ')}`);
+
+  // The twelve stages are the spine of the whole system. A stage renamed in one
+  // place and not the other breaks the operator silently.
+  const stageRows = [...protocol.matchAll(/^\| \*\*(\d+)\. ([^*]+)\*\*/gm)].map((m) => m[2].trim());
+  check('the manual still states twelve stages', stageRows.length === 12, String(stageRows.length));
+  const { STAGES } = await import('../engines/quest.mjs');
+  check('the quest pathway has one stage per stage of the loop',
+    STAGES.length === stageRows.length, `${STAGES.length} vs ${stageRows.length}`);
 }
 
 // ── The land, at the council table ────────────────────────────────────────
