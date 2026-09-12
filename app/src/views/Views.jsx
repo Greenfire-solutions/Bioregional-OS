@@ -1,5 +1,5 @@
 import React from 'react';
-import TheGround from '../components/TheGround.jsx';
+import TheGround, { BaselineOffer } from '../components/TheGround.jsx';
 import {
   CheckCircle2, XCircle, AlertTriangle, Droplets, Users, Scale,
   RefreshCw, BookOpen, Shield, Clock, MapPin,
@@ -453,7 +453,7 @@ export function Listen({ intake }) {
 }
 
 // ── Stage 11: Measure ─────────────────────────────────────────────────────
-export function Measure({ indicators, onAct }) {
+export function Measure({ indicators, onAct, onRefresh }) {
   return (
     <div className="space-y-4">
       <H sub="An indicator without a decision trigger is decoration. Monitoring has to be able to change a decision.">
@@ -486,6 +486,10 @@ export function Measure({ indicators, onAct }) {
               <Stat label="Target" value={fmt(n.target_value, n.unit)} sub={n.target_by} />
             </div>
             {n.method && <p className="mt-2 text-[11px] text-[var(--ink-3)]"><b>Method:</b> {n.method}</p>}
+            {/* An indicator with no baseline cannot fire its own trigger. The
+                open record may have one; this is the only way a person can
+                reach it without Claude Code. */}
+            {n.baseline_value == null && <BaselineOffer indicator={n} onApplied={onRefresh} />}
             {n.decision_trigger && (
               <div className="mt-2 rounded bg-[var(--paper-2)] px-2.5 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Decision trigger</div>

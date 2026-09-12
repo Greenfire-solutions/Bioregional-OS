@@ -607,3 +607,45 @@ export async function hydrologyAt(placeId, { radiusKm = 5, sinceYears = 3 } = {}
   if (r.quality?.available) registerLayer(p.chapter_id, 'water-quality-portal');
   return { place: { id: p.id, name: p.name }, ...r };
 }
+
+/**
+ * Set an indicator's baseline, once.
+ *
+ * Changing a baseline is not an edit, it is a rewrite of every claim already
+ * made against it: "up 30%" means something different the moment the starting
+ * point moves, and past measurements do not change to match. So the first one
+ * goes in freely and any later change demands a stated reason, which is kept
+ * alongside the number.
+ *
+ * The value may come from proposeBaseline or from somebody's own reading. Both
+ * are legitimate; what the record has to keep is WHICH, so a number from public
+ * record is never mistaken for a measurement somebody took.
+ */
+export function setBaseline(indicatorId, { value, unit = null, method = null, source = null,
+                                           licence = null, measured_at = null, reason = null } = {}) {
+  const n = one('SELECT * FROM indicators WHERE id=?', indicatorId);
+  if (!n) return { error: 'not_found' };
+  if (value == null || !Number.isFinite(Number(value))) {
+    return { error: 'no_value', message: 'A baseline needs a number.' };
+  }
+  if (n.baseline_value != null && !String(reason ?? '').trim()) {
+    return {
+      error: 'baseline_already_set',
+      message: `"${n.name}" already has a baseline of ${n.baseline_value}${n.unit ? ' ' + n.unit : ''}. ` +
+               'Changing it rewrites the meaning of every reading taken since — say why.',
+      current: { value: n.baseline_value, unit: n.unit, at: n.baseline_at, method: n.method },
+    };
+  }
+
+  const note = [
+    method,
+    source ? `Source: ${source}${licence ? ` (${licence})` : ''}` : null,
+    source ? 'Baseline from public record, not a reading somebody took.' : null,
+    n.baseline_value != null ? `Replaced ${n.baseline_value}${n.unit ? ' ' + n.unit : ''} — ${String(reason).trim()}` : null,
+  ].filter(Boolean).join(' · ');
+
+  run(`UPDATE indicators SET baseline_value=?, baseline_at=?, unit=COALESCE(?,unit),
+         method=COALESCE(?,method) WHERE id=?`,
+      Number(value), measured_at ?? new Date().toISOString().slice(0, 10), unit, note || null, indicatorId);
+  return { indicator: one('SELECT * FROM indicators WHERE id=?', indicatorId) };
+}

@@ -325,3 +325,96 @@ function Growing({ r }) {
     </div>
   );
 }
+
+// ── A baseline from public record ─────────────────────────────────────────
+// The protocol says monitoring must change decisions. In practice it cannot,
+// because a decision_trigger set against a guessed baseline will not honestly
+// fire — and until now the only way to reach the open record was Claude Code.
+// A person adding an indicator got a blank field and their best guess.
+//
+// This offers the number, with its source, its licence and its method, and
+// refuses where nothing open measures the thing. It never fills the field
+// silently: accepting is a click, because a baseline is a claim the commons
+// will be held to.
+
+export function BaselineOffer({ indicator, onApplied }) {
+  const [state, setState] = useState('idle');
+  const [proposal, setProposal] = useState(null);
+  const [error, setError] = useState(null);
+
+  async function propose() {
+    setState('loading'); setError(null);
+    try {
+      const r = await callTool('propose_baseline', { indicator: indicator.name });
+      const p = r?.result ?? r;
+      if (!p?.proposed) { setProposal(p); setState('refused'); return; }
+      setProposal(p); setState('offered');
+    } catch (e) { setError(e.message); setState('error'); }
+  }
+
+  async function accept() {
+    setState('applying');
+    try {
+      const r = await callTool('set_indicator_baseline', {
+        indicator_id: indicator.id, value: proposal.baseline_value,
+        unit: proposal.unit ?? undefined, method: proposal.method ?? undefined,
+        source: proposal.source ?? undefined, licence: proposal.licence ?? undefined,
+        measured_at: proposal.measured_at ?? undefined,
+      });
+      const res = r?.result ?? r;
+      if (res?.error) { setError(res.message ?? res.error); setState('error'); return; }
+      setState('done');
+      onApplied?.();
+    } catch (e) { setError(e.message); setState('error'); }
+  }
+
+  if (state === 'done') {
+    return <p className="mt-2 text-[11px] text-[var(--moss)]">Baseline set from public record. It will show on the next refresh.</p>;
+  }
+
+  return (
+    <div className="mt-2 rounded border border-dashed border-[var(--line)] px-2.5 py-2">
+      {state === 'idle' && (
+        <button onClick={propose} className="text-[11px] underline">
+          No baseline — see whether the open record has one
+        </button>
+      )}
+      {state === 'loading' && <span className="text-[11px] text-[var(--ink-3)]">Looking…</span>}
+
+      {state === 'refused' && (
+        <div className="text-[11px] text-[var(--ink-2)]">
+          <p>{proposal?.message}</p>
+          {/* Refusing is the point. A wrong baseline makes a decision look evidenced. */}
+          <p className="mt-1 text-[var(--ink-3)]">{proposal?.guidance}</p>
+        </div>
+      )}
+
+      {state === 'offered' && proposal && (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-sm tabular-nums">{proposal.baseline_value}</span>
+            <span className="text-[11px] text-[var(--ink-3)]">{proposal.unit}</span>
+            <Pill tone="water">from public record</Pill>
+          </div>
+          <p className="text-[11px] text-[var(--ink-2)]">{proposal.method}</p>
+          {proposal.note && <p className="text-[11px] text-[#8A6D1F]">{proposal.note}</p>}
+          <p className="text-[10px] text-[var(--ink-3)]">
+            {proposal.source}{proposal.licence ? ` — ${proposal.licence}` : ''} · measured {proposal.measured_at}
+          </p>
+          <p className="text-[10px] text-[var(--ink-3)]">{proposal.caveat}</p>
+          <div className="flex gap-2 pt-0.5">
+            <button onClick={accept} disabled={state === 'applying'}
+              className="rounded bg-[var(--moss)] px-2 py-1 text-[11px] text-white disabled:opacity-60">
+              {state === 'applying' ? 'Setting…' : 'Use this as the baseline'}
+            </button>
+            <button onClick={() => setState('idle')} className="text-[11px] underline text-[var(--ink-3)]">
+              not this
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="mt-1 text-[11px] text-[var(--clay)]">{error}</p>}
+    </div>
+  );
+}

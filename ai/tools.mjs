@@ -1208,6 +1208,31 @@ export const TOOLS = [
     },
   },
 
+  {
+    name: 'set_indicator_baseline',
+    description:
+      'Set the starting value an indicator is measured against. Use it after propose_baseline to ' +
+      'accept a value from public record, or to record a reading somebody took. REFUSES to ' +
+      'overwrite an existing baseline without a stated reason: moving a baseline rewrites the ' +
+      'meaning of every measurement already taken against it, and the old readings do not change ' +
+      'to match. Whether the number came from public record or from a person is kept either way.',
+    input_schema: S({
+      indicator_id: str('From list_indicators'),
+      value: num('The baseline value'),
+      unit: str('If the indicator has none yet'),
+      method: str('How it was arrived at'),
+      source: str('Where it came from, if public record'),
+      licence: str('The source licence, if public record'),
+      measured_at: str('YYYY-MM-DD; defaults to today'),
+      reason: str('Required only when replacing a baseline that already exists'),
+    }, ['indicator_id', 'value']),
+    handler: (i) => bio.setBaseline(i.indicator_id, {
+      value: i.value, unit: i.unit ?? null, method: i.method ?? null,
+      source: i.source ?? null, licence: i.licence ?? null,
+      measured_at: i.measured_at ?? null, reason: i.reason ?? null,
+    }),
+  },
+
   // ---------- what needs doing ----------
   {
     name: 'whats_next',

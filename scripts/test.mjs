@@ -471,6 +471,39 @@ const noWhere2 = await bioEngine.proposeBaseline('test', { indicator: 'creek flo
 check('a baseline needs somewhere to be a baseline of',
   noWhere2.error === 'no_location', JSON.stringify(noWhere2).slice(0, 80));
 
+// ── Stage 11: a baseline can be set once, and moving it is a rewrite ──────
+// "Up 30%" means something different the moment the starting point moves, and
+// the readings already taken do not change to match. So the first baseline goes
+// in freely and any later change has to say why.
+const baseInd = await runTool('add_indicator', {
+  name: 'Creek flow at the crossing', unit: 'ft3/s',
+  method: 'Staff gauge', cadence: 'monthly',
+  decision_trigger: 'Below 1 cfs for two readings, pause the instream work.',
+});
+check('an indicator can start with no baseline at all',
+  one('SELECT baseline_value b FROM indicators WHERE id=?', baseInd.id)?.b == null);
+
+const baseFirst = bioEngine.setBaseline(baseInd.id, {
+  value: 1.2, unit: 'ft3/s', method: 'USGS median for this calendar day',
+  source: 'USGS NWIS daily statistics', licence: 'Public domain (US Government)',
+});
+check('a first baseline is accepted without ceremony', baseFirst.indicator?.baseline_value === 1.2);
+check('a baseline from public record says so, so it is never mistaken for a reading',
+  /not a reading somebody took/i.test(baseFirst.indicator?.method ?? ''), baseFirst.indicator?.method);
+
+const baseSilent = bioEngine.setBaseline(baseInd.id, { value: 9.9 });
+check('moving a baseline without a reason is refused',
+  baseSilent.error === 'baseline_already_set', JSON.stringify(baseSilent).slice(0, 90));
+check('the refusal shows what the baseline currently is, so it can be argued with',
+  baseSilent.current?.value === 1.2);
+
+const baseMoved = bioEngine.setBaseline(baseInd.id, { value: 9.9, reason: 'Gauge was resited upstream.' });
+check('moving a baseline with a reason is allowed, and the reason is kept',
+  baseMoved.indicator?.baseline_value === 9.9 && /resited upstream/i.test(baseMoved.indicator?.method ?? ''),
+  baseMoved.indicator?.method);
+check('a baseline still refuses a value that is not a number',
+  bioEngine.setBaseline(baseInd.id, { value: 'soon', reason: 'x' }).error === 'no_value');
+
 // ── Discovery: the licence gate ───────────────────────────────────────────
 // This classifier is the entire safety story of the discovery adapter, so it is
 // tested in the direction that costs something: a false HOLD costs one human
