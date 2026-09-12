@@ -48,6 +48,9 @@ const ADDED_COLUMNS = {
     ['land_cover', 'TEXT'], ['land_cover_code', 'INTEGER'],
     ['flood_zone', 'TEXT'], ['in_floodplain', 'INTEGER'],
   ],
+  intake: [
+    ['responded_at', 'TEXT'],
+  ],
 };
 
 function migrate(d) {

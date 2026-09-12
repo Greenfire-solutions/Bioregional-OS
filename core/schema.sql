@@ -130,6 +130,10 @@ CREATE TABLE IF NOT EXISTS intake (
   status      TEXT NOT NULL DEFAULT 'received'
               CHECK (status IN ('received','acknowledged','in_council','routed','declined','appealed')),
   response    TEXT,
+  -- When the answer was actually given. Without it, "how long does somebody
+  -- wait to be heard?" can only be measured against now, which answers a
+  -- different question and flatters the commons every time a need is closed.
+  responded_at TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

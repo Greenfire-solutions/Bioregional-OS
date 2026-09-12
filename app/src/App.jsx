@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, BookOpen, Shield,
-  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send,
+  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity,
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
 import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
+import Vitals from './components/Vitals.jsx';
 import FirstRun from './components/FirstRun.jsx';
 import Card from './components/Card.jsx';
 import ToolForm from './components/ToolForm.jsx';
@@ -32,7 +33,8 @@ import { get, callTool } from './api.js';
 // prose is left to a person.
 const GROUPS = [
   { id: 'today', label: 'Today', icon: ListChecks, sub: [
-    { id: 'today', label: 'Today', icon: ListChecks },
+    { id: 'today',  label: 'Today',          icon: ListChecks },
+    { id: 'vitals', label: 'How it is going', icon: Activity },
   ] },
   { id: 'place', label: 'Place', icon: Compass, sub: [
     { id: 'place', label: 'My Place', icon: Compass },
@@ -267,6 +269,7 @@ export default function App() {
             <div className="h-full overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl">
                 {tab === 'today' && <Today onChanged={load} />}
+                {tab === 'vitals' && <Vitals />}
                 {tab === 'listen' && <Listen intake={intake} />}
                 {tab === 'signals' && <Signals signals={signals} onFocus={focusOn} />}
                 {tab === 'quests' && <Quests quests={quests} gates={gates} onLoadGates={loadGates}

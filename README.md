@@ -123,7 +123,16 @@ this calendar day, weather, any official hazard alert, and sun and moon computed
 on your own machine. Then *what did you notice?*, then what your observations
 turned into, then what needs doing across all twelve stages, ranked by what
 blocks other work. Each item cites the protocol rule it comes from, so you can
-argue with it, and carries the button that fixes it.
+argue with it, and carries the button that fixes it. Above that work, if it
+applies: who is carrying more of it than is fair to ask, and which ground
+nobody has been to.
+
+**How it is going** — Seven questions answered from the commons' own database
+and nothing else: are needs being heard, does observation lead anywhere, does
+monitoring change decisions, is the work spread, is care real, is knowledge
+travelling, is it still alive. No telemetry, no daily actives, and no score —
+the moment there is one number, that number is what gets managed. A question
+with nothing to measure yet says so rather than reporting a zero.
 
 **Place**
 

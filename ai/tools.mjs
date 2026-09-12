@@ -21,6 +21,7 @@ import * as firstrun from '../engines/firstrun.mjs';
 import * as loops from '../engines/loops.mjs';
 import * as dispatch from '../engines/dispatch.mjs';
 import * as attention from '../engines/attention.mjs';
+import * as vitals from '../engines/vitals.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -429,7 +430,11 @@ export const TOOLS = [
       if (i.status === 'declined' && !i.response.trim()) {
         return { error: 'reason_required', message: 'Declining without a reason is not a response.' };
       }
-      run(`UPDATE intake SET response=?, status=? WHERE id=?`,
+      // Stamped only on the FIRST answer. A later edit to the wording is not a
+      // second response, and letting it move the timestamp would quietly reset
+      // the wait on the one measure that says whether people are being heard.
+      run(`UPDATE intake SET response=?, status=?,
+                  responded_at=COALESCE(responded_at, datetime('now')) WHERE id=?`,
           i.response, i.status ?? 'acknowledged', i.intake_id);
       return one('SELECT * FROM intake WHERE id=?', i.intake_id);
     },
@@ -1021,6 +1026,22 @@ export const TOOLS = [
       days: num('Rolling window in days. Default 90.'),
     }),
     handler: (i) => attention.placeAttention(ch(i), { days: i.days ?? 90 }),
+  },
+  {
+    name: 'vitals',
+    description:
+      'The seven questions that say whether a commons is working, answered from its own ' +
+      'database and without any telemetry: are needs being heard, does observation lead ' +
+      'anywhere, does monitoring change decisions, is the work spread, is care real, is ' +
+      'knowledge travelling, and is it still alive. Each returns a number, the threshold it ' +
+      'is judged against and the protocol rule it comes from, so the judgement can be argued ' +
+      'with. A question with nothing to measure returns null rather than zero — a chapter ' +
+      'that has held no gatherings has no care score, it does not have a care score of nought.',
+    input_schema: S({
+      chapter_id: str(''),
+      days: num('Window for the measures that use one. Default 90.'),
+    }),
+    handler: (i) => vitals.vitals(ch(i), { days: i.days ?? 90 }),
   },
 
   // ---------- what this locality already publishes ----------

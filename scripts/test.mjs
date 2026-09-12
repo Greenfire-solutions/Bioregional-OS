@@ -21,6 +21,7 @@ import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend, credits } 
 import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
+import { vitals } from '../engines/vitals.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
 import { attributionFor as attrFor } from '../adapters/registry.mjs';
 import { hazardSignals, worstLevel } from '../adapters/hazards.mjs';
@@ -1069,6 +1070,89 @@ check('the intake promise states itself in words a person can read',
 
   check('the ledger states itself in words a person can read',
     typeof c4.sentence === 'string' && c4.sentence.includes('Ada Circle'));
+}
+
+// ── The seven numbers, and the two ways they could lie ────────────────────
+// §8: how a commons knows it is working without telemetry. The arithmetic is
+// easy and the honesty is not, so both tests here are about what the measures
+// say when they do NOT know something.
+{
+  const CH = 'vitals-test';
+  await runTool('create_chapter', {
+    id: CH, name: 'Vitals Commons', scale: 'site',
+    represents: 'the people who signed up', does_not_represent: 'anyone else',
+    lat: 30.2, lng: -97.8,
+  });
+
+  // A brand new commons. Every measure must be honest that it has nothing to
+  // measure — a chapter that has held no gatherings has NO care score, it does
+  // not have a care score of nought. Reporting the second turns "we have not
+  // started" into "we are failing", on the one screen meant to tell somebody
+  // whether to keep going.
+  const empty = vitals(CH);
+  check('a commons with no history reports unknowns, not zeroes',
+    empty.measures.filter((m) => m.value === null).length >= 5,
+    JSON.stringify(empty.measures.map((m) => [m.key, m.value])));
+  check('an unknown is never called unhealthy',
+    empty.measures.every((m) => m.value !== null || m.healthy === null));
+  check('a new commons is not told it is failing',
+    /not a failing one|nothing has happened/i.test(empty.sentence), empty.sentence);
+  check('there are seven questions', empty.measures.length === 7);
+  check('every measure carries the threshold it is judged against',
+    empty.measures.every((m) => typeof m.threshold === 'string' && m.threshold.length > 10));
+  check('every measure cites the rule it comes from',
+    empty.measures.every((m) => typeof m.rule === 'string' && m.rule.length > 10));
+  // A score out of seven is the thing somebody would start optimising.
+  check('the seven do not add up to a score',
+    !('score' in empty) && !('percent' in empty));
+
+  // responded_at was added to a schema that already had commonses using it.
+  // Every need answered before that migration has an answer and no date, and
+  // reading the missing date as a missing NEED tells a chapter that has been
+  // answering people for a year that nobody ever came to the door.
+  const brought = await runTool('submit_intake',
+    { chapter_id: CH, kind: 'need', body: 'The footbridge is out.', submitted_by: 'A neighbour' });
+  await runTool('respond_to_intake',
+    { intake_id: brought.id, response: 'Raised at the circle.', status: 'in_council' });
+  dbRun(`UPDATE intake SET responded_at=NULL WHERE id=?`, brought.id);   // as if pre-migration
+
+  const migrated = vitals(CH).measures.find((m) => m.key === 'heard');
+  check('a need answered before the column existed is not a need never brought',
+    !/nobody has brought/i.test(migrated.sentence), migrated.sentence);
+  check('the undated answer says the next one will be timed',
+    /will be timed/.test(migrated.sentence), migrated.sentence);
+
+  // And once it is timed, it is measured.
+  const timed = await runTool('submit_intake',
+    { chapter_id: CH, kind: 'need', body: 'The gate is padlocked.', submitted_by: 'A neighbour' });
+  await runTool('respond_to_intake',
+    { intake_id: timed.id, response: 'Key is with the steward.', status: 'acknowledged' });
+  const heard = vitals(CH).measures.find((m) => m.key === 'heard');
+  check('an answered need is measured in days, not against now',
+    heard.value !== null && heard.value < 1, JSON.stringify(heard.value));
+
+  // Editing the wording later is not a second response. If it moved the stamp,
+  // the one measure of whether people are heard would quietly reset each time
+  // somebody tidied a reply.
+  const stampedAt = one('SELECT responded_at FROM intake WHERE id=?', timed.id).responded_at;
+  await runTool('respond_to_intake',
+    { intake_id: timed.id, response: 'Key is with the steward — ask at the shed.', status: 'acknowledged' });
+  check('rewording an answer does not reset how long the person waited',
+    one('SELECT responded_at FROM intake WHERE id=?', timed.id).responded_at === stampedAt);
+
+  // An OS left running on a windowsill ingests gage readings forever. If those
+  // counted, a chapter nobody has opened in a year reports as maximally alive.
+  create('signals', 'signal', CH, {
+    chapter_id: CH, title: 'Discharge reading', source_adapter: 'usgs',
+  });
+  const aliveOnGages = vitals(CH).measures.find((m) => m.key === 'alive');
+  check('a gage reading does not make a chapter alive',
+    aliveOnGages.value === null, JSON.stringify(aliveOnGages.value));
+  create('signals', 'signal', CH, {
+    chapter_id: CH, title: 'Bank slumping after the rain', author: 'R. Alvarez', source_adapter: 'notice',
+  });
+  check('a person noticing something does',
+    vitals(CH).measures.find((m) => m.key === 'alive').value === 0);
 }
 
 // ── Attention is what a person did, not what a sensor recorded ────────────
