@@ -200,6 +200,26 @@ instrument for the first is cloning the published repository and running it; for
 the second it is **diffing the list of checks that ran in each**. A small
 committed fixture would close the second.
 
+**A defect whose severity depends on timing will be dismissed by a single
+test.** The documented backup instruction — copy `data/commons.db` — is wrong
+because the database runs in WAL mode. On one machine the copy opened fine and
+was merely stale by one deleted chapter. On another, at the same commit, it had
+no schema at all and would not open: 304 KB in the file against 1,199 KB
+uncheckpointed in the log. Same bug, and the outcome swung from *silently wrong*
+to *will not open* purely on when a checkpoint last ran.
+
+That is worse than a consistently broken thing, not better. A community testing
+their backup procedure once, on a good day, gets a file that opens, and concludes
+the procedure works. The erase half was the more serious: "delete it to erase"
+left most of a commons on disk, so a chapter removing material a rights-holder
+asked to have removed would believe it was gone. A consent failure wearing the
+costume of a housekeeping instruction.
+
+It was found by **restoring a backup** — deleting a chapter, copying the file,
+starting a server against the copy, and finding the chapter still there. That is
+the only test of a backup there is, and it is the one nobody performs until the
+day it matters.
+
 **To see what you shipped, leave the place that made it.** Everything found by
 reading this repo was found from inside it — where nothing is missing, every
 optional file is already downloaded, and the first-run path is the one path
