@@ -177,6 +177,29 @@ adding a `?? ''` on those lines would delete the protocol's first refusal and th
 suite would stay green. If you are that person: the gate is the check above, not
 the crash below.
 
+**The working tree flatters the artifact, in two directions.** Both were found in
+one hour and neither is visible from inside the repository:
+
+1. **Committed code importing uncommitted code.** `dispatch.mjs` and
+   `api.mjs` were pushed importing `core/seedData.js`, which had never been
+   committed. The suite passed — it ran in the tree, where the file was sitting
+   right there — and the published repository could not load a module at all.
+   The same shape one layer out: committed tests exercising an uncommitted
+   adapter, so a stranger's clone reported failures for nothing broken.
+2. **Committed tests that only run where the artifact already ran.** The tree
+   runs 223 checks and a fresh clone runs 215. The nine that never run are the
+   region-library tests, because they need a downloaded dossier and a clone has
+   none — leaving 779 lines of `dossier.mjs`, `library.mjs` and `scripts/data.mjs`
+   unexercised by anybody who has not already used the feature. The suite says
+   so out loud rather than skipping silently, which is why it was findable, but
+   it is a gap that stays open forever because every tree anyone looks at is
+   green.
+
+No test suite can catch either, because the suite runs in the tree. The
+instrument for the first is cloning the published repository and running it; for
+the second it is **diffing the list of checks that ran in each**. A small
+committed fixture would close the second.
+
 **To see what you shipped, leave the place that made it.** Everything found by
 reading this repo was found from inside it — where nothing is missing, every
 optional file is already downloaded, and the first-run path is the one path
