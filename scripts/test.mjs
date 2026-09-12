@@ -35,13 +35,28 @@ if (!/bros-test|\/tmp\//.test(openPath())) {
   process.exit(2);
 }
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, skipped = 0;
 const results = [];
 
 function check(name, condition, detail) {
   if (condition) { pass++; results.push(['✓', name, null]); }
   else { fail++; results.push(['✗', name, detail]); }
 }
+
+/**
+ * Not applicable here, which is not the same as broken.
+ *
+ * A fresh clone has downloaded no optional data, so a test that needs it was
+ * reporting a failure on somebody's very first `npm test` — the fourth variety
+ * in the worst possible place, since the name said "region 30c is downloaded"
+ * and the truth was "this machine has not been asked to download anything".
+ *
+ * Three outcomes rather than two, exactly as the mutation harness had to learn:
+ * passed, failed, and did-not-apply. A stranger's first run of this suite is
+ * part of the front door, and the front door must not open on a red line that
+ * means nothing is wrong.
+ */
+function skip(name, why) { skipped++; results.push(['–', name, why]); }
 /** Force a signal's provenance, the way an adapter would, without the network. */
 function run__setSource(id, source) {
   dbRun(`UPDATE signals SET source_adapter=? WHERE id=?`, source, id);
@@ -1015,8 +1030,8 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
       (await import('../adapters/dossier.mjs').then((m) => m.loadDossier('30c')))
         .culture.status === 'not_downloaded_by_design');
   } else {
-    check('region 30c is downloaded (run: npm run data -- --region 30c)', false,
-      'skipped — nothing downloaded yet');
+    skip('the offline region library',
+      'no region downloaded on this machine yet — run: npm run data -- --region 30c');
   }
 
   const stale = lib.staleSections(null);
@@ -1222,11 +1237,13 @@ check('whatever the card resolved appears in the text somebody pastes',
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);
 for (const [mark, name, detail] of results) {
-  const col = mark === '✓' ? c.g : c.r;
+  // A skip shown in red is still a red line to anyone glancing at it, which is
+  // the whole thing this was meant to stop.
+  const col = mark === '✓' ? c.g : mark === '–' ? c.d : c.r;
   console.log(`  ${col}${mark}${c.x} ${name}`);
   if (detail) console.log(`      ${c.d}${detail}${c.x}`);
 }
 console.log(`  ${'─'.repeat(58)}`);
-console.log(`  ${pass} passed, ${fail} failed\n`);
+console.log(`  ${pass} passed, ${fail} failed${skipped ? `, ${skipped} not applicable here` : ''}\n`);
 try { rmSync(process.env.BROS_DB, { force: true }); } catch {}
 process.exit(fail ? 1 : 0);
