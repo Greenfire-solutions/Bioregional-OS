@@ -25,6 +25,7 @@ import * as vitals from '../engines/vitals.mjs';
 import * as neighbours from '../engines/neighbours.mjs';
 import * as turning from '../engines/turning.mjs';
 import * as landseat from '../engines/landseat.mjs';
+import * as matching from '../engines/matching.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 
@@ -1164,6 +1165,24 @@ export const TOOLS = [
       'chose" are the same conversation.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => quest.priorities(ch(i)),
+  },
+  {
+    name: 'who_could_help',
+    description:
+      'Join what this commons is short of against what people have already been recorded doing, ' +
+      'and against what the neighbours say they do. Needs are read from what is genuinely open: ' +
+      'needs brought and unanswered, projects with no maintenance owner, gates waiting for a ' +
+      'reviewer, indicators on a cadence nobody has ever read. Skills are read from what people ' +
+      'HAVE DONE — work recorded, gates reviewed, measurements taken, observations filed — never ' +
+      'from a self-declared profile, because a skills form is accurate the day it is written and ' +
+      'the people least likely to fill one in are the ones already doing the most. ' +
+      'Private intake items are excluded: a private need is private from the matcher too. ' +
+      'Returns CANDIDATES with the words that matched, never introductions or rankings.',
+    input_schema: S({
+      chapter_id: str(''),
+      limit: num('How many open needs to match. Default 8.'),
+    }),
+    handler: (i) => matching.whoCouldHelp(ch(i), { limit: i.limit ?? 8 }),
   },
 
   // ---------- what this locality already publishes ----------

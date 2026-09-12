@@ -1122,6 +1122,111 @@ check('the intake promise states itself in words a person can read',
     `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak — ties resolve arbitrarily`);
 }
 
+// ── The assistant knows where it is standing ──────────────────────────────
+// The prompt used to carry one fact about the place — the chapter's name — and
+// several hundred words about the protocol. So the one surface that people
+// actually talk to was the one that answered about watersheds in general.
+{
+  const { placeContext, placeBriefing } = await import('../ai/context.mjs');
+  const { systemPrompt, claudeCodeAppendPrompt } = await import('../ai/system.mjs');
+  const chapter = one(`SELECT * FROM chapters WHERE id='test'`);
+
+  const ctx = placeContext('test');
+  check('the assistant is given the ground it is standing on',
+    ctx && 'ecoregion' in ctx && 'watershed' in ctx && 'now' in ctx,
+    JSON.stringify(Object.keys(ctx ?? {})));
+
+  // A chapter's stated limits are the thing an assistant is likeliest to
+  // overstep by being helpful, so they travel with the briefing.
+  const brief = placeBriefing('test');
+  check('the briefing carries what the chapter does NOT represent',
+    /does NOT represent/.test(brief) && /the county, any nation/.test(brief), brief.slice(0, 200));
+  check('and says the facts were read now rather than remembered',
+    /read from this machine|not from memory/i.test(brief));
+
+  // The distinction that keeps this honest: an undownloaded region must read as
+  // ABSENT, never as empty. "Nothing lives here" and "nobody fetched this" are
+  // opposite claims and only one of them is ever true.
+  check('an ecoregion nobody downloaded is absent, not empty',
+    ctx.region_downloaded === false ? ctx.life === null : true,
+    JSON.stringify({ downloaded: ctx.region_downloaded, life: ctx.life }));
+  if (!ctx.region_downloaded) {
+    check('and the assistant is told to say so rather than generalise',
+      /NOT downloaded/.test(brief) && /rather than generalising/.test(brief));
+  } else {
+    skip('and the assistant is told to say so rather than generalise',
+      'this machine has the region downloaded');
+  }
+
+  // The three habits, asserted by the tool they name. A prompt that described
+  // them in prose without naming a tool would leave the model guessing.
+  const p = systemPrompt(chapter);
+  for (const [habit, tool] of [
+    ['ground the answer in what is recorded here', 'region_brief'],
+    ['keep materials and labour local', 'community_here'],
+    ['find others already doing it', 'discover_peers'],
+    ['match a skill to a need', 'who_could_help'],
+  ]) {
+    check(`the prompt names the tool that lets it ${habit}`, p.includes(tool), tool);
+  }
+  check('the prompt refuses invented names outright',
+    /NEVER INVENT A NEIGHBOUR, A BUSINESS OR A SPECIES/.test(p));
+  check('and keeps matching on the right side of what AI may not decide',
+    /A MATCH IS A SUGGESTION, NOT AN INTRODUCTION/.test(p));
+
+  // The Claude Code panel had no system prompt at all, which is why this is
+  // asserted separately rather than assumed to follow from the one above.
+  const appended = claudeCodeAppendPrompt(chapter);
+  check('the Claude Code panel is given the same ground',
+    appended.includes('WHERE YOU ARE') && appended.includes('community_here'));
+  check('a chapter that does not exist yields no briefing rather than a broken one',
+    claudeCodeAppendPrompt(null) === '' && placeBriefing('no-such-chapter') === '');
+
+  const route = readFileSync(new URL('../server/routes/claude.mjs', import.meta.url), 'utf8');
+  check('and the panel actually passes it to the CLI',
+    /--append-system-prompt/.test(route),
+    'the briefing exists and the process never receives it');
+}
+
+// ── Matching a skill to a need, without deciding anything ─────────────────
+// The manual allows skill matching explicitly and forbids deciding who deserves
+// care, whose work is legitimate, or who is a member. This file sits on that
+// line, so the line is tested rather than described.
+{
+  const { whoCouldHelp } = await import('../engines/matching.mjs');
+
+  // The rule that would be most damaging to get wrong: a need somebody marked
+  // private is private FROM THE MATCHER TOO. A match is a disclosure.
+  const secret = await runTool('submit_intake', {
+    chapter_id: 'test', kind: 'need', private: true,
+    body: 'I am behind on rent and cannot pay the water bill this month.',
+    submitted_by: 'A neighbour',
+  });
+  check('a private need is submitted and kept', !!secret.id);
+
+  const m = whoCouldHelp('test');
+  check('a private need never reaches the matcher',
+    !JSON.stringify(m).includes('behind on rent'),
+    'a need marked private was surfaced as work for somebody to pick up');
+  check('while needs brought in the open do reach it',
+    m.total_needs > 0, JSON.stringify(m.total_needs));
+
+  // Skills are read from what people DID, never from a profile they filled in.
+  check('nothing about a person here comes from a self-declared skill list',
+    m.needs.every((n) => n.from_here.every((c) => Array.isArray(c.has_done))),
+    'a candidate was suggested without evidence of having done anything');
+
+  // Candidates, not introductions, and the matching words are shown so a
+  // coincidence can be dismissed by eye rather than trusted as a score.
+  check('the answer says these are candidates and nobody has been asked',
+    /candidates, not introductions/i.test(m.caveat));
+  check('and shows which words matched rather than a similarity score',
+    m.needs.every((n) => [...n.from_here, ...n.from_nearby].every((c) => Array.isArray(c.on)))
+      && !JSON.stringify(m).includes('"score"'));
+  check('it cites the rule it is operating under',
+    /may not decide who deserves care/i.test(m.rule));
+}
+
 // ── The protocol and the code, checked against each other ─────────────────
 // Four controls were found reading as in-place and enforcing nothing, and every
 // one was found by a person comparing docs/PROTOCOL.md to the source by hand.

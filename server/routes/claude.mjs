@@ -27,7 +27,8 @@
 //    checked against an ALLOWLIST on every single run. Anything unrecognised
 //    aborts the exchange and says what appeared.
 import { spawn } from 'node:child_process';
-import { ROOT } from '../../core/db.mjs';
+import { ROOT, one } from '../../core/db.mjs';
+import { claudeCodeAppendPrompt } from '../../ai/system.mjs';
 
 /**
  * Approved to run without a prompt. Nothing here can act outside the commons.
@@ -151,10 +152,22 @@ export async function claudeStream(req, res, body) {
     connection: 'keep-alive',
   });
 
+  // The place it is standing in. This panel had no system prompt at all — it
+  // inherited every protocol refusal from the tools and none of the ground, so
+  // it was the one surface here that answered about watersheds in general.
+  // Appended, never replacing: the CLI's own identity and safety instructions
+  // stay, and only the briefing is added.
+  let placeAppend = '';
+  try {
+    const ch = one('SELECT * FROM chapters ORDER BY founded_at LIMIT 1');
+    placeAppend = ch ? claudeCodeAppendPrompt(ch) : '';
+  } catch { placeAppend = ''; }
+
   const args = [
     '-p', prompt,
     '--output-format', 'stream-json',
     '--verbose',
+    ...(placeAppend ? ['--append-system-prompt', placeAppend] : []),
     // Only THIS project's MCP server. Without these two flags the CLI loads the
     // user's global MCP config as well — on this machine that was 501 tools
     // including Gmail, Slack, Google Drive and QuickBooks. An assistant panel in
