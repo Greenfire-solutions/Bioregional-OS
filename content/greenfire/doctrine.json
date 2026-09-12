@@ -1,0 +1,139 @@
+{
+  "source": "Green Fire Research and Innovation Center — Council, Creativity & Community Solutions",
+  "source_url": "https://green-fire-site.vercel.app/",
+  "excluded": "Commercial media offerings (packages, cinematic, studio, workshops, pricing, booking) are deliberately not part of the OS. This is the civic and ecological doctrine only.",
+  "operating_sentence": "People listen to one another and to the land; organize at the scale of watersheds and ecosystems; make transparent, reversible decisions; build useful projects; teach what they learn; circulate value locally; measure real effects; and adapt together.",
+  "double_mandate": [
+    "What does the community need?",
+    "What does this living place require or permit?"
+  ],
+  "core_commitments": [
+    { "name": "Dual intake", "detail": "Human needs are heard through community listening, while ecological conditions are understood through observation, mapping, data, and seasonal indicators." },
+    { "name": "Nested governance", "detail": "Decisions are made at the smallest scale capable of responsibly holding the consequences." },
+    { "name": "Rights before efficiency", "detail": "Land access, privacy, cultural knowledge, Indigenous rights, youth safety, and affected-party consent cannot be overridden by a simple majority vote." },
+    { "name": "Projects before branding", "detail": "Trust is earned through visible usefulness, not claims or image alone." },
+    { "name": "Care, culture, ecology, and economy belong together", "detail": "They are treated as one operating system, not separate programs." },
+    { "name": "Monitoring must change decisions", "detail": "Every major project includes a baseline, target, review date, and adaptation rule." },
+    { "name": "AI assists but does not govern", "detail": "AI may help organize information, but it cannot decide legitimacy, rights, funding worthiness, truth, punishment, or who deserves care." },
+    { "name": "Knowledge should travel responsibly", "detail": "Methods are documented so other places can adapt them without copying or extracting local culture." }
+  ],
+  "living_loop": [
+    { "stage": 1, "name": "Locate", "question": "Where are we ecologically and culturally?", "output": "Working boundary and map stack" },
+    { "stage": 2, "name": "Listen", "question": "What are people experiencing, needing, and imagining?", "output": "Community intake and affected-party map" },
+    { "stage": 3, "name": "Observe", "question": "What are water, soil, species, climate, food, energy, and materials showing?", "output": "Bioregional baseline" },
+    { "stage": 4, "name": "Map", "question": "Where are stress, care, assets, flows, and opportunities?", "output": "Living Commons Atlas" },
+    { "stage": 5, "name": "Convene", "question": "Who must be present for a legitimate next decision?", "output": "Council and rights-holder process" },
+    { "stage": 6, "name": "Prioritize", "question": "What is urgent, regenerative, feasible, and maintainable?", "output": "Seasonal priority list" },
+    { "stage": 7, "name": "Design", "question": "What is the smallest useful and safe experiment?", "output": "Project brief and safeguards" },
+    { "stage": 8, "name": "Build", "question": "Who does what, with which tools, money, and proof?", "output": "Prototype or service" },
+    { "stage": 9, "name": "Teach & Tell", "question": "How does the work become shared knowledge and culture?", "output": "Workshop, story, guide, or media" },
+    { "stage": 10, "name": "Exchange & Care", "question": "How does value return to contributors, affected people, and place?", "output": "Pay, credits, access, and mutual support" },
+    { "stage": 11, "name": "Measure", "question": "What changed, for whom, and with what uncertainty?", "output": "Impact and learning report" },
+    { "stage": 12, "name": "Adapt & Replicate", "question": "What should stop, continue, change, or travel?", "output": "Next cycle and reusable toolkit" }
+  ],
+  "engines": [
+    { "name": "Council", "mandate": "Make legitimate, transparent, repairable decisions", "output": "Decision log, budget, mandates, review dates" },
+    { "name": "Bioregional", "mandate": "Observe land, water, climate, species, food, energy, and materials", "output": "Seasonal dashboard and priority map" },
+    { "name": "Media", "mandate": "Make local work visible, teachable, fundable, and accountable", "output": "Consent-based stories and public reports" },
+    { "name": "Maker", "mandate": "Repair, prototype, fabricate, test, and maintain solutions", "output": "Working assets and build guides" },
+    { "name": "Exchange", "mandate": "Circulate money, credits, tools, care, and jobs locally", "output": "Contribution ledger and benefit flow" },
+    { "name": "Data / AI", "mandate": "Organize knowledge without extracting or replacing people", "output": "Protected data commons and transparent AI log" },
+    { "name": "Culture", "mandate": "Create belonging, memory, celebration, ritual, and public participation", "output": "Gatherings connected to real projects" }
+  ],
+  "scales": [
+    { "scale": "Site / neighborhood", "work": "Daily care, projects, learning, tools, food, mutual aid", "body": "Site circle" },
+    { "scale": "Subwatershed / watershed", "work": "Water, flooding, habitat, monitoring, cross-neighborhood work", "body": "Watershed circle" },
+    { "scale": "Bioregion", "work": "Shared priorities, economy, education, media, and regional infrastructure", "body": "Bioregional council and assembly" },
+    { "scale": "Ecoregional learning network", "work": "Peer learning, ecological comparison, seed and tool exchange", "body": "Federated network" }
+  ],
+  "rule_of_scale": "Organize daily work locally, water work by watershed, shared infrastructure and culture bioregionally, and ecological learning across the ecoregion.",
+  "atlas_layers": [
+    "Ecoregions", "Watersheds and flow direction", "Water systems", "Land and soil",
+    "Habitat and biodiversity", "Climate stress and hazards", "Human settlement and accessibility",
+    "Care and essential systems", "Skills, spaces, tools, and institutions",
+    "Food, energy, material, labor, money, and information flows",
+    "Culture, history, and community memory", "Active projects, maintenance, and outcomes"
+  ],
+  "atlas_protection": "Sensitive species locations, sacred places, cultural knowledge, private wells, personal information, and vulnerable residents must never be published without appropriate permission.",
+  "land_seat": "Every council agenda includes a Land Seat: a steward who presents ecological observations, seasonal conditions, downstream effects, uncertainty, and red flags. The Land Seat does not claim to literally speak for nature; it ensures that more-than-human consequences are not omitted.",
+  "quest_pathway": ["Signal", "Listening", "Baseline", "Council review", "Research", "Co-design", "Resource plan", "Prototype", "Teach and tell", "Test", "Decide", "Report and replicate"],
+  "quest_override_rule": "A high project score never overrides a red flag, missing consent, unsafe conditions, ecological harm, or the absence of a maintenance owner.",
+  "hub_types": [
+    "Council and Culture House", "Field Station", "Maker and Repair Lab", "Learning Commons",
+    "Media and Data Lab", "Food, Seed, and Water Node", "Resilience and Care Node"
+  ],
+  "care_infrastructure": [
+    "Meals and food support", "Transportation", "Accessibility accommodations",
+    "Child and elder care", "Emergency communication", "Conflict support",
+    "Rest, rotation, and backup roles", "Fair compensation", "Private needs intake", "Mutual-aid matching"
+  ],
+  "care_principle": "Ecological work fails when people are exhausted, excluded, unpaid, unsafe, or unsupported. Care work, creative work, governance, ecological work, technical work, and learning are all recognized as real contributions.",
+  "exchange_terms_required": [
+    "The type of work relationship", "Compensation or credit value", "Ownership and intellectual property",
+    "Verification requirements", "Cancellation and exit terms", "Revenue distribution",
+    "Community and ecological return"
+  ],
+  "credits_note": "Credits should supplement fair wages, not disguise unpaid labour. Speculative tokens are not part of the minimum system. Greenfire Credits are designed as non-transferable internal contribution records — not cryptocurrency, legal tender, or an investment product.",
+  "ai_may_assist": [
+    "Meeting summaries", "Scheduling", "Translation", "Drafting", "Map cleanup",
+    "Skill matching", "Grant research", "Indicator reports", "Searchable archives"
+  ],
+  "ai_may_not_decide": [
+    "Membership worth", "Punishment", "Project legitimacy", "Funding winners",
+    "Cultural permission", "Land rights", "Safety clearance",
+    "The truth of contested testimony", "Who deserves care"
+  ],
+  "ai_log_requirement": "Whenever AI materially shapes a public report, map, plan, match, or recommendation, log the tool, purpose, data class, human reviewer, known limits, and correction path.",
+  "elder_guidance": {
+    "headline": "Indigenous Elders at the Forefront",
+    "statement": "Guidance is sought through relationships built on clear invitation, consent, compensation, cultural protocol, and continued accountability. Knowledge holders determine what may be recorded, shared, archived, commercialized, or kept private. Indigenous Elders are not decorative participants.",
+    "principles": [
+      "Relationship before request", "Clear invitation", "Informed consent",
+      "Fair compensation and travel support", "Cultural boundaries set by Elders and their communities",
+      "Review before sensitive publication", "The ability to withdraw or restrict material",
+      "Benefit sharing with Indigenous people", "Protection from unauthorized AI or data use",
+      "Continued relationship after the project"
+    ],
+    "do_not": [
+      "Do not state that all Indigenous people share one worldview",
+      "Do not imply an Elder speaks for an entire nation without confirmation",
+      "Do not claim tribal endorsement without written confirmation",
+      "Do not use Indigenous culture as marketing aesthetic",
+      "Do not record ceremonies or sacred knowledge automatically",
+      "Do not enter private or restricted knowledge into AI systems without documented consent"
+    ]
+  },
+  "participation_pathways": [
+    { "id": "need", "title": "Bring a Need", "description": "Share a challenge, observation, dream, local story, or project idea." },
+    { "id": "skill", "title": "Offer a Skill", "description": "Participate as an artist, filmmaker, musician, builder, grower, educator, researcher, organizer, technician, designer, mentor, or community member." },
+    { "id": "partner", "title": "Host or Partner", "description": "Offer space, equipment, materials, expertise, access, sponsorship, or organizational partnership." },
+    { "id": "elder", "title": "Elder Guidance & Indigenous Partnership", "description": "Invite Indigenous Elder guidance, travel support, cultural protocol conversations, or ways to put Elders and Indigenous communities at the forefront of a project." },
+    { "id": "support", "title": "Support a Project", "description": "Donate, sponsor, volunteer, attend an event, provide materials, or help fund a visible prototype." },
+    { "id": "replicate", "title": "Start a Local Version", "description": "Adapt the model for another community, property, neighborhood, town, or bioregion." }
+  ],
+  "impact_categories": {
+    "note": "Categories the commons intends to measure. No fictional numbers are displayed.",
+    "human": ["Residents engaged", "Youth trained", "Elders compensated", "Artists paid", "Volunteers activated", "Apprenticeships created", "Workshops hosted", "Skills documented"],
+    "ecological": ["Water captured or conserved", "Gardens built", "Food grown or recovered", "Materials reused", "Shade created", "Trees planted", "Repairs completed", "Energy saved"],
+    "economic": ["Local vendors paid", "Creator income generated", "Youth stipends", "Project funds deployed", "Products prototyped", "Local jobs or contracts"],
+    "cultural": ["Public events", "Community campaigns", "Build guides", "Youth media pieces"]
+  },
+  "replication_pathway": [
+    { "step": "Seed", "detail": "Introduce the model to a community or property." },
+    { "step": "Listen", "detail": "Hold intake and listening sessions." },
+    { "step": "Map", "detail": "Map assets, needs, and bioregional context." },
+    { "step": "Gather", "detail": "Convene people and resources." },
+    { "step": "Choose", "detail": "Select one useful first project." },
+    { "step": "Build", "detail": "Prototype and document." },
+    { "step": "Report", "detail": "Share transparent outcomes." },
+    { "step": "Formalize", "detail": "Establish governance as capacity allows." },
+    { "step": "Grow", "detail": "Expand programs with evidence." },
+    { "step": "Network", "detail": "Connect with other adapting communities." }
+  ],
+  "start_a_chapter": {
+    "first_30_days": ["Form a founding team with distinct responsibilities", "Declare a provisional scope", "Identify Indigenous nations, watershed groups, community organizations, and existing institutions", "Hold listening sessions", "Start the map stack", "Inventory skills, spaces, tools, and relationships", "Publish a clear statement of what the chapter does and does not represent"],
+    "by_90_days": ["Create a baseline", "Adopt a working charter", "Define roles, decision rights, privacy, conflict, youth, cultural, and data protocols", "Establish a hub or host agreement", "Choose and complete one visible, low-risk, maintainable project", "Publish a public report and money summary", "Name and prepare backups for critical roles"],
+    "by_12_months": ["Maintain a monthly council rhythm", "Complete and monitor multiple projects", "Establish youth learning and care systems", "Run a participatory budget", "Publish a State of the Bioregion report", "Review finances, access, conflicts, roles, and indicators", "Release at least one reusable project toolkit"]
+  },
+  "safety_limits": "This framework is an organizational manual. It does not replace legal counsel, environmental engineering, ecological assessment, land-title review, permits and zoning review, insurance, youth safeguarding, public-health protocols, emergency management, or government-to-government and rights-holder consultation."
+}

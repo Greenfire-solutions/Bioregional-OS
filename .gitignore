@@ -1,0 +1,11 @@
+node_modules/
+data/commons.db
+data/commons.db-journal
+data/commons.db-wal
+data/commons.db-shm
+data/upstream/cache/
+app/dist/
+app/node_modules/
+.DS_Store
+.env
+.env.local

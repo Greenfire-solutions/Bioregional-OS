@@ -1,0 +1,28 @@
+{
+  "name": "bioregional-os",
+  "version": "1.0.0",
+  "private": false,
+  "license": "AGPL-3.0-or-later",
+  "description": "A local-first operating system for bioregional commons. Green Fire BioRegional Commons protocol, implemented over open standards from the bioregional open-source ecosystem.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "setup": "node --disable-warning=ExperimentalWarning scripts/setup.mjs",
+    "os": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env server/index.mjs",
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env server/index.mjs --open",
+    "help": "node --disable-warning=ExperimentalWarning scripts/help.mjs",
+    "connect": "node --disable-warning=ExperimentalWarning scripts/connect.mjs",
+    "doctor": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env scripts/doctor.mjs",
+    "update": "node --disable-warning=ExperimentalWarning scripts/update.mjs",
+    "seed": "node --disable-warning=ExperimentalWarning core/seed.mjs",
+    "mcp": "node --disable-warning=ExperimentalWarning mcp/server.mjs",
+    "app:dev": "cd app && npm run dev",
+    "build": "cd app && npm run build"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "qrcode": "^1.5.4"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bioregional-os": {
+      "command": "node",
+      "args": [
+        "--disable-warning=ExperimentalWarning",
+        "mcp/server.mjs"
+      ],
+      "env": {}
+    }
+  }
+}

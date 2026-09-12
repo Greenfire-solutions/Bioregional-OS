@@ -1,0 +1,118 @@
+import { all, one, create, run } from '../../core/db.mjs';
+import * as council from '../../engines/council.mjs';
+import * as bio from '../../engines/bioregional.mjs';
+import * as quest from '../../engines/quest.mjs';
+import * as exchange from '../../engines/exchange.mjs';
+import * as steward from '../../engines/stewardship.mjs';
+import * as koi from '../../adapters/koi.mjs';
+import { atlasGeoJSON } from '../../adapters/geo.mjs';
+import { ecoregionPolygons, globalEcoregions } from '../../adapters/layers.mjs';
+import { exportLedger } from '../../adapters/valueflows.mjs';
+import { TOOLS, runTool } from '../../ai/tools.mjs';
+import { aiStream } from './ai.mjs';
+import { readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { ROOT } from '../../core/db.mjs';
+
+const defaultChapter = () => one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id ?? null;
+
+export async function api(req, res, url) {
+  const p = url.pathname.replace(/^\/api\/?/, '');
+  const q = Object.fromEntries(url.searchParams);
+  const chapterId = q.chapter || defaultChapter();
+
+  if (req.method === 'POST' && p === 'ai') return aiStream(req, res);   // streams, handles its own response
+
+  switch (p) {
+    case 'status':
+      return {
+        ok: true,
+        version: '1.0.0',
+        chapters: all('SELECT id,name,scale,represents,does_not_represent,lat,lng FROM chapters'),
+        default_chapter: chapterId,
+        counts: {
+          places: n('places'), signals: n('signals'), quests: n('quests'),
+          decisions: n('decisions'), gatherings: n('gatherings'),
+          intake: n('intake'), peers: n('federation_peers'),
+        },
+        ai_configured: !!process.env.ANTHROPIC_API_KEY,
+        tools: TOOLS.length,
+      };
+
+    case 'dashboard':
+      if (!chapterId) return { error: 'no chapter' };
+      return {
+        chapter: one('SELECT * FROM chapters WHERE id=?', chapterId),
+        dashboard: bio.dashboard(chapterId),
+        viability: council.minimumViableTest(chapterId),
+        agenda: council.agenda(chapterId),
+        due_for_review: council.dueForReview(chapterId),
+        care_gaps: quest.careGaps(chapterId),
+        benefit: exchange.benefitFlow(chapterId),
+        consent: steward.consentAudit(chapterId),
+        protected: steward.protectedInventory(chapterId),
+      };
+
+    case 'places':   return all('SELECT * FROM places WHERE chapter_id=? ORDER BY name', chapterId);
+    case 'hubs':     return all('SELECT * FROM hubs WHERE chapter_id=? ORDER BY name', chapterId);
+    case 'signals':  return all('SELECT * FROM signals WHERE chapter_id=? ORDER BY created_at DESC LIMIT 500', chapterId);
+    case 'quests':   return all('SELECT * FROM quests WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
+    case 'decisions':return all('SELECT * FROM decisions WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
+    case 'gatherings':return all('SELECT * FROM gatherings WHERE chapter_id=? ORDER BY starts_at', chapterId);
+    case 'intake':   return all('SELECT * FROM intake WHERE chapter_id=? AND private=0 ORDER BY created_at DESC', chapterId);
+    case 'learn':    return all('SELECT * FROM learn WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
+    case 'federation': return all('SELECT * FROM federation_peers ORDER BY name');
+    case 'exchange': return {
+      events: all(`SELECT e.*, a.name AS provider_name FROM exchange_events e
+                   LEFT JOIN agents a ON a.id=e.provider_id
+                   WHERE e.chapter_id=? ORDER BY e.occurred_at DESC`, chapterId),
+      flow: exchange.benefitFlow(chapterId),
+      contributions: exchange.contributionSummary(chapterId),
+    };
+
+    // ---- map layers ----
+    case 'layers/ecoregions': {
+      const bbox = (q.bbox ?? '').split(',').map(Number);
+      if (bbox.length !== 4 || bbox.some(Number.isNaN)) return { status: 400, body: { error: 'bbox=w,s,e,n required' } };
+      const [west, south, east, north] = bbox;
+      return await ecoregionPolygons({ west, south, east, north }, { level: q.level ?? 'l3' });
+    }
+    case 'layers/global': return globalEcoregions();
+    case 'layers/atlas':  return atlasGeoJSON(chapterId, { clearance: q.clearance ?? 'public' });
+
+    // ---- exports ----
+    case 'export/valueflows': return exportLedger(chapterId);
+    case 'export/koi':        return koi.manifest(chapterId, { clearance: q.clearance ?? 'public' });
+    case 'export/geojson':    return atlasGeoJSON(chapterId, { clearance: q.clearance ?? 'members' });
+
+    // ---- protocol text, served to the UI ----
+    case 'protocol': {
+      const f = join(ROOT, 'docs', 'PROTOCOL.md');
+      return { markdown: existsSync(f) ? readFileSync(f, 'utf8') : '' };
+    }
+    case 'doctrine': {
+      const f = join(ROOT, 'content', 'greenfire', 'doctrine.json');
+      return existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : { error: 'not built' };
+    }
+
+    // ---- generic tool invocation (same registry the AI uses) ----
+    case 'tools': return TOOLS.map(({ name, description, input_schema }) => ({ name, description, input_schema }));
+    case 'tool': {
+      if (req.method !== 'POST') return { status: 405, body: { error: 'POST required' } };
+      const body = await readBody(req);
+      return await runTool(body.name, body.input ?? {});
+    }
+
+    default:
+      return { status: 404, body: { error: `no route /api/${p}` } };
+  }
+}
+
+function n(table) { return one(`SELECT COUNT(*) n FROM ${table}`)?.n ?? 0; }
+
+export async function readBody(req) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  if (!chunks.length) return {};
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return {}; }
+}
