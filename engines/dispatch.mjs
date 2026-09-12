@@ -33,6 +33,7 @@ import { groundToday } from './ground.mjs';
 import { whatMoved, intakePromise } from './loops.mjs';
 import { whatsNext } from './operator.mjs';
 import { attributionFor, source as registrySource } from '../adapters/registry.mjs';
+import { isDemoChapter, DEMO_NOTICE } from '../core/seedData.js';
 
 // Not a schema column: when a card was last produced is a fact about this
 // computer, not about the commons, and it must never travel to another chapter.
@@ -142,12 +143,22 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
   // group chat with none of that context around it.
   //
   // Same rule as attribution: an artifact that travels must declare what it is.
-  const isExample = chapterId === 'barton-creek'
-    && !!one(`SELECT 1 FROM signals WHERE chapter_id=? AND title='Unpermitted Stormwater Outfall Discharge'`, chapterId);
+  // isDemoChapter() rather than the string, because this literal was about to
+  // exist in four places — here, two adapters and the README. If the demo
+  // chapter is ever renamed, the card and the exports must not end up
+  // disagreeing about which half of a commons is fictional.
+  const isExample = isDemoChapter(chapterId);
 
   const card = {
     chapter: chapter.name,
     is_example: isExample,
+    // Two claims, kept apart on purpose. The commons is fiction; the land under
+    // it is not. My first version said "nothing above is a real observation" —
+    // which was false, because the heat advisory, the gage reading and the
+    // recording count are live public data. A notice that over-claims teaches a
+    // reader to distrust the one half of this card that is authoritative, and a
+    // hazard alert is the worst possible thing to make somebody doubt.
+    notice: isExample ? DEMO_NOTICE : null,
     generated_at: new Date().toISOString(),
     week_of: friendlyDate(new Date()),
     sections,
@@ -269,10 +280,7 @@ function asText(card) {
     out.push('');
   }
   out.push('Written from our own records. Nothing here is on the internet.');
-  if (card.is_example) {
-    out.push('DEMONSTRATION DATA — a fictional commons used to show how this works. ' +
-             'Nothing above is a real observation, and no real organisation is involved.');
-  }
+  if (card.is_example) out.push(`${card.notice.label} — ${card.notice.commons} ${card.notice.land}`);
   if (card.credit) out.push(card.credit);
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }

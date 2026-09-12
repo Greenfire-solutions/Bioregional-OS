@@ -177,6 +177,29 @@ adding a `?? ''` on those lines would delete the protocol's first refusal and th
 suite would stay green. If you are that person: the gate is the check above, not
 the crash below.
 
+**To see what you shipped, leave the place that made it.** Everything found by
+reading this repo was found from inside it — where nothing is missing, every
+optional file is already downloaded, and the first-run path is the one path
+nobody takes. Cloning what had actually been published and running it surfaced a
+failure invisible from in here by construction: a stranger's first `npm test`
+went red for a region they had never been asked to download. That is a different
+blindness from stale prose. Prose rots because nobody re-reads it; this could not
+be seen from where anyone was standing. Clone it, print it, open it on a phone,
+paste the card into a chat — the artifact is not the repository.
+
+**A marker that over-claims is worse than no marker.** The demonstration commons
+exports 73 features, 67 of them real: 66 live USGS gage readings and a live NOAA
+hazard alert. A notice reading *"nothing here is a real observation"* was
+therefore backwards on a file that is 92% measurement, and it contradicted the
+attribution block beside it in the same object, which correctly credited NOAA and
+USGS by name. One object, two fields, opposite claims — and the false one was the
+one written to be read. **The commons is fiction; the land underneath it is not.**
+The notice is now two claims kept deliberately apart, declared once in
+`core/seedData.js` and imported by the card and both exports, and the tests
+assert the structure rather than the sentences — including that the land claim
+does not disclaim reality. Teaching a reader to doubt a live hazard alert is a
+worse outcome than saying nothing at all.
+
 **Who observed it is a protocol question, not a data question.** Every adapter
 writes into the same `signals` table. `core/provenance.mjs` declares the human
 sources once and treats everything else as automated, so a new upstream is

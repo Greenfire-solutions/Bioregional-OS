@@ -310,6 +310,59 @@ for (const file of readdirSync(adapterDir).filter((f) => f.endsWith('.mjs'))) {
 check('no two adapters export the same name for different things',
   collisions.length === 0, collisions.join(' · '));
 
+// ── An artifact that travels says what it is ─────────────────────────────
+// The seeded commons reads like real reporting — "Unpermitted Stormwater
+// Outfall Discharge", Critical, naming a real creek and a real city department.
+// In the app that sits under an example-data banner. In a GeoJSON opened in
+// QGIS, or a bundle landed in a stranger's commons, there is no banner at all.
+//
+// The direction that matters is the SECOND one: a notice that fires on
+// everything is noise, and noise is not read — which leaves a real chapter's
+// export carrying a claim that it is fictional.
+{
+  const { isDemoChapter, DEMO_CHAPTER_ID, DEMO_NOTICE } = await import('../core/seedData.js');
+  // Imported locally: `bundle` is destructured further down the file, and
+  // referencing it from here hits the temporal dead zone.
+  const { manifest: koiManifest, bundle: koiBundle } = await import('../adapters/koi.mjs');
+
+  check('the demonstration commons is identified in one place, not four',
+    isDemoChapter(DEMO_CHAPTER_ID) && !isDemoChapter('test') && !isDemoChapter(null));
+
+  const demoExport = atlasGeoJSON(DEMO_CHAPTER_ID, { clearance: 'public' });
+  const realExport = atlasGeoJSON('test', { clearance: 'public' });
+  check('a GeoJSON of the example data says so in the file itself',
+    demoExport.bros.demonstration_data?.label === DEMO_NOTICE.label);
+  check('a GeoJSON from a real chapter does NOT claim to be fictional',
+    realExport.bros.demonstration_data === undefined,
+    JSON.stringify(realExport.bros.demonstration_data));
+
+  check('a manifest from a real chapter does NOT claim to be fictional',
+    koiManifest('test', { clearance: 'public' }).demonstration_data === undefined);
+  check('a manifest of the example data does say so, before anyone pulls a bundle',
+    koiManifest(DEMO_CHAPTER_ID, { clearance: 'public' }).demonstration_data?.label === DEMO_NOTICE.label);
+
+  const realRid = one("SELECT rid FROM rids WHERE chapter_id='test' AND object_type='signal' AND sensitivity='public' LIMIT 1")?.rid;
+  if (realRid) {
+    check('a bundle from a real chapter does NOT claim to be fictional',
+      koiBundle(realRid, { clearance: 'council' }).demonstration_data === undefined);
+  }
+  // Assert the STRUCTURE, not the sentences. The marker makes two claims that
+  // must stay apart: the commons is invented, the readings are not. A single
+  // blanket denial was the first version and it was false — the demo export is
+  // 67 real features to 6 invented ones, and telling a reader to distrust a live
+  // hazard alert is worse than telling them nothing.
+  check('the marker keeps the two claims apart rather than denying everything',
+    typeof DEMO_NOTICE.commons === 'string' && typeof DEMO_NOTICE.land === 'string' &&
+    DEMO_NOTICE.commons.length > 40 && DEMO_NOTICE.land.length > 40);
+  check('it leads with a label a reader scanning a file cannot miss',
+    DEMO_NOTICE.label === 'DEMONSTRATION DATA');
+  check('the invented half is named as invented',
+    /invent|fiction/i.test(DEMO_NOTICE.commons));
+  check('and the measured half is NOT — a real reading must not be disclaimed',
+    /not invented|are real|real measurement/i.test(DEMO_NOTICE.land) &&
+    !/nothing here is real/i.test(DEMO_NOTICE.land));
+}
+
 // ── The upstream registry: one declaration, no second copy ────────────────
 // Assert the property, not a proxy for it. An earlier version of this used
 // `length > 3` as a stand-in for "has a licence" and failed on "CC0" — which is
@@ -1241,8 +1294,40 @@ check('whatever the card resolved appears in the text somebody pastes',
 // public. Same rule as attribution: an artifact that travels declares what it is.
 const demoCard = await cardForTheWeek('test');
 check('a card from a real chapter does not cry wolf about being an example',
-  demoCard.is_example === false && !/DEMONSTRATION/.test(demoCard.text),
+  demoCard.is_example === false && demoCard.notice === null,
   `is_example=${demoCard.is_example}`);
+
+// The notice is two separate claims and must stay two. The first version said
+// "nothing above is a real observation", which was false — the hazard alert, the
+// gage reading and the recording count are live public data. A marker that
+// over-claims teaches a reader to distrust the authoritative half, and a heat
+// advisory is the worst thing in the card to make somebody doubt. Asserted as
+// STRUCTURE rather than wording, so the sentences stay free to be rewritten.
+{
+  // Build the condition the predicate actually looks for, rather than skipping
+  // forever: a chapter with the seeded id carrying the seeded signal. A test
+  // that can only ever skip is not a test.
+  await runTool('create_chapter', {
+    id: 'barton-creek', name: 'Barton Creek Commons', scale: 'site',
+    represents: 'the demonstration', does_not_represent: 'anybody real',
+    lat: 30.261, lng: -97.794,
+  });
+  await runTool('add_signal', {
+    chapter_id: 'barton-creek', title: 'Unpermitted Stormwater Outfall Discharge',
+    category: 'Hydrological', severity: 'Critical', source: 'manual',
+  });
+  const seeded = await cardForTheWeek('barton-creek');
+  check('the seeded demonstration commons is recognised as one',
+    seeded.is_example === true, `is_example=${seeded.is_example}`);
+  check('the example notice separates the fiction from the land',
+    !!seeded.notice?.commons && !!seeded.notice?.land
+    && seeded.text.includes(seeded.notice.commons)
+    && seeded.text.includes(seeded.notice.land),
+    JSON.stringify(seeded.notice));
+  // The claim that was wrong the first time: it must not deny the readings.
+  check('the notice never claims the land readings are fictional',
+    !/nothing (above|here) is a real observation/i.test(seeded.text), seeded.notice?.land);
+}
 
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };

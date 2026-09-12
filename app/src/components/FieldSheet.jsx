@@ -112,7 +112,7 @@ export default function FieldSheet() {
             Quote <strong>{code}</strong> so it lands in the right place and on the right date.
             <br />
             Nothing here goes on the internet.
-            {isExample && <><br /><strong>Demonstration data — a fictional commons. Nothing here is a real observation.</strong></>}
+            {isExample && <><br /><strong>Demonstration commons — the projects and people are fictional examples. The readings above are real public data.</strong></>}
             {credit && <><br /><span className="text-[9px]">{credit}</span></>}
           </p>
           {connect?.qr && (
