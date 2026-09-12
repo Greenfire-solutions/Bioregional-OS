@@ -268,6 +268,30 @@ const history = thisWeekInHistory('test');
 check('an empty archive says when it stops being empty',
   history.items.length === 0 && /needs a year/.test(history.note ?? ''), JSON.stringify(history));
 
+// ── No two adapters may export the same name ──────────────────────────────
+// `climateNormals` was exported by both climate.mjs and phenology.mjs, returning
+// different shapes from different upstreams. Nothing broke, because every caller
+// named its module — but the name promised the same thing from both, and the
+// trap was waiting for whoever imported the one they did not mean. This asserts
+// the whole adapter surface rather than that one case, so the next collision
+// fails here instead of somewhere downstream.
+const { readdirSync } = await import('node:fs');
+const adapterDir = new URL('../adapters/', import.meta.url);
+const seenExport = new Map();
+const collisions = [];
+for (const file of readdirSync(adapterDir).filter((f) => f.endsWith('.mjs'))) {
+  const mod = await import(new URL(file, adapterDir).href);
+  for (const name of Object.keys(mod)) {
+    // A name genuinely re-exported from one module by another is not a collision.
+    const prior = seenExport.get(name);
+    if (prior && mod[name] !== (await import(new URL(prior, adapterDir).href))[name]) {
+      collisions.push(`${name}: ${prior} and ${file}`);
+    } else if (!prior) seenExport.set(name, file);
+  }
+}
+check('no two adapters export the same name for different things',
+  collisions.length === 0, collisions.join(' · '));
+
 // ── The upstream registry: one declaration, no second copy ────────────────
 // Assert the property, not a proxy for it. An earlier version of this used
 // `length > 3` as a stand-in for "has a licence" and failed on "CC0" — which is

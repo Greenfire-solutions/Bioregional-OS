@@ -1,4 +1,7 @@
 node_modules/
+# Agent worktrees live here. A worktree is a second checkout of this same repo —
+# committing it would put a whole duplicate copy of the project inside itself.
+.claude/
 data/commons.db
 data/commons.db-journal
 data/commons.db-wal
@@ -9,6 +12,9 @@ data/upstream/cache/
 data/last-card.json
 app/dist/
 app/node_modules/
+# Agent worktrees live here. A worktree is a second checkout of this same repo —
+# committing it would put a whole duplicate copy of the project inside itself.
+.claude/
 .DS_Store
 .env
 .env.local

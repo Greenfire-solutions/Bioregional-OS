@@ -28,7 +28,7 @@ export async function growingYear(lat, lng, { zip = null } = {}) {
   const [spring, zone, normals] = await Promise.all([
     springIndex(lat, lng).catch(fail),
     zip ? hardinessZone(zip).catch(fail) : Promise.resolve({ available: false, reason: 'needs a postal code', source: null }),
-    climateNormals(lat, lng).catch(fail),
+    climateAverages(lat, lng).catch(fail),
   ]);
   return {
     spring, hardiness: zone, normals,
@@ -131,8 +131,21 @@ export async function hardinessZone(zip) {
 
 // ── climate normals ────────────────────────────────────────────────────────
 
-/** Forty years of monthly normals, anywhere on Earth. */
-export async function climateNormals(lat, lng) {
+/**
+ * Forty years of monthly AVERAGES, anywhere on Earth.
+ *
+ * Named `climateAverages` rather than `climateNormals` because
+ * `adapters/climate.mjs` already exports a `climateNormals` — and that one
+ * answers a different question from a different upstream: extremes a bioregion
+ * plans around (frost days, days over 35°C, longest dry spell) from Open-Meteo
+ * reanalysis, where this returns long-run means from NASA POWER.
+ *
+ * They never disagreed, because every caller named its module. But two exports
+ * sharing a name while returning different shapes is a trap set for whoever
+ * imports the one they did not mean — and the name promised the same thing from
+ * both. Averages and extremes are the distinction, so the names say so.
+ */
+export async function climateAverages(lat, lng) {
   const { data, cached, stale } = await getJSON(
     `${POWER}?${qs({
       parameters: 'T2M,T2M_MIN,T2M_MAX,PRECTOTCORR', community: 'AG',

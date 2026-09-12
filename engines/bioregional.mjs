@@ -506,8 +506,8 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
 
   // ── climate ──
   if (match('temperature', 'rainfall', 'precipitation', 'climate')) {
-    const { climateNormals } = await import('../adapters/phenology.mjs');
-    const n = await climateNormals(place.lat, place.lng).catch(() => null);
+    const { climateAverages } = await import('../adapters/phenology.mjs');
+    const n = await climateAverages(place.lat, place.lng).catch(() => null);
     if (!n?.available) return unmeasurable(indicator, 'NASA POWER did not answer');
     const rain = match('rain', 'precip');
     return baseline({
