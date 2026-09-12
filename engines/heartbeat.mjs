@@ -136,6 +136,21 @@ const TASKS = [
 ];
 
 const log = [];           // in-memory; the durable record is the data itself
+
+/**
+ * When each task last RAN, as distinct from when it last had something to say.
+ *
+ * The log only records ticks that produced a result, so a task running every
+ * half hour and correctly finding nothing to do never appeared in it — and
+ * status() reported `last: null`, which is precisely what a task that has never
+ * fired at all looks like. A silent success and a dead timer were the same
+ * value, in the file whose own header says a scheduler that fails silently is
+ * worse than no scheduler.
+ *
+ * "Ran, nothing to report" is the most common healthy outcome a heartbeat has.
+ * It has to be visible, or the only evidence of life is bad news.
+ */
+const lastRun = new Map();   // task name -> { at, had_result, ms, error? }
 let timers = [];
 let started = null;
 
@@ -148,6 +163,7 @@ export function start(chapterId, { quiet = false } = {}) {
       const t0 = Date.now();
       try {
         const result = await task.run(chapterId);
+        lastRun.set(task.name, { at: new Date().toISOString(), had_result: !!result, ms: Date.now() - t0 });
         if (result) {
           const entry = { at: new Date().toISOString(), task: task.name, result, ms: Date.now() - t0 };
           log.unshift(entry);
@@ -155,6 +171,7 @@ export function start(chapterId, { quiet = false } = {}) {
           if (!quiet) console.log(`  ♦ ${task.name}: ${result}`);
         }
       } catch (err) {
+        lastRun.set(task.name, { at: new Date().toISOString(), had_result: false, ms: Date.now() - t0, error: err.message });
         log.unshift({ at: new Date().toISOString(), task: task.name, error: err.message });
       }
     };
@@ -171,6 +188,18 @@ export function stop() {
   timers = [];
 }
 
+/**
+ * Four states, not two. Exported so all four can be tested — the two that
+ * matter most only occur after a timer has fired, and a test that can only
+ * reach half the states is a test of half the function.
+ */
+export function taskState(armed, run) {
+  if (!armed) return 'not started';
+  if (!run) return 'not run yet';
+  if (run.error) return 'failed on its last tick';
+  return run.had_result ? 'ran, had something to report' : 'ran, nothing to report';
+}
+
 export function status() {
   return {
     running: timers.length > 0,
@@ -179,7 +208,13 @@ export function status() {
       name: t.name,
       every_minutes: t.every / MINUTE,
       why: t.why,
-      last: log.find((l) => l.task === t.name) ?? null,
+      // Two different questions, kept apart. `last_run` answers "is this alive?"
+      // and is set on every tick. `last_result` answers "did it find anything?"
+      // and is null on a healthy quiet task — which is most of them, most of the
+      // time. Reporting only the second made a working task look like a dead one.
+      last_run: lastRun.get(t.name) ?? null,
+      last_result: log.find((l) => l.task === t.name) ?? null,
+      state: taskState(timers.length > 0, lastRun.get(t.name)),
     })),
     recent: log.slice(0, 30),
     note: 'The heartbeat runs only while the OS is running. Nothing happens when it is closed — ' +

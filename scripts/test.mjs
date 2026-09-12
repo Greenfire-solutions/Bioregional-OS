@@ -310,6 +310,32 @@ for (const file of readdirSync(adapterDir).filter((f) => f.endsWith('.mjs'))) {
 check('no two adapters export the same name for different things',
   collisions.length === 0, collisions.join(' · '));
 
+// ── A quiet heartbeat is not a dead one ──────────────────────────────────
+// The log only records ticks that produced a result, so a task running every
+// half hour and correctly finding nothing to do never appeared in it — and
+// status() reported `last: null`, which is exactly what a task that has never
+// fired at all looks like. A silent success and a dead timer were one value, in
+// the file whose header says a scheduler that fails silently is worse than none.
+{
+  const { taskState } = await import('../engines/heartbeat.mjs');
+  check('a stopped heartbeat says stopped, not silent',
+    taskState(false, null) === 'not started');
+  check('armed but not yet fired is distinct from having run',
+    taskState(true, null) === 'not run yet');
+  // The one the whole fix exists for.
+  check('ran with nothing to report is distinguishable from never having run',
+    taskState(true, { had_result: false }) === 'ran, nothing to report' &&
+    taskState(true, { had_result: false }) !== taskState(true, null));
+  check('ran with news says so',
+    taskState(true, { had_result: true }) === 'ran, had something to report');
+  check('a task that threw is not reported as merely quiet',
+    taskState(true, { had_result: false, error: 'boom' }) === 'failed on its last tick');
+  check('all four outcomes are distinct — none collapses into another',
+    new Set([taskState(false, null), taskState(true, null),
+             taskState(true, { had_result: false }), taskState(true, { had_result: true }),
+             taskState(true, { error: 'x' })]).size === 5);
+}
+
 // ── An artifact that travels says what it is ─────────────────────────────
 // The seeded commons reads like real reporting — "Unpermitted Stormwater
 // Outfall Discharge", Critical, naming a real creek and a real city department.
