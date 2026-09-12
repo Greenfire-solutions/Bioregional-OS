@@ -1537,6 +1537,53 @@ check('a card from a real chapter does not cry wolf about being an example',
     'a crash in the library refresh is still indistinguishable from nothing to do');
 }
 
+// ── A refusal a person can act on ──────────────────────────────────────────
+// Every enum below is ALSO a CHECK constraint in schema.sql, so an unlisted value
+// was always refused. It was refused by SQLite: `CHECK constraint failed: kind IN
+// (...)` — naming a column, from a layer the caller does not know exists. The right
+// answer wearing the wrong face.
+//
+// This matters most for the AI callers, which are first-class here. Handing Claude
+// a schema and then refusing it for obeying that schema is the failure that makes a
+// tool registry untrustworthy, and it is invisible from inside the repo because we
+// all pass valid values out of habit.
+{
+  const { runTool, TOOLS } = await import('../ai/tools.mjs');
+
+  const bad = await runTool('publish_learning',
+    { chapter_id: 'test', title: 'T', summary: 's', kind: 'method' });
+  check('an unlisted enum value is refused before it reaches SQLite',
+    bad.error === 'not_allowed_value' && !/CHECK constraint/i.test(bad.message ?? ''),
+    `got ${bad.error}: ${(bad.message ?? '').slice(0, 60)}`);
+  check('the refusal names the field and lists what IS allowed',
+    /publish_learning\.kind/.test(bad.message ?? '') && /case_study/.test(bad.message ?? ''),
+    bad.message);
+
+  // Case matters and the message must show it, or the reader re-sends the same word.
+  const cased = await runTool('add_signal', { chapter_id: 'test', title: 'T', severity: 'critical' });
+  check('a value wrong only in case is told so, with the value it sent quoted back',
+    cased.error === 'not_allowed_value' && /"critical"/.test(cased.message ?? '') && /Critical/.test(cased.message ?? ''),
+    cased.message);
+
+  // The guard must not fire on the valid path — the cry-wolf direction.
+  const good = await runTool('add_signal',
+    { chapter_id: 'test', title: 'Enum guard: valid value', severity: 'Watch' });
+  check('a listed value is not refused by the enum guard', good.error !== 'not_allowed_value',
+    good.error ?? 'accepted');
+
+  // An absent optional enum is absent, not invalid — the falsiness trap this repo
+  // has already been bitten by once.
+  const omitted = await runTool('add_signal', { chapter_id: 'test', title: 'Enum guard: omitted' });
+  check('an omitted optional enum is not treated as an invalid one',
+    omitted.error !== 'not_allowed_value', omitted.error ?? 'accepted');
+
+  // A test over a derived collection needs the collection not to be empty.
+  const enums = TOOLS.flatMap((t) => Object.entries(t.input_schema?.properties ?? {})
+    .filter(([, sp]) => Array.isArray(sp.enum)));
+  check('there are enums in the registry for this guard to be about', enums.length > 20,
+    `${enums.length} enum fields declared`);
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

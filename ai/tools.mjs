@@ -1375,6 +1375,38 @@ export async function runTool(name, input = {}) {
       missing,
     };
   }
+  // And the allowed VALUES, for the same reason and in the same place. Every enum
+  // here is also a CHECK constraint in schema.sql, so an unlisted value was already
+  // refused — but by SQLite, arriving as `CHECK constraint failed: kind IN (...)`.
+  // That is the right refusal wearing the wrong face: database-speak, from a layer
+  // the caller does not know exists, naming a column rather than the field they sent.
+  //
+  // It lands hardest on the AI callers, which are first-class here. A model handed a
+  // schema and then refused for obeying it has no way to self-correct except by
+  // guessing, which makes the whole registry untrustworthy rather than just this call.
+  //
+  // Written as a LIST because enum is not the only way a call can be wrong — unknown
+  // field, wrong type and out-of-range all currently reach the catch-all below and
+  // come back as raw SQLite too. The aim is a reason the caller can act on for every
+  // way a call can be wrong, with the catch-all as the last resort rather than the
+  // first responder. Add the next rule here; nothing else has to change.
+  const props = t.input_schema?.properties ?? {};
+  const given = input ?? {};
+  const RULES = [
+    {
+      error: 'not_allowed_value',
+      find: () => Object.entries(props)
+        .filter(([k, spec]) => Array.isArray(spec.enum)
+          && given[k] !== undefined && given[k] !== null
+          && !spec.enum.includes(given[k]))
+        .map(([k, spec]) => ({ field: k, got: given[k], allowed: spec.enum })),
+      say: (b) => `${name}.${b.field} must be one of: ${b.allowed.join(', ')} — got ${JSON.stringify(b.got)}.`,
+    },
+  ];
+  for (const rule of RULES) {
+    const found = rule.find();
+    if (found.length) return { error: rule.error, message: rule.say(found[0]), invalid: found };
+  }
   try {
     return await t.handler(input ?? {});
   } catch (err) {
