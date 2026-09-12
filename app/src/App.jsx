@@ -115,7 +115,22 @@ export default function App() {
   // there is nothing else to show, and the alternative is somebody's first
   // screen being a commons in Austin that is not theirs.
   const noChapter = status && (status.chapters?.length ?? 0) === 0;
-  const onlyExample = status && status.chapters?.length === 1 && status.chapters[0].id === 'barton-creek';
+
+  // What matters is what you are LOOKING AT, not how many chapters exist.
+  // This was gated on the example being the only chapter, which breaks on the
+  // most ordinary path there is: somebody founds their own commons, then clicks
+  // back to the example to see how a worked one should look — second chapter
+  // exists, banner gone, and they are reading an invented report about an
+  // unpermitted discharge with nothing on screen saying so.
+  const viewingChapter = status?.default_chapter ?? status?.chapters?.[0]?.id ?? null;
+  const viewingExample = !!status?.demo_chapter && viewingChapter === status.demo_chapter;
+
+  // One strip was doing two jobs. Saying "this is invented" is a provenance
+  // marker and stays for as long as it is true; "where are you?" is an
+  // onboarding nudge and is fair to dismiss. Letting a dismissal hide the first
+  // because somebody was done with the second is how a marker disappears while
+  // the thing it marks is still on screen.
+  const showIntroCta = viewingExample && !dismissedIntro;
 
   function dismissIntro() {
     setDismissedIntro(true); setFirstRun(false);
@@ -213,19 +228,24 @@ export default function App() {
         )}
       </nav>
 
-      {onlyExample && !dismissedIntro && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--line)]
-                        bg-[#FCFAF2] px-4 py-1.5 text-[11px]">
+      {viewingExample && (
+        <div className="no-print flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--line)]
+                        bg-[var(--tone-warn-bg)] px-4 py-1.5 text-[11px]">
+          <span className="text-[var(--gold)]">Demonstration data</span>
           <span className="text-[var(--ink-2)]">
-            This is example data from Austin, Texas. Where are <em>you</em>?
+            The chapter, its members and their observations are invented. The land readings are real.
           </span>
-          <button onClick={() => setFirstRun(true)}
-            className="font-medium text-[var(--moss)] underline underline-offset-2">
-            Find my bioregion
-          </button>
-          <button onClick={dismissIntro} className="ml-auto text-[var(--ink-3)] hover:text-[var(--ink)]">
-            dismiss
-          </button>
+          {showIntroCta && (
+            <>
+              <button onClick={() => setFirstRun(true)}
+                className="font-medium text-[var(--moss)] underline underline-offset-2">
+                Find my bioregion
+              </button>
+              <button onClick={dismissIntro} className="ml-auto text-[var(--ink-3)] hover:text-[var(--ink)]">
+                dismiss
+              </button>
+            </>
+          )}
         </div>
       )}
 

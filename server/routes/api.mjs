@@ -12,6 +12,7 @@ import { TOOLS, runTool } from '../../ai/tools.mjs';
 import * as heartbeat from '../../engines/heartbeat.mjs';
 import { whatsNext } from '../../engines/operator.mjs';
 import { humanObservedSql, atPlaceCentroidSql } from '../../core/provenance.mjs';
+import { DEMO_CHAPTER_ID } from '../../core/seedData.js';
 import { aiStream } from './ai.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,6 +39,10 @@ export async function api(req, res, url) {
           decisions: n('decisions'), gatherings: n('gatherings'),
           intake: n('intake'), peers: n('federation_peers'),
         },
+        // So the interface can mark demonstration data without keeping its own
+        // copy of the id. Four copies of this literal were one rename away from
+        // disagreeing about which half of a commons is fictional.
+        demo_chapter: DEMO_CHAPTER_ID,
         ai_configured: !!process.env.ANTHROPIC_API_KEY,
         tools: TOOLS.length,
       };

@@ -10,7 +10,7 @@
 // now, but this stays first as belt and braces, and the guard below is the belt.
 process.env.BROS_DB = process.env.BROS_DB || '/tmp/bros-test-' + Date.now() + '.db';
 
-import { rmSync } from 'node:fs';
+import { rmSync, readFileSync } from 'node:fs';
 import { runTool } from '../ai/tools.mjs';
 import { one, all, run as dbRun, db, openPath, create } from '../core/db.mjs';
 import * as bioEngine from '../engines/bioregional.mjs';
@@ -1327,6 +1327,26 @@ check('a card from a real chapter does not cry wolf about being an example',
   // The claim that was wrong the first time: it must not deny the readings.
   check('the notice never claims the land readings are fictional',
     !/nothing (above|here) is a real observation/i.test(seeded.text), seeded.notice?.land);
+}
+
+// ── The interface can tell what it is showing ────────────────────────────
+// The on-screen marker was gated on the example being the ONLY chapter, so it
+// vanished the moment somebody founded their own and clicked back to the
+// example — second chapter exists, banner gone, invented discharge report on
+// screen with nothing saying so. It is keyed on the ACTIVE chapter now, which
+// means the browser has to be told which id is the demonstration one. If that
+// ever stops being served the marker silently never shows again, and nothing
+// else would notice.
+{
+  const { DEMO_CHAPTER_ID, isDemoChapter } = await import('../core/seedData.js');
+  const api = readFileSync('server/routes/api.mjs', 'utf8');
+  check('the interface is told which chapter is the demonstration one',
+    /demo_chapter:\s*DEMO_CHAPTER_ID/.test(api), 'api/status no longer exposes demo_chapter');
+  check('the demonstration predicate is one declaration, not a literal per file',
+    isDemoChapter(DEMO_CHAPTER_ID) && !isDemoChapter('some-real-commons'));
+  // The count that used to gate it: a second chapter must not change the answer.
+  check('a second chapter does not stop the example being the example',
+    isDemoChapter(DEMO_CHAPTER_ID) === true);
 }
 
 // ── Report ────────────────────────────────────────────────────────────────
