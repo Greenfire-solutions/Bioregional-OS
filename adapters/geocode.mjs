@@ -42,7 +42,7 @@ export async function search(query, { limit = 5 } = {}) {
       { ttlMs: 1000 * 60 * 60 * 24 * 30, timeout: 15000 });
     const results = (Array.isArray(data) ? data : []).map(fromNominatim).filter(Boolean);
     if (results.length) {
-      return { results, source: 'OpenStreetMap / Nominatim (ODbL)', stale: !!stale };
+      return { results, source: 'OpenStreetMap / Nominatim', source_id: 'nominatim', stale: !!stale };
     }
   } catch { /* fall through */ }
 
@@ -58,7 +58,7 @@ export async function search(query, { limit = 5 } = {}) {
         locality: r.name, region: r.admin1 ?? null, country: r.country ?? null,
         kind: 'settlement',
       })),
-      source: 'Open-Meteo geocoding (CC-BY-4.0)',
+      source: 'Open-Meteo geocoding', source_id: 'open-meteo-geocoding',
     };
   } catch (err) {
     return { results: [], source: null, error: `no geocoder reachable (${err.message})` };
@@ -73,7 +73,7 @@ export async function reverse(lat, lng) {
       `${NOMINATIM}/reverse?${qs({ format: 'jsonv2', lat, lon: lng, zoom: 14, addressdetails: 1 })}`,
       { ttlMs: 1000 * 60 * 60 * 24 * 30, timeout: 15000 });
     const one = fromNominatim(data);
-    return one ? { ...one, source: 'OpenStreetMap / Nominatim (ODbL)' } : null;
+    return one ? { ...one, source: 'OpenStreetMap / Nominatim', source_id: 'nominatim' } : null;
   } catch {
     return null;
   }

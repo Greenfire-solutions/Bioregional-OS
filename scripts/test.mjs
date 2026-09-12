@@ -960,10 +960,31 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
   // leaves this machine must carry credit rendered from it, not from a string
   // somebody typed into an adapter.
   {
+    // General, not dossier-specific: NO adapter may put licence text into an
+    // attribution field. registry.mjs declares licences; everywhere else carries
+    // source_id and lets attributionFor() render the credit.
+    //
+    // This tests the property rather than the mechanism. Checking for new SOURCES
+    // entries would have passed while adapters/dossier.mjs was stamping
+    // 'USDA SSURGO / ISRIC SoilGrids' into every section it wrote.
+    const { findDuplications } = await import('./licence-check.mjs');
+    const dupes = findDuplications();
+    check('no adapter duplicates a licence the registry already declares',
+      dupes.length === 0,
+      dupes.map((d) => `${d.file}:${d.line}`).join(', '));
+
+    // And the other half: an id an adapter claims must actually exist.
     const fsp = await import('node:fs/promises');
-    const src = await fsp.readFile(new URL('../adapters/dossier.mjs', import.meta.url), 'utf8');
-    check('the dossier adapter declares no licence string of its own',
-      !/CC-BY|CC0|ODbL|Public domain|GPL-/.test(src));
+    const { readdirSync } = await import('node:fs');
+    const declaredIds = new Set((await import('../adapters/registry.mjs')).SOURCES.map((x) => x.id));
+    const claimed = new Set();
+    for (const f of readdirSync(new URL('../adapters/', import.meta.url)).filter((f) => f.endsWith('.mjs'))) {
+      const txt = await fsp.readFile(new URL(`../adapters/${f}`, import.meta.url), 'utf8');
+      for (const m of txt.matchAll(/source_id:\s*'([a-z0-9-]+)'/g)) claimed.add(m[1]);
+    }
+    const undeclared = [...claimed].filter((id) => !declaredIds.has(id));
+    check('every source_id an adapter claims is declared in the registry',
+      claimed.size > 0 && undeclared.length === 0, undeclared.join(', '));
 
     const D = await import('../adapters/dossier.mjs');
     const reg = await import('../adapters/registry.mjs');
