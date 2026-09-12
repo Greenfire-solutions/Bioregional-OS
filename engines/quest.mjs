@@ -89,6 +89,20 @@ export function ensureGates(chapterId, questId) {
   return added;
 }
 
+/**
+ * "Still in the way", written once.
+ *
+ * Four places spelled this out and two of them forgot `overridden_at`, so a
+ * gate a named person had passed with a written reason counted as clear in
+ * canAdvance and as blocking in the operator — the same project reported two
+ * different states depending on which screen you were looking at. A predicate
+ * that exists in four copies has one correct copy and three that will drift.
+ */
+export function openGatesSql() {
+  return `SELECT gate FROM quest_gates
+           WHERE quest_id = ? AND required = 1 AND satisfied = 0 AND overridden_at IS NULL`;
+}
+
 export function gates(questId) {
   // Declared on read, not by a migration, and this is the one place in the
   // project that writes during a read. The reason: four gates were added to a

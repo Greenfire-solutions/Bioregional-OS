@@ -22,6 +22,7 @@
 // extended to everything else that reaches the map.
 import { all, one } from '../core/db.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
+import { openGatesSql } from './quest.mjs';
 
 /**
  * The kinds, declared once.
@@ -54,17 +55,23 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
   const chapter = one('SELECT name, lat, lng FROM chapters WHERE id=?', chapterId);
 
   /** Where this row can honestly be drawn, and whether the point is its own. */
+  // BOTH halves, everywhere. lat and lng are independent nullable columns and
+  // add_place takes them as independent optional numbers, so a row with a
+  // latitude and no longitude is a thing that exists. Testing only lat let one
+  // through as `precise: true` with `lng: null`, which deck.gl draws at
+  // [null, 12] and the panel renders by calling .toFixed on null.
+  const has = (o) => o && o.lat != null && o.lng != null;
   const locate = (row) => {
-    if (row.lat != null && row.lng != null) return { lat: row.lat, lng: row.lng, precise: true, borrowed_from: null };
+    if (has(row)) return { lat: row.lat, lng: row.lng, precise: true, borrowed_from: null };
     const p = row.place_id ? placeAt.get(row.place_id) : null;
-    if (p?.lat != null) return { lat: p.lat, lng: p.lng, precise: false, borrowed_from: p.name };
-    if (chapter?.lat != null) return { lat: chapter.lat, lng: chapter.lng, precise: false, borrowed_from: chapter.name };
+    if (has(p)) return { lat: p.lat, lng: p.lng, precise: false, borrowed_from: p.name };
+    if (has(chapter)) return { lat: chapter.lat, lng: chapter.lng, precise: false, borrowed_from: chapter.name };
     return null;
   };
 
   if (on('place')) {
     for (const p of places) {
-      if (p.lat == null) continue;
+      if (!has(p)) continue;
       out.push({
         kind: 'place', id: p.id, title: p.name, lat: p.lat, lng: p.lng,
         precise: true, borrowed_from: null,
@@ -76,7 +83,7 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
 
   if (on('hub')) {
     for (const h of all('SELECT id, name, type, lat, lng, description FROM hubs WHERE chapter_id=?', chapterId)) {
-      if (h.lat == null) continue;
+      if (!has(h)) continue;
       out.push({
         kind: 'hub', id: h.id, title: h.name, lat: h.lat, lng: h.lng,
         precise: true, borrowed_from: null, badge: null, sub: h.type ?? null,
@@ -90,9 +97,11 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
          FROM quests WHERE chapter_id=? AND status NOT IN ('Complete','Stopped')`, chapterId)) {
       const at = locate(q);
       if (!at) continue;
-      const open = one(
-        `SELECT COUNT(*) n FROM quest_gates
-          WHERE quest_id=? AND required=1 AND satisfied=0 AND overridden_at IS NULL`, q.id)?.n ?? 0;
+      // The shared predicate, not a fourth hand-rolled copy. Three other
+      // places spell this out and two of them forget `overridden_at`, so an
+      // overridden gate makes one part of the app call a project clear while
+      // another still calls it blocked.
+      const open = all(openGatesSql(), q.id).length;
       out.push({
         kind: 'project', id: q.id, title: q.title, ...at,
         // The badge is the number of things in the way, because that is what a
@@ -115,7 +124,9 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
       if (!at) continue;
       out.push({
         kind: 'need', id: r.id, title: truncate(r.body, 70), ...at,
-        badge: daysSince(r.created_at) || null,
+        // Zero is an answer here — "brought today" — unlike a project's zero,
+        // which means nothing is in its way and is better left blank.
+        badge: daysSince(r.created_at),
         sub: `${r.submitted_by || 'Someone'} · waiting`,
       });
     }

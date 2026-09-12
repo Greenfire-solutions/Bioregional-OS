@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { MapView, _GlobeView as GlobeView, COORDINATE_SYSTEM } from '@deck.gl/core';
-import { GeoJsonLayer, ScatterplotLayer, ColumnLayer, SolidPolygonLayer, TextLayer, IconLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, SolidPolygonLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
 import { Globe, Mountain, Layers, Loader2 } from 'lucide-react';
 import { KIND, KIND_ORDER, markerSVG, badgeColor } from '../mapKinds.js';
@@ -14,14 +14,6 @@ import { callTool } from '../api.js';
 // against a dark ground look like what they are: land seen from above at night.
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-// The same four voices the rest of the interface uses, in the form deck.gl
-// wants. Luminous rather than muted, because on a dark ground a muted marker
-// is not a subtle marker, it is an invisible one.
-const SEVERITY_COLOR = {
-  Critical: [245, 144, 106],   // clay
-  Watch:    [232, 195, 107],   // gold
-  Info:     [111, 200, 230],   // water
-};
 
 /** Stable colour per ecoregion name — the same region is the same colour every load. */
 function colorFor(name = '') {
@@ -39,14 +31,13 @@ function hsl(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
-export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect }) {
+export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect, version = 0 }) {
   const [mode, setMode] = useState('terrain');          // terrain | globe
   const [level, setLevel] = useState('l3');             // ecoregion detail
   const [relief, setRelief] = useState(true);
   const [eco, setEco] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(null);
-  const [showSignals, setShowSignals] = useState(true);
   const [features, setFeatures] = useState([]);
   // Instrument readings are OFF by default. There are 68 of them against 5
   // observations in the example commons — a map showing both at once is a map
@@ -139,99 +130,33 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       }));
     }
 
-    if (showSignals && signals.length) {
-      const pts = signals.filter((s) => s.lat != null && s.lng != null);
-      // Two layers, because a pin on a map is a claim and these are two
-      // different claims.
-      //
-      // A surveyed observation and a USGS gage carry their OWN coordinates —
-      // somebody stood there, or the instrument is bolted there. A NOAA advisory
-      // covering sixteen counties is filed at the place's point, and so is a
-      // one-line daily notice typed from the kitchen table. Drawing all four as
-      // identical columns says something the data does not support, so anything
-      // sitting on a borrowed coordinate gets a flat translucent disc instead:
-      // present and locatable, visibly not a pin in the ground.
-      const located = pts.filter((d) => d.at_place_centroid !== 1);
-      const approximate = pts.filter((d) => d.at_place_centroid === 1);
+    // The signal, hub and place layers that used to live here are gone.
+    //
+    // They drew the same rows the commons-features layer below now draws, so
+    // every place, hub and signal was painted twice — and only the new copy
+    // answered the key's switches. Turning "Instrument readings" off changed
+    // nothing on screen, because sixty-eight gage columns were coming from a
+    // layer with no switch at all. The map stayed a map of the gage, which is
+    // the exact outcome splitting observations from readings was built to
+    // prevent.
+    //
+    // Adding a layer without removing the one it replaces leaves a map that
+    // looks finished, which is why it survived a screenshot. ARCHITECTURE.md
+    // records the mirror of this — an edit that deleted three map layers and
+    // left something that also looked plausible.
+    //
+    // The place LABELS are kept, because a name beside a point is not a second
+    // copy of the point. They now follow the same switch as the places.
 
-      const hoverFor = (i, kind, extra) => setHover(i.object ? {
-        x: i.x, y: i.y, title: i.object.title,
-        sub: `${i.object.severity} · ${i.object.category}` +
-             (i.object.quantity_value != null ? ` · ${i.object.quantity_value} ${i.object.quantity_unit ?? ''}` : '') +
-             (extra ? ` · ${extra(i.object)}` : ''),
-        kind,
-      } : null);
-
-      if (approximate.length) {
-        L.push(new ScatterplotLayer({
-          id: 'signals-approximate',
-          data: approximate,
-          pickable: true, stroked: true, filled: true,
-          radiusUnits: 'meters', getRadius: 900, radiusMinPixels: 5, radiusMaxPixels: 60,
-          lineWidthMinPixels: 1.5,
-          getPosition: (d) => [d.lng, d.lat],
-          getFillColor: (d) => [...(SEVERITY_COLOR[d.severity] ?? SEVERITY_COLOR.Info), 55],
-          getLineColor: (d) => [...(SEVERITY_COLOR[d.severity] ?? SEVERITY_COLOR.Info), 200],
-          parameters: { depthTest: false },
-          onHover: (i) => hoverFor(i, 'Shown at the place, not its own location',
-            (o) => (o.human_observed === 0
-              ? `reported by ${o.source_adapter ?? 'an upstream'} · real extent is wider than this point`
-              : `noted against the place${o.author ? ` by ${o.author}` : ''}`)),
-          onClick: (i) => i.object && onSelect?.({ type: 'signal', item: i.object }),
-        }));
-      }
-
-      L.push(new ColumnLayer({
-        id: 'signals',
-        data: located,
-        diskResolution: 10, radius: 260, extruded: mode === 'terrain',
-        pickable: true, elevationScale: 1,
-        getPosition: (d) => [d.lng, d.lat],
-        getFillColor: (d) => [...(SEVERITY_COLOR[d.severity] ?? SEVERITY_COLOR.Info), 235],
-        getElevation: (d) => ({ Critical: 5200, Watch: 3600 }[d.severity] ?? 2200),
+    if (mode === 'terrain' && kindsOn.has('place') && places.length) {
+      L.push(new TextLayer({
+        id: 'place-labels', data: places.filter((p) => p.lat != null && p.lng != null),
+        getPosition: (d) => [d.lng, d.lat], getText: (d) => d.name,
+        getSize: 12, getColor: [233, 243, 236], getPixelOffset: [0, -22],
+        fontFamily: 'ui-sans-serif, system-ui', background: true,
+        getBackgroundColor: [8, 15, 13, 220], backgroundPadding: [6, 4],
         parameters: { depthTest: false },
-        onHover: (i) => hoverFor(i, i.object?.human_observed === 0 ? 'Measured here' : 'Observed here',
-          (o) => (o.verified ? 'verified' : 'unverified')),
-        onClick: (i) => i.object && onSelect?.({ type: 'signal', item: i.object }),
       }));
-    }
-
-    if (hubs.length) {
-      L.push(new ScatterplotLayer({
-        id: 'hubs', data: hubs.filter((h) => h.lat != null),
-        pickable: true, radiusUnits: 'pixels', getRadius: 9,
-        getPosition: (d) => [d.lng, d.lat],
-        getFillColor: [79, 214, 160, 255], getLineColor: [8, 15, 13], lineWidthMinPixels: 2, stroked: true,
-        parameters: { depthTest: false },
-        onHover: (i) => setHover(i.object ? { x: i.x, y: i.y, title: i.object.name, sub: i.object.type, kind: 'Hub' } : null),
-        onClick: (i) => i.object && onSelect?.({ type: 'hub', item: i.object }),
-      }));
-    }
-
-    if (places.length) {
-      L.push(new ScatterplotLayer({
-        id: 'places', data: places.filter((p) => p.lat != null),
-        pickable: true, radiusUnits: 'pixels', getRadius: 13,
-        getPosition: (d) => [d.lng, d.lat],
-        getFillColor: [232, 195, 107, 255], getLineColor: [8, 15, 13], lineWidthMinPixels: 2.5, stroked: true,
-        parameters: { depthTest: false },
-        onHover: (i) => setHover(i.object ? {
-          x: i.x, y: i.y, title: i.object.name,
-          sub: [i.object.ecoregion_name, i.object.watershed_name].filter(Boolean).join(' · '),
-          kind: 'Place',
-        } : null),
-        onClick: (i) => i.object && onSelect?.({ type: 'place', item: i.object }),
-      }));
-      if (mode === 'terrain') {
-        L.push(new TextLayer({
-          id: 'place-labels', data: places.filter((p) => p.lat != null),
-          getPosition: (d) => [d.lng, d.lat], getText: (d) => d.name,
-          getSize: 12, getColor: [233, 243, 236], getPixelOffset: [0, -20],
-          fontFamily: 'ui-sans-serif, system-ui', background: true,
-          getBackgroundColor: [8, 15, 13, 220], backgroundPadding: [6, 4],
-          parameters: { depthTest: false },
-        }));
-      }
     }
 
     // ── Everything a commons is doing, on the ground it is doing it on ─────
@@ -300,22 +225,28 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     }
 
     return L;
-  }, [eco, level, relief, mode, signals, hubs, places, showSignals, features, kindsOn]);
+  }, [eco, level, relief, mode, signals, hubs, places, features, kindsOn, onSelect]);
 
+  // Keyed on `version`, not on row counts. Closing a gate — the very action the
+  // panel offers — changes no count anywhere: the same quests, places and
+  // signals come back, so the badge stayed at eight and the diamond stayed red
+  // until something unrelated was added or the page was reloaded. App bumps
+  // this whenever it reloads the commons, which is after every action.
   useEffect(() => {
     let live = true;
     callTool('map_features', {})
       .then((r) => live && !r?.error && setFeatures(r.features ?? []))
       .catch(() => {});
     return () => { live = false; };
-  }, [places.length, signals.length, hubs.length]);
+  }, [version, places.length, signals.length, hubs.length]);
 
   const views = mode === 'globe'
     ? new GlobeView({ id: 'globe', controller: true, resolution: 12 })
     : new MapView({ id: 'map', controller: true });
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#1C2421]">
+    <div className="relative h-full w-full overflow-hidden bg-[#1C2421]"
+         onMouseLeave={() => setHover(null)}>
       <DeckGL
         views={views}
         viewState={mode === 'globe' ? { ...view, zoom: Math.min(view.zoom, 5), pitch: 0, bearing: 0 } : view}

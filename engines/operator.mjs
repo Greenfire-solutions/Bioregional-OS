@@ -7,7 +7,7 @@
 // from, so a steward can argue with it.
 import { all, one } from '../core/db.mjs';
 import { carrying, placeAttention } from './attention.mjs';
-import { priorities } from './quest.mjs';
+import { priorities, openGatesSql } from './quest.mjs';
 
 // blocking  — other work cannot proceed until this moves
 // slipped   — a commitment already made has passed its date
@@ -103,7 +103,7 @@ export function whatsNext(chapterId) {
   for (const q of all(
     `SELECT * FROM quests WHERE chapter_id=? AND status IN ('Open','Active')`, chapterId)) {
     const openGates = all(
-      `SELECT gate FROM quest_gates WHERE quest_id=? AND required=1 AND satisfied=0`, q.id);
+      openGatesSql(), q.id);
     if (openGates.length) {
       add({
         kind: 'blocking', stage: 'Design',

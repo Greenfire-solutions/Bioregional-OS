@@ -72,22 +72,31 @@ export function markerSVG(kind, { blocked = false, precise = true } = {}) {
   const stroke = rgb(c);
   const sw = precise ? 2 : 2.5;
   const dash = precise ? '' : ' stroke-dasharray="4 3"';
-  const body = {
-    ring: `<circle cx="16" cy="16" r="9" fill="none" stroke="${stroke}" stroke-width="3.5"${dash}/>`,
-    square: `<rect x="7" y="7" width="18" height="18" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    diamond: `<path d="M16 4 L28 16 L16 28 L4 16 Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    triangle: `<path d="M16 5 L28 27 L4 27 Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    circle: `<circle cx="16" cy="16" r="10" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    dot: `<circle cx="16" cy="16" r="7" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"${dash}/>`,
-    tick: `<circle cx="16" cy="16" r="4" fill="${fill}" stroke="${stroke}" stroke-width="1.5"${dash}/>`,
-  }[k.shape] ?? `<circle cx="16" cy="16" r="7" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+  // The shape is built twice: once as a dark halo behind, once in its colour.
+  // Built by a function rather than reused as a string, because presentation
+  // attributes on a child ELEMENT beat the ones on its parent <g> — wrapping a
+  // coloured path in a dark-stroked group drew a second copy of the coloured
+  // path, not a halo, and the emitted SVG looked correct while delivering
+  // nothing.
+  const shape = (f, st, w, extra = '') => ({
+    ring: `<circle cx="16" cy="16" r="9" fill="none" stroke="${st}" stroke-width="${w + 1.5}"${extra}/>`,
+    square: `<rect x="7" y="7" width="18" height="18" rx="2" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
+    diamond: `<path d="M16 4 L28 16 L16 28 L4 16 Z" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
+    triangle: `<path d="M16 5 L28 27 L4 27 Z" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
+    circle: `<circle cx="16" cy="16" r="10" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
+    dot: `<circle cx="16" cy="16" r="7" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
+    tick: `<circle cx="16" cy="16" r="4" fill="${f}" stroke="${st}" stroke-width="${Math.max(1, w - 0.5)}"${extra}/>`,
+  }[k.shape] ?? `<circle cx="16" cy="16" r="7" fill="${f}" stroke="${st}" stroke-width="${w}"/>`);
 
-  // A thin dark halo under every marker, so a pale shape stays visible over
-  // pale terrain and a dark one stays visible over water.
+  const halo = shape('none', '#0D1310', sw + 3);
+  const body = shape(fill, stroke, sw, dash);
+
+  // A dark outline behind every marker, so a pale shape stays readable over
+  // pale terrain and a dark one over water.
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">` +
-    `<g opacity="0.55" transform="translate(0,1)" stroke="#0D1310" fill="none" stroke-width="${sw + 2.5}">${body}</g>` +
-    `${body}</svg>`;
+    `<g opacity="0.6">${halo}</g>${body}</svg>`;
+
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 

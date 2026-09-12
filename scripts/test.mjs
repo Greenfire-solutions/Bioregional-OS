@@ -1259,6 +1259,59 @@ check('the intake promise states itself in words a person can read',
   check('and says whether it is blocked or running',
     proj.every((f) => ['blocked', 'running'].includes(f.state)));
 
+  // ── The bugs an independent audit found in this feature ────────────────
+  // All four were invisible from a screenshot, which is why they survived one.
+
+  // A layer added without removing the one it replaces leaves a map that looks
+  // finished. Places, hubs and signals were each drawn TWICE — once by the new
+  // key-driven layer and once by the layer it was meant to replace — so
+  // switching "Instrument readings" off changed nothing on screen, because
+  // sixty-eight gage columns were coming from a layer with no switch at all.
+  const map3dSrc = readFileSync(new URL('../app/src/components/Map3D.jsx', import.meta.url), 'utf8');
+  const layerIds = [...map3dSrc.matchAll(/id: '([a-z0-9-]+)'/g)].map((m) => m[1]);
+  for (const gone of ['signals', 'signals-approximate', 'hubs', 'places']) {
+    check(`the map no longer draws "${gone}" twice`,
+      !layerIds.includes(gone),
+      `${gone} is still drawn by a layer the key cannot switch off`);
+  }
+  check('every marker the map draws answers the key',
+    layerIds.filter((id) => /^(commons-features|commons-badges|place-labels|earth)$/.test(id)).length
+      === layerIds.filter((id) => !/^(globe|map)$/.test(id)).length,
+    JSON.stringify(layerIds));
+  check('no dead toggle state is left behind',
+    !/showSignals/.test(map3dSrc), 'a state that can never change is a switch that is not there');
+
+  // A latitude with no longitude is a row that exists — both columns are
+  // independently nullable and add_place takes them as separate optional
+  // numbers. Testing only lat let one through as precise with lng null, which
+  // deck.gl draws at [null, lat] and the panel renders with .toFixed on null.
+  const HALF = 'half-located';
+  await runTool('create_chapter', {
+    id: HALF, name: 'Half Located', scale: 'site',
+    represents: 'itself', does_not_represent: 'anyone else',
+  });
+  dbRun(`INSERT INTO places (id, chapter_id, name, lat, lng) VALUES ('halfp', ?, 'Half place', 12, NULL)`, HALF);
+  dbRun(`INSERT INTO gatherings (id, chapter_id, place_id, title) VALUES ('halfg', ?, 'halfp', 'At half place')`, HALF);
+  const half = mapFeatures(HALF);
+  check('a row with a latitude and no longitude is never drawn',
+    half.features.every((f) => f.lat != null && f.lng != null),
+    JSON.stringify(half.features.map((f) => [f.kind, f.lat, f.lng])));
+  check('and nothing borrows a half-located coordinate either',
+    !half.features.some((f) => f.borrowed_from === 'Half place'));
+
+  // The predicate for "still in the way" existed in four hand-written copies
+  // and two of them forgot that a gate can be passed with a reason — so the
+  // same project read as clear on one screen and blocked on another.
+  const { openGatesSql } = await import('../engines/quest.mjs');
+  check('one predicate decides what is still in the way',
+    /overridden_at IS NULL/.test(openGatesSql()));
+  for (const f of ['engines/mapboard.mjs', 'engines/operator.mjs']) {
+    const src = readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+    check(`${f} uses it rather than spelling it out again`,
+      !/required\s*=\s*1 AND satisfied\s*=\s*0/.test(src) || /openGatesSql/.test(src),
+      'a fourth copy that will forget overrides');
+  }
+
   // The map component must actually use the shared definitions rather than
   // growing its own copy of the colours.
   const map3d = readFileSync(new URL('../app/src/components/Map3D.jsx', import.meta.url), 'utf8');

@@ -96,6 +96,8 @@ export default function App() {
   const [focus, setFocus] = useState(null);
   const [region, setRegion] = useState(null);
   const [picked, setPicked] = useState(null);
+  // Bumped by load(), so the map refetches what it draws after every action.
+  const [version, setVersion] = useState(0);
   const [panel, setPanel] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [form, setForm] = useState(null);
@@ -116,6 +118,10 @@ export default function App() {
       safe('intake', setIntake),
       callTool('list_indicators', {}).then((r) => Array.isArray(r) && setIndicators(r)).catch(() => {}),
     ]);
+      // Every reload is a new version, so anything keyed on it refetches —
+    // the map especially, whose contents change without any row count
+    // changing when a gate closes.
+    setVersion((v) => v + 1);
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -273,7 +279,7 @@ export default function App() {
           {showMap ? (
             <div className="flex h-full">
               <div className="relative min-w-0 flex-1">
-                <Map3D places={places} hubs={hubs} signals={signals} focus={focus}
+                <Map3D places={places} hubs={hubs} signals={signals} focus={focus} version={version}
                        onSelect={(s) => {
                          // An ecoregion has no single point to fly to — it is an
                          // area — so clicking one opens what is known about it
