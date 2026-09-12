@@ -15,6 +15,43 @@ itself runs on, and the same consent gates. `npm run connect` prints the count. 
 
 > what is the state of the commons?
 
+## Or without a terminal at all
+
+The Assistant panel in the app is the same thing. It runs the Claude Code CLI on
+your own subscription — no API key, nothing in `.env` — and reaches the commons
+through this same MCP server, so an action taken from the panel meets the
+protocol exactly as one taken from the terminal does. Ask it to file a council
+decision without a Land Seat report and it comes back refused, with the
+protocol's own sentence, in the panel.
+
+It appears whenever `claude` is on your PATH. `/api/status` reports what it
+found under `claude_code`; if the CLI is missing the panel says so and offers
+the API-key route instead.
+
+Two things about it are worth knowing, because they are deliberate:
+
+**It answers only to this machine.** `npm start -- --share` binds `0.0.0.0` so a
+phone at a gathering can reach `/join`, and there is no authentication anywhere
+on this API — a fine trade for a page where somebody writes down what they
+noticed, and a poor one for an endpoint that spawns a process and spends your
+subscription. Requests that did not come from this computer are refused, and
+told why.
+
+**The file and network tools are denied, not merely unused.** The CLI is started
+with `--disallowedTools`, which removes them, and `--mcp-config .mcp.json
+--strict-mcp-config`, which loads this project's MCP server and nothing else —
+without that second pair it also picks up whatever is in your global MCP config,
+which on one machine meant the panel could read its steward's email. What
+remains is every tool in this registry plus `ToolSearch`, and the panel checks
+that list against an allowlist on every single run: if anything unrecognised
+appears it abandons the exchange and names it, rather than trusting that the
+model will decline to use it.
+
+The number beside the composer is a **usage estimate, not a charge** — on a
+subscription no money leaves an account for this; it is what the same work would
+have cost through the API. Today's ground, what moved and what's next are all
+computed on this machine and cost nothing at all.
+
 ## What you can ask for
 
 | Ask | What happens |

@@ -97,9 +97,14 @@ scheduler that lies about running is worse than none.
 
 **An AI that runs the whole thing — and cannot govern it.** Every tool in the
 registry, exposed identically to Claude Code (over MCP), the Claude Desktop app,
-and an assistant inside the page (`npm run connect` prints the live count). It reads the same data the map draws. It cannot decide
-legitimacy, rights, funding, cultural permission, safety clearance, or who
-deserves care — those refusals live in the engines, not in a prompt.
+and an assistant inside the page (`npm run connect` prints the live count). That
+in-page assistant can be Claude Code itself, running on your own subscription
+with no API key — answering only to this machine, with the file and network tools
+denied outright by `--disallowedTools` rather than merely left unused, and
+checked against an allowlist on every run. It reads the same data the map draws.
+It cannot decide legitimacy, rights, funding, cultural permission, safety
+clearance, or who deserves care — those refusals live in the engines, not in a
+prompt. See `docs/CLAUDE_CODE.md`.
 
 **Built to connect to anything.** Local only, or shared over your wifi with a QR
 code a phone can scan. Exports plain GeoJSON for QGIS, ValueFlows JSON-LD for
