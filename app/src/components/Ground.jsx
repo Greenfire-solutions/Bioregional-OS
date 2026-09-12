@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Sunrise, Sunset, Moon, Droplets, CloudSun, TriangleAlert, History, Check, Loader2, Pencil,
+  Sunrise, Sunset, Moon, Droplets, CloudSun, TriangleAlert, History, Check, Loader2, Pencil, AudioLines,
 } from 'lucide-react';
 import { callTool } from '../api.js';
 
@@ -132,6 +132,19 @@ export default function Ground({ onNoticed }) {
           </Sub>
         </Cell>
       </div>
+
+      {/* What this place sounds like. A fact only — the recordings are streamed
+          from iNaturalist and never copied, because nearly all of them are
+          NonCommercial and this project redistributes none of it. */}
+      {g.heard?.fact && (
+        <div className="flex items-start gap-2 border-t border-[var(--line)] px-4 py-2.5">
+          <AudioLines className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--water)]" />
+          <p className="text-[11px] leading-snug text-[var(--ink-2)]">
+            {g.heard.fact}
+            {g.heard.species_count ? ` · ${g.heard.species_count} species heard here` : ''}
+          </p>
+        </div>
+      )}
 
       <Notice place={g.place} onSaved={onNoticed} />
 

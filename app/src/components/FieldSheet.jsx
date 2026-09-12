@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Printer, Loader2 } from 'lucide-react';
 import { callTool, get } from '../api.js';
+import { printOnly } from '../print.js';
 
 /**
  * A sheet of paper you can take to the creek.
@@ -52,7 +53,7 @@ export default function FieldSheet() {
             Everything needed to type it back in is printed on the sheet.
           </p>
         </div>
-        <button onClick={() => window.print()}
+        <button onClick={() => printOnly('sheet')}
           className="ml-auto flex shrink-0 items-center gap-1.5 rounded border border-[var(--line)]
                      px-3 py-1.5 text-xs hover:border-[var(--moss)]">
           <Printer className="h-3.5 w-3.5" /> Print this sheet

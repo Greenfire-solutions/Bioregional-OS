@@ -1,6 +1,6 @@
 // Shared plumbing for the friendly command-line scripts.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { join, dirname } from 'node:path';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,4 +33,16 @@ export function ask(question) {
     const n = require('node:fs').readSync(0, buf, 0, 1024);
     return buf.toString('utf8', 0, n).trim();
   } catch { return ''; }
+}
+
+/**
+ * True when this module is the script being run.
+ * The usual `import.meta.url === \`file://${process.argv[1]}\`` idiom breaks on
+ * any path containing a space (it arrives percent-encoded), which is easy to
+ * miss because the script simply does nothing. Compare resolved paths.
+ */
+export function isMain(importMetaUrl) {
+  try {
+    return resolve(fileURLToPath(importMetaUrl)) === resolve(process.argv[1] ?? '');
+  } catch { return false; }
 }

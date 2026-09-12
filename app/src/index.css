@@ -27,6 +27,9 @@ body { background:var(--paper); color:var(--ink);
   * { box-shadow: none !important; }
   a[href]::after { content: ""; }          /* no URLs: none of them work off this wifi */
   .print-card canvas { max-width: 100%; border: 1px solid #ddd; }
+  /* Print one artefact, not the page. Set by app/src/print.js. */
+  body.printing-card .print-target-sheet { display: none !important; }
+  body.printing-sheet .print-target-card { display: none !important; }
   .sheet { break-inside: avoid; }
   .sheet-rule { border-bottom: 1px solid #999; height: 2.1rem; }
   .print-title { font-size: 15pt; font-weight: 600; }

@@ -114,13 +114,33 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
     nearestGageContext(place.lat, place.lng).catch(() => null),
   ]);
 
+  // A place can be heard. The card has carried this since it was built; the panel
+  // a person actually opens every morning did not, which is the wrong way round.
+  // Lazily imported so the panel still answers if the culture adapter is absent.
+  let heard = null;
+  try {
+    const { soundsHere } = await import('../adapters/culture.mjs');
+    const h = await soundsHere(place.lat, place.lng, { radiusKm: 15 });
+    if (h?.available && typeof h.card_fact === 'string') {
+      heard = {
+        fact: h.card_fact,
+        species_count: h.species_count ?? null,
+        most_recent: h.most_recent ?? null,
+        // Streamed from the upstream, never copied: nearly every recording is
+        // NonCommercial, so the OS links and hosts nothing.
+        source: h.source ?? 'iNaturalist',
+        export_safe: h.export_safe === true,
+      };
+    }
+  } catch { /* the panel is still worth opening without it */ }
+
   const out = {
     generated_at: new Date().toISOString(),
     place: {
       id: place.id, name: place.name, lat: place.lat, lng: place.lng,
       ecoregion: place.ecoregion_name, watershed: place.watershed_name, huc: place.watershed_huc,
     },
-    sky, weather, water,
+    sky, weather, water, heard,
     history: thisWeekInHistory(chapterId),
   };
   out.headline = headline(out);

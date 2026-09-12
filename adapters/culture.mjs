@@ -159,12 +159,43 @@ export async function soundsHere(lat, lng, { radiusKm = 15, limit = 30, months =
 
 // ── what was written here ──────────────────────────────────────────────────
 
+/**
+ * Search terms for a place, longest first.
+ *
+ * A place row is named for people — "Barton Creek Greenbelt Reach" — and an
+ * archive is indexed on what things were called. Searching the full label found
+ * nothing, while "Barton Creek" has 235 newspaper pages behind it. So the full
+ * name is tried first and shorter forms after, and the answer always reports
+ * WHICH term found it: a result for a broader term is a weaker claim about this
+ * exact place, and the reader should be able to see that rather than be told
+ * "Barton Creek" when they asked about a particular reach of it.
+ */
+export function searchTerms(placeName) {
+  const name = String(placeName ?? '').trim();
+  if (!name) return [];
+  const terms = [name];
+  // Drop trailing administrative or descriptive words a newspaper never used.
+  const trimmed = name.replace(
+    /\s+(reach|greenbelt|commons|chapter|district|preserve|watershed|area|zone|site|park|trail|corridor)\b/gi, '').trim();
+  if (trimmed && trimmed !== name) terms.push(trimmed);
+  const words = trimmed.split(/\s+/);
+  if (words.length > 2) terms.push(words.slice(0, 2).join(' '));
+  return [...new Set(terms)];
+}
+
 /** Historic newspapers mentioning a place, from the Library of Congress. */
 export async function inThePapers(placeName, { limit = 8 } = {}) {
   if (!placeName) return { available: false, reason: 'no place name to search for', source: null };
-  const { data, cached, stale } = await getJSON(
-    `${LOC}?${qs({ q: `"${placeName}"`, fo: 'json', c: Math.min(limit, 20), at: 'results,pagination' })}`,
-    { ttlMs: MONTH, timeout: 35000 });
+  let data = null, cached = false, stale = false, used = null, widened = false;
+  const terms = searchTerms(placeName);
+  for (const term of terms) {
+    const r = await getJSON(
+      `${LOC}?${qs({ q: `"${term}"`, fo: 'json', c: Math.min(limit, 20), at: 'results,pagination' })}`,
+      { ttlMs: MONTH, timeout: 35000 });
+    used = term;
+    if (r.data?.results?.length) { data = r.data; cached = r.cached; stale = r.stale; widened = term !== terms[0]; break; }
+    data = r.data; cached = r.cached; stale = r.stale;
+  }
   const results = data?.results ?? [];
   markFetched('chronicling-america');
   const years = results.map((r) => String(r.date ?? '').slice(0, 4)).filter(Boolean).map(Number).filter(Number.isFinite);
@@ -176,6 +207,9 @@ export async function inThePapers(placeName, { limit = 8 } = {}) {
     export_safe: true,          // public domain, all of it
     total: data?.pagination?.of ?? results.length,
     earliest_year: years.length ? Math.min(...years) : null,
+    searched_for: used,
+    // A hit on a broader term is a weaker claim about this exact place.
+    widened_from: widened ? placeName : null,
     pages: results.map((r) => ({
       title: r.title ?? null,
       newspaper: Array.isArray(r.partof_title) ? r.partof_title[0] : (r.partof_title ?? null),
@@ -183,8 +217,9 @@ export async function inThePapers(placeName, { limit = 8 } = {}) {
       url: r.id ?? r.url ?? null,
     })),
     readable: results.length
-      ? `"${placeName}" appears on ${data?.pagination?.of ?? results.length} digitised newspaper pages` +
-        `${years.length ? `, the earliest from ${Math.min(...years)}` : ''}.`
+      ? `"${used}" appears on ${data?.pagination?.of ?? results.length} digitised newspaper pages` +
+        `${years.length ? `, the earliest from ${Math.min(...years)}` : ''}` +
+        `${widened ? ` (searched more broadly than "${placeName}")` : ''}.`
       : `"${placeName}" does not appear in the digitised newspapers.`,
   };
 }
@@ -192,9 +227,14 @@ export async function inThePapers(placeName, { limit = 8 } = {}) {
 /** Research about this place. Most communities have no idea it exists. */
 export async function researchAbout(placeName, { limit = 8 } = {}) {
   if (!placeName) return { available: false, reason: 'no place name to search for', source: null };
-  const { data, cached, stale } = await getJSON(
-    `${OPENALEX}?${qs({ filter: `title.search:${placeName}`, per_page: Math.min(limit, 25), sort: 'cited_by_count:desc' })}`,
-    { ttlMs: MONTH, timeout: 30000 });
+  let data = null, cached = false, stale = false, used = null, widened = false;
+  for (const term of searchTerms(placeName)) {
+    const r = await getJSON(
+      `${OPENALEX}?${qs({ filter: `title.search:${term}`, per_page: Math.min(limit, 25), sort: 'cited_by_count:desc' })}`,
+      { ttlMs: MONTH, timeout: 30000 });
+    used = term; data = r.data; cached = r.cached; stale = r.stale;
+    if (r.data?.results?.length) { widened = term !== searchTerms(placeName)[0]; break; }
+  }
   markFetched('openalex');
   const works = data?.results ?? [];
   return {
@@ -203,6 +243,8 @@ export async function researchAbout(placeName, { limit = 8 } = {}) {
     cached: !!cached, stale: !!stale,
     export_safe: true,
     total: data?.meta?.count ?? works.length,
+    searched_for: used,
+    widened_from: widened ? placeName : null,
     works: works.map((w) => ({
       title: w.display_name ?? null,
       year: w.publication_year ?? null,
@@ -213,8 +255,9 @@ export async function researchAbout(placeName, { limit = 8 } = {}) {
     })),
     open_access_count: works.filter((w) => w.open_access?.is_oa).length,
     readable: works.length
-      ? `${data?.meta?.count ?? works.length} research papers name ${placeName}` +
-        `, ${works.filter((w) => w.open_access?.is_oa).length} of the top ${works.length} readable without a subscription.`
+      ? `${data?.meta?.count ?? works.length} research papers name ${used}` +
+        `, ${works.filter((w) => w.open_access?.is_oa).length} of the top ${works.length} readable without a subscription` +
+        `${widened ? ` (searched more broadly than "${placeName}")` : ''}.`
       : `No research names ${placeName}.`,
   };
 }

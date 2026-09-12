@@ -397,6 +397,22 @@ check('the display name never silently differs from both real names',
   ['Turk\'s Cap', 'Malvaviscus arboreus'].includes(
     displayName({ preferred_common_name: "Turk's Cap", name: 'Malvaviscus arboreus' }).name));
 
+// An archive is indexed on what things were called; a place row is named for
+// the people who use it. Searching "Barton Creek Greenbelt Reach" found nothing
+// in a century of newspapers that hold 1,566 pages about "Barton Creek". The
+// widening is allowed — but which term actually matched has to come back, or a
+// result about the whole creek reads as a result about one reach of it.
+const { searchTerms } = await import('../adapters/culture.mjs');
+check('a place name is widened toward what an archive would have indexed',
+  searchTerms('Barton Creek Greenbelt Reach').includes('Barton Creek'),
+  JSON.stringify(searchTerms('Barton Creek Greenbelt Reach')));
+check('the place\'s own name is always tried first',
+  searchTerms('Barton Creek Greenbelt Reach')[0] === 'Barton Creek Greenbelt Reach');
+check('a name with nothing to trim is not widened into something vaguer',
+  searchTerms('Asheville').length === 1);
+check('an empty name yields no search at all rather than a blank query',
+  searchTerms('').length === 0 && searchTerms(null).length === 0);
+
 // ── Layers 7-10: what a tag actually means ────────────────────────────────
 // amenity=shelter is a bus shelter. Around Barton Creek it matches 135 objects
 // and not one is a refuge. Mapping it to care would claim 135 shelters where

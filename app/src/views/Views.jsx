@@ -1,4 +1,5 @@
 import React from 'react';
+import TheGround from '../components/TheGround.jsx';
 import {
   CheckCircle2, XCircle, AlertTriangle, Droplets, Users, Scale,
   RefreshCw, BookOpen, Shield, Clock, MapPin,
@@ -49,6 +50,8 @@ export function MyPlace({ data, onFocus }) {
           </div>
         </div>
       </Card>
+
+      <TheGround />
 
       {v && (
         <Card>

@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { callTool } from '../api.js';
 import FieldSheet from './FieldSheet.jsx';
+import { printOnly } from '../print.js';
 
 /**
  * The weekly card — the thing somebody pastes into the group chat.
@@ -97,7 +98,7 @@ export default function Card({ onClose }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3">
+      <div className="no-print flex items-start gap-3">
         <div className="min-w-0">
           <h2 className="text-base font-medium">This week's card</h2>
           <p className="mt-0.5 text-xs text-[var(--ink-2)]">
@@ -112,7 +113,7 @@ export default function Card({ onClose }) {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="no-print flex flex-wrap items-center gap-2">
         {canCopy ? (
           <button onClick={copyText}
             className="flex items-center gap-1.5 rounded bg-[var(--moss)] px-3 py-1.5 text-xs font-medium text-white">
@@ -134,9 +135,9 @@ export default function Card({ onClose }) {
           className="flex items-center gap-1.5 rounded border border-[var(--line)] px-3 py-1.5 text-xs hover:border-[var(--moss)]">
           <ImageDown className="h-3.5 w-3.5" /> Download image
         </button>
-        <button onClick={() => window.print()}
+        <button onClick={() => printOnly('card')}
           className="flex items-center gap-1.5 rounded border border-[var(--line)] px-3 py-1.5 text-xs hover:border-[var(--moss)]">
-          <Printer className="h-3.5 w-3.5" /> Print
+          <Printer className="h-3.5 w-3.5" /> Print the card
         </button>
         {said && (
           <span className="flex items-center gap-1 text-[11px] text-[var(--moss)]">
@@ -149,17 +150,18 @@ export default function Card({ onClose }) {
           only thing that works when the clipboard does not. */}
       <textarea
         id="card-text" readOnly value={card.text}
+        data-role="copy-source"
         onFocus={(e) => e.target.select()}
         rows={Math.min(20, card.text.split('\n').length + 1)}
-        className="w-full resize-y rounded border border-[var(--line)] bg-[var(--paper)] p-3
+        className="no-print w-full resize-y rounded border border-[var(--line)] bg-[var(--paper)] p-3
                    font-mono text-[12px] leading-relaxed outline-none focus:border-[var(--moss)]"
       />
 
-      <div className="print-card">
+      <div className="print-card print-target-card">
         <canvas ref={previewRef} className="w-full max-w-[540px] rounded border border-[var(--line)]" />
       </div>
 
-      <div className="border-t border-[var(--line)] pt-5">
+      <div className="print-target-sheet border-t border-[var(--line)] pt-5">
         <FieldSheet />
       </div>
 
