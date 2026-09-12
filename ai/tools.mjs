@@ -1262,25 +1262,47 @@ export const TOOLS = [
   {
     name: 'list_regions',
     description:
-      'Search the index of all 967 Level IV and 85 Level III ecoregions by name, code, state or ' +
-      'biome. The index ships with the software and needs no network.',
+      'Find ecoregions in the index that ships with the software — all 967 Level IV and 85 Level ' +
+      'III. Narrow by free text, by a point, or by adjacency to another region. Entirely offline. ' +
+      'Extents are rectangular and ecoregions are not, so a point usually matches several: these ' +
+      'are candidates. For the definitive region at a point use locate_place.',
     input_schema: S({
       query: str('Name, code, state or biome — e.g. "Edwards", "30c", "Texas", "Great Plains"'),
+      near: { type: 'object', description: 'Only regions whose extent covers this point',
+              properties: { lat: { type: 'number' }, lng: { type: 'number' } } },
+      next_to: str('Only regions adjacent to this region code'),
       scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      downloaded_only: bool('Only regions already in the offline library'),
       limit: num('Default 25'),
     }),
     handler: (i) => {
+      const scheme = i.scheme ?? 'epa-l4';
+      let pool;
+      let note = null;
+
+      if (i.next_to) {
+        pool = library.neighbours(i.next_to, { scheme, limit: 200 })
+          .map((n) => library.region(n.code, { scheme }) ?? n);
+      } else if (i.near && i.near.lat != null && i.near.lng != null) {
+        const at = library.regionsAt(i.near.lat, i.near.lng);
+        pool = scheme === 'epa-l3' ? at.level3 : at.level4;
+        note = 'Candidates by rectangular extent. Use locate_place for the authoritative boundary.';
+      } else {
+        pool = library.regions({ scheme });
+      }
+
       const q = (i.query ?? '').toLowerCase();
-      const list = library.regions({ scheme: i.scheme ?? 'epa-l4' })
-        .filter((r) => !q || `${r.code} ${r.name} ${r.level3_name ?? ''} ${r.biome} ${(r.states ?? []).join(' ')}`
+      const list = pool
+        .filter((r) => !q || `${r.code} ${r.name} ${r.level3_name ?? ''} ${r.biome ?? ''} ${(r.states ?? []).join(' ')}`
           .toLowerCase().includes(q))
-        .slice(0, i.limit ?? 25)
         .map((r) => ({
           code: r.code, name: r.name, level3_name: r.level3_name ?? r.name,
           biome: r.biome, states: r.states,
-          downloaded: !!library.loadDossier(r.code, r.scheme ?? i.scheme ?? 'epa-l4'),
-        }));
-      return { matches: list.length, regions: list };
+          downloaded: !!library.loadDossier(r.code, scheme),
+        }))
+        .filter((r) => !i.downloaded_only || r.downloaded);
+
+      return { matches: list.length, note, regions: list.slice(0, i.limit ?? 25) };
     },
   },
   {
@@ -1296,23 +1318,6 @@ export const TOOLS = [
     handler: (i) => library.brief(i.code, { scheme: i.scheme ?? 'epa-l4' }),
   },
   {
-    name: 'regions_at',
-    description:
-      'Which ecoregions a point MIGHT be in, offline, from the shipped index. These are ' +
-      'candidates, not an answer: the index stores rectangular extents and ecoregions are not ' +
-      'rectangles, so several will usually overlap one point. For the definitive answer use ' +
-      'locate_place, which asks the authoritative boundary service.',
-    input_schema: S({ lat: num(''), lng: num('') }, ['lat', 'lng']),
-    handler: (i) => {
-      const r = library.regionsAt(i.lat, i.lng);
-      return {
-        candidates_level4: r.level4.map((x) => ({ code: x.code, name: x.name, level3_name: x.level3_name })),
-        candidates_level3: r.level3.map((x) => ({ code: x.code, name: x.name })),
-        note: 'Overlapping rectangular extents, offline. Use locate_place for the real boundary.',
-      };
-    },
-  },
-  {
     name: 'find_species',
     description:
       'Search every downloaded ecoregion for a plant, animal, insect or fungus by common or ' +
@@ -1321,14 +1326,6 @@ export const TOOLS = [
     input_schema: S({ query: str('e.g. "Ashe juniper", "monarch", "Quercus"'), limit: num('Default 40') },
                     ['query']),
     handler: (i) => library.findSpecies(i.query, { limit: i.limit ?? 40 }),
-  },
-  {
-    name: 'neighbouring_regions',
-    description:
-      'The ecoregions next to this one — where a neighbouring chapter\'s methods are most likely ' +
-      'to transfer, and where they are not.',
-    input_schema: S({ code: str(''), limit: num('') }, ['code']),
-    handler: (i) => library.neighbours(i.code, { limit: i.limit ?? 8 }),
   },
   {
     name: 'download_region',

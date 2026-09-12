@@ -922,8 +922,11 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
   check('the region index ships with the software and needs no network',
     lib.regions().length > 900 && lib.regions({ scheme: 'epa-l3' }).length > 80);
 
-  check('a point resolves to the ecoregions that contain it, offline',
+  check('a point resolves to candidate ecoregions offline, without claiming certainty',
     lib.regionsAt(30.26, -97.79).level4.some((r) => r.code === '30c'));
+
+  check('adjacency is computed from the shipped index, offline',
+    lib.neighbours('30c').some((n) => n.code === '30a'));
 
   const notThere = lib.brief('zz-not-a-region');
   check('an unknown region code is refused rather than invented', !!notThere.error);
