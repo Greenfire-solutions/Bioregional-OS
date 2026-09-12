@@ -126,6 +126,19 @@ green line with a confident name:
    and doing so would have unhooked a working gate. A red test is evidence that
    something is true, not evidence of what you assumed.
 
+It has a twin that is harder to see because it is green: **a test that asserts a
+sentence will pass for as long as the sentence is a lie.** A check matched the
+words `own quests` in a coverage note claiming nothing upstream fills Atlas layer
+12. Replacing it with the state the note describes — `sourcesForLayer(12).length
+=== 0` — failed immediately: Murmurations had been declared at layer 12 for as
+long as the note had been wrong, and the assertion read only the sentence.
+
+Both come from reading prose instead of state, and so does a third: four
+documents claimed a tool count — 59, 49, 48 and 23 — while the registry held 77.
+Nobody lied; each number was true when it was typed. **Prose about state rots,
+and nothing tells you.** The suite now reads the documents and compares, so a
+count either matches the registry or the document carries no number at all.
+
 Its common cause is **asserting phrasing instead of meaning**. A check pinned to
 the sentence `check their terms before redistributing` failed the moment the
 wording moved to `before passing it on` — nothing was broken, and the fix is to

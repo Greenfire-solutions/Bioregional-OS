@@ -318,8 +318,11 @@ check('an unknown source defaults to members, not public',
   registry.defaultSensitivity('no-such-source'));
 const coverage = registry.layerCoverage('test');
 check('the Atlas gap report covers all twelve layers', coverage.length === 12);
-check('layer 12 is the chapter\'s own work, not an upstream',
-  /own quests/.test(coverage[11].note ?? ''), coverage[11].note);
+// Assert the PROPERTY, not the sentence about it. The note can be reworded; the
+// fact that nothing upstream fills layer 12 is what the note is describing.
+check('layer 12 is the chapter\'s own work — nothing upstream fills it',
+  registry.sourcesForLayer(12).length === 0 && !!coverage[11].note,
+  registry.sourcesForLayer(12).map((x) => x.id).join(', '));
 
 // Asking a land question without saying where must work, because ground_today
 // already does — a caller should not have to learn which tools need an argument.
@@ -442,7 +445,10 @@ check('an unlicensed recording is all rights reserved, not free',
 // Same reason as the licence classifier: the allowlist refuses it either way,
 // but only the absent-branch says WHY in terms a person can act on.
 check('an unlicensed recording reports no licence, not an unreadable one',
-  mediaRights(null).code === null && /all rights reserved/i.test(mediaRights(null).why),
+  mediaRights(null).code === null && mediaRights(null).streamable === false &&
+  (mediaRights(null).why ?? '').length > 20 &&
+  // distinguishable from the "we do not know this licence" branch, which names one
+  mediaRights('weird-licence').code === 'weird-licence',
   mediaRights(null).why);
 check('CC-BY-NC may be played from its own host but never copied',
   mediaRights('cc-by-nc').streamable === true && mediaRights('cc-by-nc').redistributable === false);
@@ -539,8 +545,9 @@ check('count-only categories exist so a tally cannot become a map of pins',
 const noSuch = await bioEngine.proposeBaseline('test', { indicator: 'number of volunteers' });
 check('an indicator nothing open measures is refused, not invented',
   noSuch.proposed === false && noSuch.error === 'no_baseline', JSON.stringify(noSuch).slice(0, 90));
-check('the refusal says to go and measure it rather than leaving a blank',
-  /measure it yourself/i.test(noSuch.guidance ?? ''));
+check('the refusal hands back guidance rather than an empty field',
+  typeof noSuch.guidance === 'string' && noSuch.guidance.length > 30 &&
+  noSuch.baseline_value === undefined, JSON.stringify(noSuch).slice(0, 90));
 const noWhere2 = await bioEngine.proposeBaseline('test', { indicator: 'creek flow' });
 check('a baseline needs somewhere to be a baseline of',
   noWhere2.error === 'no_location', JSON.stringify(noWhere2).slice(0, 80));
@@ -562,8 +569,12 @@ const baseFirst = bioEngine.setBaseline(baseInd.id, {
   source: 'USGS NWIS daily statistics', licence: 'Public domain (US Government)',
 });
 check('a first baseline is accepted without ceremony', baseFirst.indicator?.baseline_value === 1.2);
-check('a baseline from public record says so, so it is never mistaken for a reading',
-  /not a reading somebody took/i.test(baseFirst.indicator?.method ?? ''), baseFirst.indicator?.method);
+// The method must carry the SOURCE it was given — that is input echoed back,
+// which survives any rewording of the surrounding sentence.
+check('a baseline from public record carries the source it came from',
+  (baseFirst.indicator?.method ?? '').includes('USGS NWIS daily statistics') &&
+  (baseFirst.indicator?.method ?? '').includes('Public domain (US Government)'),
+  baseFirst.indicator?.method);
 
 const baseSilent = bioEngine.setBaseline(baseInd.id, { value: 9.9 });
 check('moving a baseline without a reason is refused',
@@ -675,6 +686,13 @@ check('every probe resolves to a callable request',
   pr.probeable.every((x) => typeof x.url === 'string' && /^https:/.test(x.url) && x.method),
   pr.probeable.filter((x) => !/^https:/.test(x.url ?? '')).map((x) => x.id).join(', '));
 // "Needs a key" and "we forgot" look identical in a report that only shows absence.
+// A source cannot both have a health check and a reason it has none. I added
+// exactly that contradiction while reclassifying one, and `probes()` silently
+// preferred the probe and never showed the reason — a conflict that resolves
+// itself is a conflict nobody finds.
+check('no source declares both a probe and a reason it cannot be probed',
+  registry.SOURCES.every((x) => !(x.probe && x.no_probe)),
+  registry.SOURCES.filter((x) => x.probe && x.no_probe).map((x) => x.id).join(', '));
 check('every unprobeable source says why it cannot be probed',
   pr.unprobeable.every((x) => x.why && x.why !== 'no probe declared yet'),
   pr.unprobeable.filter((x) => x.why === 'no probe declared yet').map((x) => x.id).join(', '));
@@ -1109,6 +1127,34 @@ const credited = await cardForTheWeek('test');
 check('whatever the card resolved appears in the text somebody pastes',
   credited.sources.length === 0 || credited.text.includes(credited.credit),
   `${credited.sources.length} sources · credit in text: ${credited.credit ? credited.text.includes(credited.credit) : 'n/a'}`);
+
+// ── Prose that states a count is prose that will be wrong ────────────────
+// Four documents claimed a tool count — 59, 49, 48 and 23 — while the registry
+// held 77. Nobody lied; each number was true when it was typed. This is the same
+// failure as a licence written into an adapter instead of resolved from the
+// registry, and the same as a coverage note describing a layer instead of
+// asserting it: PROSE ABOUT STATE ROTS, AND NOTHING TELLS YOU.
+//
+// So the suite reads the documents and compares. A count in prose either matches
+// the registry or the document should not carry a number at all.
+{
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { TOOLS } = await import('../ai/tools.mjs');
+  const { SOURCES } = await import('../adapters/registry.mjs');
+  const truth = { tools: TOOLS.length, sources: SOURCES.length };
+  const docs = ['README.md', ...readdirSync('docs').filter((f) => f.endsWith('.md')).map((f) => join('docs', f))];
+  const drifted = [];
+  for (const f of docs) {
+    let text;
+    try { text = readFileSync(f, 'utf8'); } catch { continue; }
+    for (const m of text.matchAll(/\b(\d{2,4})\s+(tools|sources)\b/g)) {
+      if (Number(m[1]) !== truth[m[2]]) drifted.push(`${f}: "${m[1]} ${m[2]}" is now ${truth[m[2]]}`);
+    }
+  }
+  check('no document states a count that has drifted from the registry',
+    drifted.length === 0, drifted.join(' · '));
+}
 
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };

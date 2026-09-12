@@ -365,7 +365,11 @@ export const SOURCES = [
     probe: 'https://geocoding-api.open-meteo.com/v1/search?name=Austin&count=1',
   },
   {
-    id: 'murmurations', layer: 12, kind: 'protocol', coverage: 'global',
+    // layer: null — Murmurations finds other CHAPTERS, not anything about this
+    // ground. It was filed at 12 ("Active projects, maintenance, and outcomes")
+    // while that layer's own note says nothing upstream fills it, and both could
+    // not be true. A supporting source, like the geocoders.
+    id: 'murmurations', layer: null, kind: 'protocol', coverage: 'global',
     name: 'Murmurations Protocol', project: 'Murmurations',
     license: 'GPL-3.0 (service); profiles are your own',
     attribution: 'Discovered over the Murmurations network',
