@@ -2,7 +2,7 @@
 // ── Press every button ────────────────────────────────────────────────────
 //
 //   npm run prove              → against a fresh seeded commons, safe, default
-//   npm run prove -- --live    → READ-ONLY tools against your real commons
+//   npm run prove -- --live    → against a COPY of your real commons, also safe
 //
 // The test suite proves the protocol REFUSES. This proves the app RESPONDS:
 // that every tool in the registry actually runs, every REST route answers,
@@ -21,9 +21,16 @@
 //   makes a button do nothing, and it is invisible from the outside because the
 //   screen simply does not change.
 //
-// Everything is exercised against a THROWAWAY database built by the same seed
-// the app ships, so writes are real writes and your commons is never touched.
-// The guard below refuses to run if that is not true.
+// Everything is exercised against a THROWAWAY database — either built by the
+// seed the app ships, or, with --live, a VACUUM INTO copy of your real commons
+// so the prover meets your actual data. Either way the writes are real writes
+// and land on a file that is deleted at the end.
+//
+// --live used to mean "skip the seeding", which left every tool — including
+// every write — running against the real commons. It read as read-only in the
+// header and was not, which is the most dangerous shape a flag can have. It
+// copies now, and the guard below refuses to run against anything that is not
+// the copy.
 import { mkdtempSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -33,7 +40,27 @@ const LIVE = process.argv.includes('--live');
 const VERBOSE = process.argv.includes('--verbose');
 
 const dir = mkdtempSync(join(tmpdir(), 'bros-prove-'));
-if (!LIVE) process.env.BROS_DB = join(dir, 'prove.db');
+const target = join(dir, 'prove.db');
+
+// With --live, copy the real commons FIRST — via VACUUM INTO, because a file
+// copy of a WAL database is short by whatever has not been checkpointed — and
+// then point everything at the copy. The real one is opened read-only, once,
+// and closed before anything else runs.
+if (LIVE) {
+  const { DatabaseSync } = await import('node:sqlite');
+  const live = process.env.BROS_DB || join(new URL('..', import.meta.url).pathname, 'data', 'commons.db');
+  const src = existsSync(live) ? live
+    : fileURLToPath(new URL('../data/commons.db', import.meta.url));
+  if (!existsSync(src)) {
+    console.error(`\n  No commons to copy at ${src}\n`);
+    process.exit(2);
+  }
+  const d = new DatabaseSync(src, { readOnly: true });
+  d.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`);
+  d.close();
+  console.log(`  copied your commons to a throwaway — the original is untouched`);
+}
+process.env.BROS_DB = target;
 
 // Seeded in a SUBPROCESS, before this process opens the file. core/seed.mjs is
 // a script rather than a module — it runs on import and closes the database at
@@ -52,7 +79,7 @@ if (!LIVE) {
 
 const { all, one, openPath, db } = await import('../core/db.mjs');
 db();
-if (!LIVE && !/bros-prove/.test(openPath())) {
+if (!/bros-prove/.test(openPath())) {
   console.error(`\n  REFUSING TO RUN: would exercise ${openPath()}\n`);
   process.exit(2);
 }
@@ -199,7 +226,7 @@ const count = (s) => rows.filter((r) => r[1] === s).length;
 const broken = rows.filter((r) => r[1] === 'threw' || r[1] === 'crash');
 const routeBroken = routeRows.filter((r) => r[1] === 'threw');
 
-console.log(`\n  Pressing every button${LIVE ? ' (live, read paths only)' : ''}`);
+console.log(`\n  Pressing every button${LIVE ? ' (against a copy of your commons)' : ''}`);
 console.log(`  ${'─'.repeat(66)}`);
 for (const [name, state, why, ms] of rows) {
   if (state === 'ok' && !VERBOSE) continue;
