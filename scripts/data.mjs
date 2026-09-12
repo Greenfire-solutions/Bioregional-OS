@@ -80,7 +80,7 @@ async function main() {
     await pause(5000);
   }
 
-  let done = 0, bytes = 0, failed = 0, skipped = 0;
+  let done = 0, bytes = 0, failed = 0, skipped = 0, locked = 0;
   const started = Date.now();
 
   for (const t of targets) {
@@ -90,6 +90,18 @@ async function main() {
       const r = await compile(t.code, { scheme: t.scheme });
       if (r.error) { console.log(`${c.red}✗${c.reset} ${r.error}`); failed++; }
       else if (r.unchanged) { console.log(`${c.dim}current${c.reset}`); skipped++; }
+      // compile() has FOUR outcomes, not three. A region already being written by
+      // the running OS's heartbeat comes back `skipped` — no error, no
+      // `refreshed` — and fell straight through to this branch, which crashed on
+      // `r.refreshed.join()` and counted ordinary lock contention as a failure.
+      // Waiting your turn is not failing.
+      else if (r.skipped) { console.log(`${c.dim}${r.skipped}${c.reset}`); locked++; }
+      // And anything else is a shape compile() has grown that this loop has not
+      // learned. Name it rather than crash, so the next unhandled outcome says so.
+      else if (!Array.isArray(r.refreshed)) {
+        console.log(`${c.red}✗${c.reset} unrecognised result: ${Object.keys(r).join(', ')}`);
+        failed++;
+      }
       else { console.log(`${c.green}✓${c.reset} ${kb(r.bytes)}  ${c.dim}${r.refreshed.join(' ')}${c.reset}`); done++; bytes += r.bytes; }
     } catch (err) { console.log(`${c.red}✗${c.reset} ${err.message.slice(0, 60)}`); failed++; }
     await pause(300);
@@ -97,7 +109,8 @@ async function main() {
 
   const mins = ((Date.now() - started) / 60000).toFixed(1);
   console.log(`\n  ${c.dim}${line()}${c.reset}`);
-  ok(`${done} downloaded  ·  ${skipped} already current  ·  ${failed} failed  ·  ${mb(bytes)} in ${mins} min`);
+  ok(`${done} downloaded  ·  ${skipped} already current  ·  ${locked} busy  ·  ${failed} failed  ·  ${mb(bytes)} in ${mins} min`);
+  if (locked) info(`${locked} were being written by the running OS at the time — not failures. Run it again and they are picked up.`);
   if (failed) info('Failures are usually a rate limit or a dropped connection. Run it again — it resumes.');
   console.log('');
   status({ brief: true });
