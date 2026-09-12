@@ -4,6 +4,7 @@ import {
   Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity,
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
+import RegionPanel from './components/RegionPanel.jsx';
 import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
@@ -80,6 +81,7 @@ export default function App() {
   const [indicators, setIndicators] = useState([]);
   const [gates, setGates] = useState({});
   const [focus, setFocus] = useState(null);
+  const [region, setRegion] = useState(null);
   const [panel, setPanel] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [form, setForm] = useState(null);
@@ -257,9 +259,16 @@ export default function App() {
         <main className="min-w-0 flex-1">
           {showMap ? (
             <div className="flex h-full">
-              <div className="min-w-0 flex-1">
+              <div className="relative min-w-0 flex-1">
                 <Map3D places={places} hubs={hubs} signals={signals} focus={focus}
-                       onSelect={(s) => s.item.lat != null && setFocus({ lat: s.item.lat, lng: s.item.lng })} />
+                       onSelect={(s) => {
+                         // An ecoregion has no single point to fly to — it is an
+                         // area — so clicking one opens what is known about it
+                         // instead of moving the camera.
+                         if (s.type === 'ecoregion') return setRegion(s.item);
+                         if (s.item.lat != null) setFocus({ lat: s.item.lat, lng: s.item.lng });
+                       }} />
+                {region && <RegionPanel region={region} onClose={() => setRegion(null)} />}
               </div>
               {tab === 'place' && (
                 <div className="w-[26rem] shrink-0 overflow-y-auto border-l border-[var(--line)] bg-[var(--paper)] p-4">

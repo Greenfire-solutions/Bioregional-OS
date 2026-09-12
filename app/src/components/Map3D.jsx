@@ -109,6 +109,23 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           sub: `${i.object.properties.division ?? ''} · ${i.object.properties.biome ?? ''}`,
           kind: 'Ecoregion',
         } : null),
+        // Every polygon already carried its own code and nothing ever asked for
+        // it. A region you can hover but not open is a map of labels — the
+        // dossier behind each one is the whole point of the library.
+        onClick: (i) => i.object && onSelect?.({
+          type: 'ecoregion',
+          item: {
+            code: String(i.object.properties.display_code ?? '').toLowerCase(),
+            scheme: level === 'l4' ? 'epa-l4' : 'epa-l3',
+            name: i.object.properties.display_name,
+            // The same normalised fields the hover tooltip reads. The raw
+            // NA_L1NAME/NA_L2NAME are shouted upper case straight from the
+            // EPA service — adapters/layers.mjs already tidies them, and two
+            // parts of one map should not disagree about a region's division.
+            division: i.object.properties.division ?? null,
+            biome: i.object.properties.biome ?? null,
+          },
+        }),
         updateTriggers: { getElevation: [relief], getFillColor: [mode] },
       }));
     }
