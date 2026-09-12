@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { all } from '../core/db.mjs';
 import { visibleAt } from '../core/ids.mjs';
+import { humanObserved, atPlaceCentroid } from '../core/provenance.mjs';
 
 /** Turn a GeoJSON FeatureCollection into draft signals for review. */
 export function signalsFromGeoJSON(path, { chapterId, placeId = null, defaultCategory = 'Ecological' } = {}) {
@@ -69,12 +70,21 @@ function flatten(a) {
 export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
   const signals = all('SELECT * FROM signals WHERE chapter_id = ?', chapterId);
   const hubs = all('SELECT * FROM hubs WHERE chapter_id = ?', chapterId);
+  const places = all('SELECT lat, lng FROM places WHERE chapter_id = ?', chapterId);
   const features = [];
   let redacted = 0;
+  let borrowed = 0;
 
   for (const s of signals) {
     if (!visibleAt(clearance, s.sensitivity)) { redacted++; continue; }
     if (s.lat == null || s.lng == null) continue;
+    // Every row here becomes a Point, and a Point in QGIS looks equally certain
+    // whether it is a gage bolted to a riverbank or a county-wide heat advisory
+    // filed at the chapter's own coordinate. The geometry cannot carry that
+    // difference, so the properties have to — otherwise an export is a pile of
+    // confident points and the least certain of them look the same as the most.
+    const atCentroid = atPlaceCentroid(s, places);
+    if (atCentroid) borrowed++;
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
@@ -82,6 +92,10 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
         kind: 'signal', id: s.id, title: s.title, category: s.category,
         severity: s.severity, verified: !!s.verified, observed_at: s.observed_at,
         value: s.quantity_value, unit: s.quantity_unit, source: s.source_adapter,
+        // Same two flags, from the same two rules, as /api/signals and the 3D map.
+        human_observed: humanObserved(s.source_adapter),
+        at_place_centroid: atCentroid,
+        location_precision: atCentroid ? 'filed at the place — real extent may be wider' : 'its own coordinate',
       },
     });
   }
@@ -95,7 +109,12 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
   }
   return {
     type: 'FeatureCollection',
-    bros: { chapter: chapterId, clearance, redacted_features: redacted },
+    bros: {
+      chapter: chapterId, clearance, redacted_features: redacted,
+      // Counted, not just flagged per-feature: someone opening this in QGIS
+      // should be told up front how much of it is approximate.
+      features_at_place_centroid: borrowed,
+    },
     features,
   };
 }

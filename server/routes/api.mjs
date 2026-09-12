@@ -11,6 +11,7 @@ import { exportLedger } from '../../adapters/valueflows.mjs';
 import { TOOLS, runTool } from '../../ai/tools.mjs';
 import * as heartbeat from '../../engines/heartbeat.mjs';
 import { whatsNext } from '../../engines/operator.mjs';
+import { humanObservedSql, atPlaceCentroidSql } from '../../core/provenance.mjs';
 import { aiStream } from './ai.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -65,7 +66,22 @@ export async function api(req, res, url) {
          FROM indicators i WHERE i.chapter_id=? ORDER BY i.created_at DESC`, chapterId);
     case 'places':   return all('SELECT * FROM places WHERE chapter_id=? ORDER BY name', chapterId);
     case 'hubs':     return all('SELECT * FROM hubs WHERE chapter_id=? ORDER BY name', chapterId);
-    case 'signals':  return all('SELECT * FROM signals WHERE chapter_id=? ORDER BY created_at DESC LIMIT 500', chapterId);
+    // Two computed flags, both about claims the interface would otherwise have to
+    // guess at:
+    //
+    //   human_observed    — did a person put this here? One rule, in
+    //                       core/provenance.mjs, so the UI keeps no second copy.
+    //   at_place_centroid — is this coordinate the observation's OWN, or borrowed
+    //                       from the place it was filed against? That is the
+    //                       question a map pin answers, and it is not the same
+    //                       as who observed it. Both rules live in
+    //                       core/provenance.mjs so the map, this route and the
+    //                       GeoJSON export bound for QGIS cannot disagree.
+    case 'signals':  return all(
+      `SELECT s.*,
+              CASE WHEN ${humanObservedSql('s.source_adapter')} THEN 1 ELSE 0 END human_observed,
+              CASE WHEN ${atPlaceCentroidSql('s')} THEN 1 ELSE 0 END at_place_centroid
+         FROM signals s WHERE s.chapter_id=? ORDER BY s.created_at DESC LIMIT 500`, chapterId);
     case 'quests':   return all('SELECT * FROM quests WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
     case 'decisions':return all('SELECT * FROM decisions WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
     case 'gatherings':return all('SELECT * FROM gatherings WHERE chapter_id=? ORDER BY starts_at', chapterId);

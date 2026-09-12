@@ -3,7 +3,7 @@
 //   USGS Watershed Boundary Dataset (WBD) — HUC12 subwatershed for a point
 //   USGS NWIS Instantaneous Values       — real-time discharge / gage height
 // The manual organizes water work by watershed; this is what makes that literal.
-import { getJSON, qs } from './http.mjs';
+import { getJSON, getText, qs } from './http.mjs';
 
 const WBD = 'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer';
 
@@ -67,4 +67,115 @@ export async function waterSignals(lat, lng, { radiusDeg = 0.15 } = {}) {
       source_ref: ts.sourceInfo?.siteCode?.[0]?.value ?? null,
     };
   }).filter((s) => Number.isFinite(s.quantity_value) && s.quantity_value !== -999999);
+}
+
+/**
+ * A gage reading on its own is a number. A gage reading against its own history
+ * is news — and news is the only thing that earns a second visit.
+ *
+ * Two free USGS services, no account:
+ *   • NWIS IV, period=P7D   → what this gage has done this week
+ *   • NWIS statistics (RDB) → the median for THIS CALENDAR DAY across the whole
+ *     period of record, so "low" means low for a September, not low for a June.
+ */
+export async function gageContext(siteCode, { parameterCd = '00060' } = {}) {
+  if (!siteCode) return null;
+  const out = { site: siteCode, parameter: parameterCd };
+
+  // ---- this week ----
+  try {
+    const url = `https://waterservices.usgs.gov/nwis/iv/?${qs({
+      format: 'json', sites: siteCode, parameterCd, period: 'P7D',
+    })}`;
+    const { data, stale } = await getJSON(url, { ttlMs: 1000 * 60 * 30 });
+    const ts = data?.value?.timeSeries?.[0];
+    const points = (ts?.values?.[0]?.value ?? [])
+      .map((v) => Number(v.value))
+      .filter((v) => Number.isFinite(v) && v !== -999999);
+    if (points.length) {
+      const sorted = [...points].sort((a, b) => a - b);
+      out.site_name = ts?.sourceInfo?.siteName ?? null;
+      out.unit = ts?.variable?.unit?.unitCode ?? null;
+      out.current = points[points.length - 1];
+      out.week_median = median(sorted);
+      out.week_min = sorted[0];
+      out.week_max = sorted[sorted.length - 1];
+      out.week_change_pct = out.week_median ? Math.round(((out.current - out.week_median) / out.week_median) * 100) : null;
+      out.lowest_this_week = out.current <= out.week_min;
+      out.highest_this_week = out.current >= out.week_max;
+      out.stale = !!stale;
+    }
+  } catch (err) { out.week_error = err.message; }
+
+  // ---- this calendar day, across the record ----
+  try {
+    const url = `https://waterservices.usgs.gov/nwis/stat/?${qs({
+      format: 'rdb', sites: siteCode, statReportType: 'daily',
+      statTypeCd: 'p10,median,p90', parameterCd,
+    })}`;
+    const { data } = await getText(url, { ttlMs: 1000 * 60 * 60 * 24 * 30 });
+    const today = new Date();
+    const row = findDailyStat(data, today.getMonth() + 1, today.getDate());
+    if (row) {
+      out.day_of_year_median = row.median;
+      out.day_of_year_p10 = row.p10;
+      out.day_of_year_p90 = row.p90;
+      out.years_of_record = row.count ?? null;
+      if (out.current === 0) {
+        // An intermittent creek reading zero is not a missing number, it is the news.
+        out.standing = row.median === 0
+          ? 'dry — as it usually is on this date'
+          : 'dry, and it is not usually dry on this date';
+      } else if (out.current != null && row.median) {
+        out.vs_median_pct = Math.round(((out.current - row.median) / row.median) * 100);
+        out.standing = out.current < (row.p10 ?? -Infinity) ? 'below the 10th percentile for this date'
+          : out.current > (row.p90 ?? Infinity) ? 'above the 90th percentile for this date'
+          : out.vs_median_pct <= -15 ? 'below median for this date'
+          : out.vs_median_pct >= 15 ? 'above median for this date'
+          : 'about median for this date';
+      }
+    }
+  } catch (err) { out.stat_error = err.message; }
+
+  out.source = 'USGS NWIS (public domain)';
+  return out.current == null ? null : out;
+}
+
+/**
+ * Parse one day's row out of an NWIS RDB table.
+ * Exported under a test name so the two traps below can be proven without a
+ * network call — both of them are silent when they break.
+ */
+export function findDailyStat(rdb, month, day) {
+  const lines = String(rdb).replace(/\r/g, '').split('\n');
+  const header = lines.find((l) => l.startsWith('agency_cd'));
+  if (!header) return null;
+  const cols = header.split('\t');
+  const idx = (name) => cols.indexOf(name);
+  const iMonth = idx('month_nu'), iDay = idx('day_nu');
+  if (iMonth < 0 || iDay < 0) return null;
+
+  for (const line of lines) {
+    if (!line || line.startsWith('#') || line.startsWith('agency_cd') || line.startsWith('5s')) continue;
+    const f = line.split('\t');
+    if (Number(f[iMonth]) !== month || Number(f[iDay]) !== day) continue;
+    const num = (name) => {
+      const i = idx(name);
+      // A blank RDB cell is an absent statistic, not zero — and Number('') is 0,
+      // which would silently turn "no 90th percentile on record" into a flood.
+      const raw = i >= 0 ? String(f[i] ?? '').trim() : '';
+      if (!raw) return null;
+      const v = Number(raw);
+      return Number.isFinite(v) ? v : null;
+    };
+    // The service labels the median p50_va; older responses used median_va.
+    return { median: num('p50_va') ?? num('median_va'), p10: num('p10_va'), p90: num('p90_va'), count: num('count_nu') };
+  }
+  return null;
+}
+
+function median(sorted) {
+  if (!sorted.length) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }

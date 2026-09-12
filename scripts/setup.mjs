@@ -74,6 +74,18 @@ if (!existsSync(dbFile)) {
   ok('Your commons data is already here');
 }
 
+// Record the upstream declaration now, so a commons knows what it can reach
+// before it has reached for anything.
+try {
+  const { syncSources } = await import('../adapters/registry.mjs');
+  const { close } = await import('../core/db.mjs');
+  const r = syncSources();
+  ok(`${r.total} open data sources registered — see them with: npm run os, then ask "what data can you reach?"`);
+  close();
+} catch (err) {
+  warn(`Could not register the data sources (${err.message}). Nothing else is affected.`);
+}
+
 console.log(`\n  ${c.dim}${line()}${c.reset}`);
 step('1', 'Start it:');
 cmd('npm run os -- --open');

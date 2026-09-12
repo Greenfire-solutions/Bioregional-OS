@@ -26,7 +26,40 @@ export function db() {
   mkdirSync(dirname(_path), { recursive: true });
   _db = new DatabaseSync(_path);
   _db.exec(readFileSync(join(HERE, 'schema.sql'), 'utf8'));
+  migrate(_db);
   return _db;
+}
+
+/**
+ * Columns added after a commons already exists.
+ *
+ * schema.sql is all CREATE TABLE IF NOT EXISTS, which means a new column in it
+ * reaches a fresh database and NOT the one someone has been using for a year —
+ * and the failure is a confusing "no such column" rather than anything that
+ * points at the cause. So every added column is declared here too, and applied
+ * if missing. Adding a column is safe and cheap; this list only ever grows.
+ */
+const ADDED_COLUMNS = {
+  places: [
+    ['soil_series', 'TEXT'], ['soil_map_unit', 'TEXT'], ['soil_order', 'TEXT'],
+    ['soil_drainage', 'TEXT'], ['soil_hydric', 'INTEGER'], ['soil_ph', 'REAL'],
+    ['soil_organic_matter', 'REAL'], ['soil_clay_pct', 'REAL'], ['soil_awc', 'REAL'],
+    ['soil_source', 'TEXT'], ['elevation_m', 'REAL'],
+    ['land_cover', 'TEXT'], ['land_cover_code', 'INTEGER'],
+    ['flood_zone', 'TEXT'], ['in_floodplain', 'INTEGER'],
+  ],
+};
+
+function migrate(d) {
+  for (const [table, columns] of Object.entries(ADDED_COLUMNS)) {
+    let existing;
+    try { existing = new Set(d.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)); }
+    catch { continue; }                       // table not created yet; schema.sql will
+    for (const [name, type] of columns) {
+      if (existing.has(name)) continue;
+      d.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`);
+    }
+  }
 }
 
 export function close() {

@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, BookOpen, Shield,
-  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus,
+  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send,
 } from 'lucide-react';
 import Map3D from './components/Map3D.jsx';
 import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
+import FirstRun from './components/FirstRun.jsx';
+import Card from './components/Card.jsx';
 import ToolForm from './components/ToolForm.jsx';
 import {
   MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
@@ -26,6 +28,7 @@ const TABS = [
   { id: 'gatherings', label: 'Gatherings', icon: Users,     add: 'add_gathering',    addLabel: 'Schedule a gathering' },
   { id: 'exchange',   label: 'Exchange',   icon: RefreshCw, add: 'record_exchange',  addLabel: 'Log a contribution' },
   { id: 'learn',      label: 'Learn',      icon: BookOpen,  add: 'publish_learning', addLabel: 'Write something up' },
+  { id: 'card',       label: 'The card',   icon: Send },
   { id: 'federation', label: 'Federation', icon: Shield },
 ];
 
@@ -50,6 +53,10 @@ export default function App() {
   const [panel, setPanel] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [form, setForm] = useState(null);
+  const [firstRun, setFirstRun] = useState(false);
+  const [dismissedIntro, setDismissedIntro] = useState(() => {
+    try { return localStorage.getItem('bros.firstrun.dismissed') === '1'; } catch { return false; }
+  });
 
   const load = useCallback(async () => {
     const safe = (p, f) => get(p).then(f).catch(() => {});
@@ -78,13 +85,28 @@ export default function App() {
   }
   function focusOn(coords) { setFocus(coords); setTab('atlas'); }
 
+  // The first sixty seconds. With no chapter at all this replaces everything —
+  // there is nothing else to show, and the alternative is somebody's first
+  // screen being a commons in Austin that is not theirs.
+  const noChapter = status && (status.chapters?.length ?? 0) === 0;
+  const onlyExample = status && status.chapters?.length === 1 && status.chapters[0].id === 'barton-creek';
+
+  function dismissIntro() {
+    setDismissedIntro(true); setFirstRun(false);
+    try { localStorage.setItem('bros.firstrun.dismissed', '1'); } catch { /* private window */ }
+  }
+
+  if (noChapter) {
+    return <FirstRun blocking onDone={() => { setFirstRun(false); load(); }} />;
+  }
+
   const active = TABS.find((t) => t.id === tab);
   const showMap = tab === 'atlas' || tab === 'place';
   const blocking = dash?.viability ? dash.viability.total - dash.viability.passed : 0;
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-3 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2.5">
+      <header className="no-print flex items-center gap-3 border-b border-[var(--line)] bg-[var(--paper)] px-4 py-2.5">
         <Flame className="h-5 w-5 text-[var(--gold)]" />
         <div>
           <div className="text-sm font-medium leading-tight">BioRegional OS</div>
@@ -102,7 +124,7 @@ export default function App() {
         </div>
       </header>
 
-      <nav className="scrollbar-none flex items-center gap-2 overflow-x-auto border-b border-[var(--line)] bg-[var(--paper-2)] px-4">
+      <nav className="no-print scrollbar-none flex items-center gap-2 overflow-x-auto border-b border-[var(--line)] bg-[var(--paper-2)] px-4">
         <div className="flex gap-1 py-1.5">
           {TABS.map((t) => {
             const I = t.icon, on = tab === t.id;
@@ -130,6 +152,22 @@ export default function App() {
           </button>
         )}
       </nav>
+
+      {onlyExample && !dismissedIntro && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--line)]
+                        bg-[#FCFAF2] px-4 py-1.5 text-[11px]">
+          <span className="text-[var(--ink-2)]">
+            This is example data from Austin, Texas. Where are <em>you</em>?
+          </span>
+          <button onClick={() => setFirstRun(true)}
+            className="font-medium text-[var(--moss)] underline underline-offset-2">
+            Find my bioregion
+          </button>
+          <button onClick={dismissIntro} className="ml-auto text-[var(--ink-3)] hover:text-[var(--ink)]">
+            dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         <main className="min-w-0 flex-1">
@@ -160,6 +198,7 @@ export default function App() {
                 {tab === 'gatherings' && <Gatherings gatherings={gatherings} />}
                 {tab === 'exchange' && <Exchange exchange={exchange} />}
                 {tab === 'learn' && <Learn learn={learn} doctrine={doctrine} />}
+                {tab === 'card' && <Card />}
                 {tab === 'federation' && <Federation peers={peers} onDiscover={discover} discovering={discovering} />}
               </div>
             </div>
@@ -167,7 +206,7 @@ export default function App() {
         </main>
 
         {panel && (
-          <aside className="w-[24rem] shrink-0">
+          <aside className="no-print w-[24rem] shrink-0">
             <Assistant configured={!!status?.ai_configured} toolCount={status?.tools} onRefresh={load} />
           </aside>
         )}
@@ -177,6 +216,10 @@ export default function App() {
         <ToolForm tool={form.tool} prefill={form.prefill ?? {}}
                   onClose={() => setForm(null)}
                   onDone={() => setTimeout(() => { setForm(null); load(); }, 1400)} />
+      )}
+
+      {firstRun && (
+        <FirstRun onDone={() => { dismissIntro(); load(); }} onDismiss={() => setFirstRun(false)} />
       )}
 
       <Guide tab={tab} />

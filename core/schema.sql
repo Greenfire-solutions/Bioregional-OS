@@ -63,6 +63,25 @@ CREATE TABLE IF NOT EXISTS places (
   biome            TEXT,
   watershed_huc    TEXT,   -- USGS Watershed Boundary Dataset HUC code
   watershed_name   TEXT,
+  -- Atlas layer 4 — land and soil. Resolved once and then left alone: soil does
+  -- not change on a heartbeat. (USDA SSURGO, ISRIC SoilGrids, USGS 3DEP, NLCD)
+  soil_series      TEXT,
+  soil_map_unit    TEXT,
+  soil_order       TEXT,
+  soil_drainage    TEXT,
+  soil_hydric      INTEGER,
+  soil_ph          REAL,
+  soil_organic_matter REAL,   -- percent, depth-weighted over the top 30 cm
+  soil_clay_pct    REAL,
+  soil_awc         REAL,      -- available water capacity, cm/cm
+  soil_source      TEXT,
+  elevation_m      REAL,
+  land_cover       TEXT,
+  land_cover_code  INTEGER,
+  -- Atlas layer 6 — the standing hazard condition, which is a property of the
+  -- place and not an event, so it does not belong in the signal stream.
+  flood_zone       TEXT,
+  in_floodplain    INTEGER,
   health_score     INTEGER,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -366,6 +385,37 @@ CREATE TABLE IF NOT EXISTS federation_peers (
   status      TEXT NOT NULL DEFAULT 'known'
               CHECK (status IN ('known','connected','sharing','paused')),
   notes       TEXT
+);
+
+-- ---------- Stage 4: Map — datasets a locality publishes, found not enumerated ----------
+-- A candidate is NOT a layer. A dataset discovered on a city portal arrives with
+-- a licence nobody has read, and the whole point of the upstream registry is
+-- that no unreviewed licence reaches an export. So discovery lands here and only
+-- an unambiguous public-domain dedication promotes itself; everything else waits
+-- for a person, and the operator chases them.
+CREATE TABLE IF NOT EXISTS discovered_datasets (
+  id            TEXT PRIMARY KEY,
+  chapter_id    TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  publisher     TEXT,
+  portal        TEXT,
+  portal_type   TEXT,              -- socrata | arcgis
+  subject       TEXT,              -- what was being looked for
+  source_url    TEXT,
+  api_url       TEXT,
+  atlas_layer   INTEGER CHECK (atlas_layer IS NULL OR atlas_layer BETWEEN 1 AND 12),
+  license_raw   TEXT,              -- exactly as the portal stated it, never normalised away
+  license_class TEXT NOT NULL DEFAULT 'unknown'
+                CHECK (license_class IN ('public_domain','open_with_conditions','unrecognised','unknown')),
+  license_note  TEXT,              -- why it was classified that way, in words
+  status        TEXT NOT NULL DEFAULT 'candidate'
+                CHECK (status IN ('candidate','approved','declined')),
+  reviewed_by   TEXT,              -- 'automatic (public domain)' or a person's name
+  reviewed_at   TEXT,
+  review_note   TEXT,
+  discovered_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (chapter_id, source_url)
 );
 
 -- ---------- Upstream open-source / open-data registry ----------

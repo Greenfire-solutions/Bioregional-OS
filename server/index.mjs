@@ -11,7 +11,8 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { execFile } from 'node:child_process';
-import { db, ROOT } from '../core/db.mjs';
+import { db, ROOT, openPath } from '../core/db.mjs';
+import { syncSources } from '../adapters/registry.mjs';
 import { api } from './routes/api.mjs';
 import * as heartbeat from '../engines/heartbeat.mjs';
 import { one } from '../core/db.mjs';
@@ -104,6 +105,12 @@ a{color:#4A5D4E}.step{border-left:3px solid #D4AF37;padding-left:1rem;margin:1.5
 }
 
 db();
+// Which upstreams exist, their licences and their Atlas layers are known at
+// build time and have nothing to do with whether anything has been fetched yet.
+// Writing the declaration at boot means "what data can this OS reach?" has an
+// answer on a brand-new commons, before any adapter has run — and it gives
+// last_fetched_at a row to land on when one does.
+syncSources();
 server.listen(PORT, HOST, () => {
   const chapter = one('SELECT id, name FROM chapters ORDER BY founded_at LIMIT 1');
   const ip = lanAddress();
@@ -112,7 +119,10 @@ server.listen(PORT, HOST, () => {
   console.log(`  On this computer   http://localhost:${PORT}`);
   if (SHARE && ip) console.log(`  On this wifi       http://${ip}:${PORT}   ← phones & laptops`);
   else console.log(`  Share on wifi      npm run os -- --share`);
-  console.log(`  Your data          ${join(ROOT, 'data', 'commons.db')}`);
+  // The file actually open, not the default one. These differ whenever BROS_DB
+  // is set, and a banner that names the wrong database is the same class of
+  // problem as a scheduler that lies about running.
+  console.log(`  Your data          ${openPath()}`);
   console.log(`  ${line}`);
   console.log(`  Lost? Run  npm run help   ·   Something broken?  npm run doctor`);
   console.log(`  Stop it with Control + C. Nothing leaves this machine.\n`);

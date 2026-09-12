@@ -4,6 +4,9 @@ data/commons.db-journal
 data/commons.db-wal
 data/commons.db-shm
 data/upstream/cache/
+# When a card was last produced is a fact about THIS computer, not about the
+# commons. It must never travel to another chapter in a clean copy.
+data/last-card.json
 app/dist/
 app/node_modules/
 .DS_Store

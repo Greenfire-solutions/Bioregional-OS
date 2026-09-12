@@ -4,6 +4,8 @@ import {
 } from 'lucide-react';
 import { callTool } from '../api.js';
 import ToolForm from './ToolForm.jsx';
+import Ground from './Ground.jsx';
+import Loops from './Loops.jsx';
 
 const KIND = {
   blocking: { label: 'Blocking',   icon: AlertOctagon,  cls: 'text-[var(--clay)]',  bg: 'bg-[#FBF1EE] border-[#E4C9C2]',
@@ -57,6 +59,13 @@ export default function Today({ onChanged }) {
 
   return (
     <div className="space-y-5">
+      {/* The land first. A page that only ever asks does not get opened twice. */}
+      <Ground onNoticed={() => { load(); onChanged?.(); }} />
+
+      {/* Then what came of what people already did — before the list of what
+          they have not done yet. */}
+      <Loops />
+
       <div className="flex items-start gap-3">
         <div className="min-w-0">
           <h2 className="text-base font-medium">What needs doing</h2>

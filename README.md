@@ -35,11 +35,22 @@ from the EPA Ecoregions Level III & IV dataset, extruded and interactive, with a
 globe view for the wider mosaic. Your places, hubs and observations sit on top of
 it. Every place resolves to its real ecoregion, biome and HUC12 watershed.
 
+**It starts where you are.** The first thing a new person sees is one question —
+where are you? — answered live: your ecoregion, your watershed, the soil under
+you, what lives around you, and the nearest gage measured against its own record.
+Nothing is written down until you say so, and there is no account to make.
+
+**It tells you something before it asks you for anything.** The first screen opens
+with what the land is doing today: the nearest gage measured against its own median
+for *this calendar day* across the whole period of record, live weather and any
+official hazard alert, and sun, moon and daylight computed on your own machine — so
+that part answers even with the wifi off. Then one line: *what did you notice?*
+
 **Live ecological data.** USGS stream gages flow in as signals automatically —
 discharge and gage height, refreshed on demand, cached so the map still works
 with no internet.
 
-**Everything a person can do, Claude can do, and vice versa.** One registry of 49
+**Everything a person can do, Claude can do, and vice versa.** One registry of 59
 tools feeds the MCP server, the in-app assistant, the REST API *and* the forms in
 the interface — the forms are generated from the tools' own schemas. There is no
 privileged path that skips a consent gate.
@@ -49,6 +60,11 @@ PDF sitting next to the software; it *is* the software. A council item without a
 Land Seat report is refused. A project cannot reach the build stage with an open
 consent gate. Paid work without acknowledged terms is refused. A chapter that
 hasn't published what it does *not* represent fails its own viability test.
+
+**It tells you what came of it.** When somebody's observation becomes a project,
+and that project reaches the council, the person who noticed it is told so — by
+name, on the first screen. Only observations a *person* made are ever attributed
+to a person; a gage reading and a NOAA warning are credited to nobody.
 
 **It tells you what to do next.** The Today view walks all twelve stages and
 reports what is blocking, what has slipped past a date it committed to, and what
@@ -60,7 +76,7 @@ ecological boundaries, refreshes water readings, and watches review dates. Not a
 launchd timer: on macOS those cannot read `~/Desktop` and fail *silently*, and a
 scheduler that lies about running is worse than none.
 
-**An AI that runs the whole thing — and cannot govern it.** 49 tools, exposed
+**An AI that runs the whole thing — and cannot govern it.** 59 tools, exposed
 identically to Claude Code (over MCP), the Claude Desktop app, and an assistant
 inside the page. It reads the same data the map draws. It cannot decide
 legitimacy, rights, funding, cultural permission, safety clearance, or who
@@ -77,7 +93,7 @@ the Murmurations network.
 
 | | |
 |---|---|
-| **Today** | What needs doing across all twelve stages, ranked by what blocks other work. Each item cites the protocol rule it comes from, and carries the button that fixes it |
+| **Today** | What the land is doing right now — water against its own record, weather, sun and moon — then what needs doing across all twelve stages, ranked by what blocks other work. Each item cites the protocol rule it comes from, and carries the button that fixes it |
 | **My Place** | Chapter identity and the ten-question Minimum Viable Chapter Test, with the specific fix for every failure |
 | **Atlas** | The 3D ecoregion map — terrain and globe, Level III and IV, relief on/off |
 | **Listen** | The front door. Someone brings a need; the commons answers and can be appealed |
@@ -134,6 +150,11 @@ Open protocols and open data, integrated as adapters rather than copied code —
 EPA Ecoregions, USGS WBD and NWIS, Murmurations, ValueFlows/REA, KOI-net,
 CoMapeo, farmOS/OpenTEAM, MapLibre, deck.gl. The licensing reasoning and the full
 table are in **[docs/INTEROP.md](docs/INTEROP.md)**.
+
+Ten of the twelve Atlas layers are still empty. The endpoint-verified catalogue of
+free and open data that fills them — soil, plants and medicinal uses, phenology,
+hazards, care infrastructure — and the design for wiring it in without creating a
+second path, is in **[docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)**.
 
 The protocol comes from the Green Fire **BioRegional Commons** manual
 (**[docs/PROTOCOL.md](docs/PROTOCOL.md)**) and the civic doctrine of the Green

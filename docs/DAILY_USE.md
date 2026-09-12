@@ -432,16 +432,120 @@ working. If DAU is high and those numbers are flat, it is a toy.
 
 ## 9. Build order
 
-**Phase 1 — give before you ask.** §5.1 Ground, §5.2 Notice, §7 first run.
-New adapters (`sky`, `weather`, USGS statistics), one heartbeat task, one strip
-on `Today.jsx`. This is the change that turns a reference instrument into
-something worth opening.
+**Phase 1 — give before you ask. ✅ built.** §5.1 Ground, §5.2 Notice, §5.3 Same
+week last year.
 
-**Phase 2 — close the loops.** §5.4 Because of you, §5.5 Answered, §5.3 Same
-week last year. All queries over data that already exists.
+- `adapters/sky.mjs` — sunrise, sunset, daylight and its daily change, moon phase,
+  and the next solstice or equinox found by bisection. NOAA equations, computed on
+  this machine: no key, no upstream, and it cannot go stale or be rate-limited.
+- `adapters/weather.mjs` — NWS `api.weather.gov` (public domain, no account) for
+  conditions, today's forecast and official hazard alerts; **Open-Meteo** as the
+  global fallback so the OS works outside the United States. Where there is no
+  official hazard feed it says so instead of implying all-clear.
+- `adapters/watershed.mjs` → `gageContext()` — NWIS statistics give the median,
+  p10 and p90 for *this calendar day* across the full period of record. A reading
+  becomes a sentence: *"Colorado Rv at Austin is 966 ft³/s, below median for this
+  date, over 128 years of record."* An intermittent creek reading zero is reported
+  as dry, and whether it is usually dry on this date.
+- `engines/ground.mjs` — composes all of it, picks the anchor place and the nearest
+  gage, and writes the one headline that leads: hazard, then water doing something
+  unusual, then the season turning, then the light.
+- `ai/tools.mjs` — `ground_today` and `this_week_last_year`, so Claude Code, the
+  in-app assistant, the REST API and the generated forms all get it at once.
+- `engines/heartbeat.mjs` — `read_the_ground` every hour, whose real job is keeping
+  the on-disk cache warm so the panel answers instantly and still answers offline.
+- `app/src/components/Ground.jsx` — the strip above the work, and the one-line
+  *what did you notice?* composer. An observation a person notices is filed as
+  theirs; one the assistant records is filed as the assistant's, and the test
+  suite enforces the difference.
 
-**Phase 3 — the group.** §5.7 The card, §5.8 QR at the gathering, §5.9 Paper
-mode. The social layer, built as export rather than as a platform.
+**§7, the first run — also built.** A new person no longer lands in somebody
+else's commons in Austin.
+
+- `adapters/geocode.mjs` — Nominatim (free-form, global, ODbL, one request a
+  second honoured in a shared gate) with the Open-Meteo gazetteer as fallback.
+  One question — *where are you?* — or the browser's own location.
+- `engines/firstrun.mjs` — `lookAround()` **writes nothing**. Ecoregion,
+  watershed, the soil under the point, what lives around it, the nearest gage
+  against its own record, weather, hazards and today's light, returned as
+  sentences rather than fields. A person can find out what bioregion they live
+  in and close the tab; that is a good outcome and the test suite asserts the
+  database is untouched. `beginHere()` founds the chapter — and still refuses
+  without both representation answers.
+- Tools `look_around` and `begin_here`; `app/src/components/FirstRun.jsx`;
+  mounted in `App.jsx` as a blocking screen when there is no chapter, and as a
+  dismissible strip when the only chapter is the Austin example.
+
+A real cold run, on an empty database, from typing "Asheville, North Carolina":
+
+> You are in the **Broad Basins**, in the **Beaverdam Creek–French Broad River**
+> watershed. Biome: Eastern Temperate Forests. Your nearest gage — SWANNANOA
+> RIVER AT BILTMORE, NC, 3.1 km away — is 36.6 ft³/s, below median for this date,
+> across 98 years of record. Most recorded around you: Pharaoh Cicada, American
+> Black Bear, Wild Turkey, Eastern Gray Squirrel. Right now: clear, 72°F. Sunset
+> is at 7:42 PM, and the day is losing 2m 13s a day.
+
+Seven seconds, no account, nothing written down.
+
+**Phase 2 — close the loops. ✅ built.** §5.4 Because of you, §5.5 Answered
+(§5.3 shipped with Phase 1). All queries over data that already existed.
+
+- `core/provenance.mjs` — one declaration of which signals a *person* put there.
+  Every adapter writes into the same `signals` table: gages, NOAA alerts, fire
+  detections, imported field data. So the list names the HUMAN sources and
+  treats everything else as automated. That direction is the whole point — if it
+  listed the machines, each new adapter would have to remember to add itself, and
+  forgetting would mean crediting somebody for a warning NOAA issued. *"Because
+  of you, the council acted" is a much worse thing to say falsely than to leave
+  unsaid.* It also fixed a live bug: `thisWeekInHistory` had been excluding only
+  `usgs`, so the moment a weather adapter landed, NOAA's alerts started appearing
+  in the chapter's memory of the season as if people had noticed them.
+- `engines/loops.mjs` — `whatMoved()` walks observation → quest → gate → decision
+  → measurement → published learning and writes the sentence once, so the
+  interface and the assistant say the same thing about the same row.
+  `intakePromise()` measures the protocol's own front-door promise: brought,
+  answered, who has waited longest, how many past fourteen days.
+- Tools `what_moved` and `intake_promise`; `app/src/components/Loops.jsx`, sitting
+  between the land and the work — what came of what people already did, before
+  the list of what they have not done yet.
+
+No counter, no total, no comparison between people. It is a statement about what
+happened, addressed to whoever made it happen.
+
+**Phase 3 — the group. ✅ built.** §5.7 The card, §5.8 QR at the gathering,
+§5.9 Paper mode. The social layer, built as export rather than as a platform.
+Research and the traps are in [SOCIAL_LAYER.md](SOCIAL_LAYER.md).
+
+- `engines/dispatch.mjs` — the weekly card. **It sends nothing, and never will.**
+  A person posts it, under their own name, when they judge the moment right: an
+  undifferentiated group chat gets muted, and then the messages that mattered are
+  missed too. Four sections in the order the digest research supports — the land
+  (the part nobody else in that chat can produce), what people's observations
+  turned into, the next gathering with its care spelled out, and **one ask
+  answerable by somebody who is not the steward**. Text is the artefact; the
+  image is for a noticeboard.
+- `app/src/components/Card.jsx` — canvas rendering in the browser, no new
+  dependency. Every one of the four traps here fails by producing a *plausible*
+  image: fonts must be awaited or canvas silently paints a fallback face; the
+  backing store is scaled and drawn in logical units; `toBlob` never
+  `toDataURL`; preview and export are separate canvases. And the Copy button
+  feature-detects, because **`navigator.clipboard` is undefined on a wifi
+  address** — a page is a secure context only on HTTPS or localhost. Where it is
+  missing the card says so and offers the selectable text instead of a button
+  that does nothing.
+- `app/src/components/Join.jsx` at `/join` — what a phone lands on after
+  scanning. One screen, one field, no account, no app. A need brought here is
+  **private by default**, because a code on a wall in a room is a public context.
+  RSVP counts against a gathering that exists; a phone at the back of a room can
+  never invent an event nobody scheduled.
+- `app/src/components/FieldSheet.jsx` + print rules in `index.css` — paper as a
+  full participation path. Every sheet carries its own place, watershed, date and
+  a short code, so a sheet found in a coat pocket three weeks later is still
+  transcribable and a returned sheet can never become an orphaned record.
+
+The card carries **no media, ever** — a count and a name and a date about what has
+been heard here, never a recording. Nearly everything this OS can reach is
+CC-BY-NC, and anything on a card leaves the machine.
 
 **Phase 4 — the long rhythms.** §5.6 Carrying, §5.10 The turning, §5.11 Local
 Legend for places, §5.12 The neighbours, §8 the seven numbers.

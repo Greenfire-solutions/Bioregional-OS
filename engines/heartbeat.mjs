@@ -8,6 +8,7 @@
 import { all, one, run, create } from '../core/db.mjs';
 import * as bio from './bioregional.mjs';
 import { whatsNext } from './operator.mjs';
+import { groundToday } from './ground.mjs';
 
 const MINUTE = 60_000;
 
@@ -15,10 +16,13 @@ const TASKS = [
   {
     name: 'locate_places',
     every: 6 * 60 * MINUTE,
-    why: 'A place with no watershed or ecoregion cannot ground a council decision.',
+    why: 'A place with no watershed, ecoregion or soil cannot ground a council decision.',
     async run(chapterId) {
+      // soil_source is in this condition so that places located before the land
+      // adapters existed still get Atlas layer 4 filled in, once, on their own.
       const pending = all(
-        `SELECT id, name FROM places WHERE chapter_id=? AND (watershed_huc IS NULL OR ecoregion_name IS NULL)`,
+        `SELECT id, name FROM places WHERE chapter_id=?
+           AND (watershed_huc IS NULL OR ecoregion_name IS NULL OR soil_source IS NULL)`,
         chapterId);
       if (!pending.length) return null;
       let done = 0;
@@ -55,6 +59,44 @@ const TASKS = [
       return due.length
         ? `${due.length} decision${due.length === 1 ? '' : 's'} past review: ${due.map((d) => d.title).join('; ')}`
         : null;
+    },
+  },
+  {
+    name: 'read_the_ground',
+    every: 60 * MINUTE,
+    why: 'The panel a person reads first must be warm and must survive the wifi dropping.',
+    async run(chapterId) {
+      // Its real job is filling the on-disk cache so "the land today" answers
+      // instantly, and still answers offline. The headline is the by-product.
+      const g = await groundToday(chapterId);
+      if (g.error) return null;
+      return g.weather?.alerts?.length ? `⚠ ${g.headline}` : g.headline;
+    },
+  },
+  {
+    name: 'watch_hazards',
+    every: 60 * MINUTE,
+    why: 'An official alert nobody saw is the same as no alert — and this is the only ' +
+         'upstream allowed to raise a Watch without a human first.',
+    async run(chapterId) {
+      const places = all(
+        'SELECT id, name FROM places WHERE chapter_id=? AND lat IS NOT NULL', chapterId);
+      let added = 0, updated = 0, worst = 'Info';
+      const rank = { Info: 0, Watch: 1, Critical: 2 };
+      for (const p of places) {
+        try {
+          const h = await bio.hazards(p.id);
+          if (h.error) continue;
+          added += h.signals?.added ?? 0;
+          updated += h.signals?.updated ?? 0;
+          if (rank[h.level] > rank[worst]) worst = h.level;
+        } catch { /* offline; the next beat tries again */ }
+      }
+      // Only speak when something actually started. A standing drought class and
+      // a flood zone are true every hour and are not news.
+      if (!added) return null;
+      return `${worst === 'Critical' ? '⚠ ' : ''}${added} new hazard signal${added === 1 ? '' : 's'}` +
+             `${updated ? `, ${updated} still active` : ''}`;
     },
   },
   {

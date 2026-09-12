@@ -12,3 +12,24 @@ body { background:var(--paper); color:var(--ink);
 .scrollbar-none::-webkit-scrollbar { display:none; }
 .scrollbar-none { scrollbar-width:none; }
 .maplibregl-ctrl-attrib { font-size:10px; }
+
+/* ── Paper ────────────────────────────────────────────────────────────────
+   Printing is a full participation path, not a fallback: it is how somebody
+   with no smartphone, no signal in a field, or no interest in screens takes
+   part. So the printed page is designed, not just the screen minus its chrome.
+   Everything that is navigation, assistance or decoration is removed; what is
+   left is the thing a person carries. */
+@media print {
+  @page { margin: 18mm 16mm; }
+  html, body, #root { height: auto; background: #fff; }
+  .no-print, .no-print * { display: none !important; }
+  main { overflow: visible !important; }
+  * { box-shadow: none !important; }
+  a[href]::after { content: ""; }          /* no URLs: none of them work off this wifi */
+  .print-card canvas { max-width: 100%; border: 1px solid #ddd; }
+  .sheet { break-inside: avoid; }
+  .sheet-rule { border-bottom: 1px solid #999; height: 2.1rem; }
+  .print-title { font-size: 15pt; font-weight: 600; }
+  .print-meta { font-size: 9pt; color: #555; }
+}
+@media screen { .print-only { display: none; } }

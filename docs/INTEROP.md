@@ -24,6 +24,12 @@ the community their changes.
 | Ecoregion boundaries | **EPA Ecoregions Level III & IV** | Public domain (US Gov) | Live query. `adapters/ecoregion.mjs`, `adapters/layers.mjs`. This is the 3D map. |
 | Watersheds | **USGS Watershed Boundary Dataset** | Public domain | HUC12 subwatershed + HUC8 subbasin per point. `adapters/watershed.mjs` |
 | Live water | **USGS NWIS Instantaneous Values** | Public domain | Discharge + gage height → Hydrological signals |
+| Water in context | **USGS NWIS Statistics** | Public domain | Median / p10 / p90 for *this calendar day* across the full record, so "low" means low for a September. RDB. `adapters/watershed.mjs` |
+| Weather + hazards | **NWS api.weather.gov** | Public domain (US Gov) | Current conditions, today's forecast, active hazard alerts. No key, no account. `adapters/weather.mjs` |
+| Weather (rest of world) | **Open-Meteo** | CC-BY-4.0, no account | Global fallback where the NWS has no coverage. Carries no official hazard feed, and says so rather than implying all-clear. |
+| Sun and moon | *none — computed here* | Public domain algorithm (NOAA) | Sunrise, sunset, daylight and its daily change, moon phase, next solstice/equinox. `adapters/sky.mjs`. The one reading that can never be stale or rate-limited. |
+| Geocoding | **Nominatim** (OpenStreetMap) | ODbL, no key | Free-form place lookup for the first run. One request per second, enforced in `adapters/geocode.mjs`. Nothing is bulk-downloaded. |
+| Geocoding (fallback) | **Open-Meteo geocoding** | CC-BY-4.0, no account | A settlement gazetteer for when Nominatim is unavailable. |
 | Discovery / federation | **Murmurations Protocol** | GPL-3.0 (service) | Profile generation, live schema validation, Index search. `adapters/murmurations.mjs` |
 | Economic accounting | **ValueFlows / REA** | Open vocabulary | The Exchange tables are VF-shaped; exports JSON-LD for **hREA** (Holochain) and **bonfire_valueflows**. `adapters/valueflows.mjs` |
 | Knowledge federation | **KOI-net** (BlockScience / Metagov / Regen Network) | MIT | RID manifests + bundles: labels travel, material stays. `adapters/koi.mjs` |
@@ -31,6 +37,14 @@ the community their changes.
 | Farm records | **farmOS / OpenTEAM** | GPL-2.0 | Observation shape (quantity/unit/observed_at) on signals |
 | Base map | **MapLibre GL** + **CARTO Positron** | BSD-3 / open tiles | No API key required |
 | 3D rendering | **deck.gl** | MIT | `GeoJsonLayer` extrusion, `_GlobeView` |
+
+## What is not wired yet
+
+The table above covers Atlas layers 1 and 2 and part of 3. Layers 4-12 — land and
+soil, habitat and biodiversity, climate hazards, settlement, care systems, skills,
+flows, culture — have open data available for all of them. The catalogue, with every
+endpoint verified live, the licences checked, and the sources that must **not** default
+to public sensitivity, is in **[DATA_SOURCES.md](DATA_SOURCES.md)**.
 
 ## Global ecoregions (optional)
 

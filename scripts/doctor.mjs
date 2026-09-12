@@ -66,24 +66,114 @@ if (existsSync(dbFile)) {
   }
 }
 
-// Connectivity — these are conveniences, not requirements.
+// ── What this commons can actually reach ──────────────────────────────────
+// Reads the upstream registry rather than a second list of sources kept here.
+// Two different questions, and they are not the same question:
+//   • DECLARED — which open data sources exist, and under what licence. Known
+//     without touching the network.
+//   • ANSWERED — which have actually replied on this computer. That is evidence,
+//     not configuration, and it is the one a person wants when something looks
+//     empty and they cannot tell whether it is broken or just untried.
+title('The open data this commons can reach');
+{
+  const { SOURCES, missingKeys } = await import('../adapters/registry.mjs');
+  const rows = existsSync(dbFile)
+    ? (await import('../core/db.mjs')).all('SELECT id, last_fetched_at FROM upstream_sources')
+    : [];
+  const fetched = new Map(rows.map((r) => [r.id, r.last_fetched_at]));
+  const declared = SOURCES.length;
+  const answered = SOURCES.filter((s) => fetched.get(s.id));
+  const untried = SOURCES.filter((s) => fetched.has(s.id) && !fetched.get(s.id));
+  const undeclared = SOURCES.filter((s) => !fetched.has(s.id));
+  const needKeys = missingKeys();
+
+  ok(`${declared} sources declared · ${answered.length} have answered on this computer`);
+
+  if (undeclared.length) {
+    warn(`${undeclared.length} source(s) are not written into your database yet`);
+    info('They appear the first time the OS starts. Nothing is lost meanwhile.');
+  }
+  if (untried.length) {
+    info(`${untried.length} never tried yet: ${untried.slice(0, 6).map((s) => s.name).join(', ')}` +
+         (untried.length > 6 ? ` and ${untried.length - 6} more` : ''));
+    info('Not a problem — most are asked once, the first time a place needs them.');
+  }
+
+  const stale = answered.filter((s) => {
+    const t = Date.parse(String(fetched.get(s.id)).replace(' ', 'T') + 'Z');
+    return Number.isFinite(t) && Date.now() - t > 30 * 86400000;
+  });
+  if (stale.length) {
+    warn(`${stale.length} source(s) have not answered in over a month`);
+    info(stale.map((s) => s.name).join(', '));
+    cmd('npm run update');
+  }
+
+  for (const k of needKeys) {
+    warn(`${k.name} needs a key you do not have`);
+    info(`It is free. Get one, then add ${k.env_var}=... to the .env file in this folder.`);
+    info('Everything else works without it.');
+  }
+}
+
+// ── Can it reach them right now ───────────────────────────────────────────
+// Every probe is declared in the registry alongside the source it belongs to,
+// so there is no second list of endpoints here to drift out of date.
+//
+// Three outcomes, and all three have to be distinguishable. "Answering",
+// "cannot reach", and "cannot be checked at all" are different facts, and a
+// report that shows only the first two makes "needs a key you do not have" look
+// identical to "we forgot about this one".
+//
+// HTTP 200 is not proof. Two of these answer 200 while completely broken — MRLC
+// returns an XML exception report for a bad layer, and the Drought Monitor
+// returns CSV when content negotiation fails. Where the registry declares an
+// `expect` string, the body has to contain it.
 title('Checking the outside world (optional)');
-const probes = [
-  ['Ecoregion boundaries (EPA)', 'https://gispub.epa.gov/arcgis/rest/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer?f=json'],
-  ['Watersheds (USGS)', 'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer?f=json'],
-  ['Live water data (USGS)', 'https://waterservices.usgs.gov/nwis/iv/?format=json&sites=08155500&parameterCd=00060'],
-  ['Neighbour discovery (Murmurations)', 'https://index.murmurations.network/v2/ping'],
-];
-for (const [label, url] of probes) {
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 12000);
-  try {
-    const r = await fetch(url, { signal: ac.signal });
-    r.ok ? ok(label) : warn(`${label} — reachable but unhappy (${r.status})`);
-  } catch {
-    warn(`${label} — cannot reach right now`);
-    info('Not a problem: the OS keeps working offline using what it already downloaded.');
-  } finally { clearTimeout(t); }
+{
+  const { probes } = await import('../adapters/registry.mjs');
+  const { probeable, unprobeable } = probes();
+
+  const results = await Promise.all(probeable.map(async (p) => {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 15000);
+    try {
+      const res = await fetch(p.url, {
+        method: p.method, body: p.body ?? undefined, signal: ac.signal,
+        headers: { 'user-agent': 'BioRegional-OS/1.0 (+AGPL)', ...p.headers },
+      });
+      if (!res.ok) return { ...p, state: 'unhappy', detail: `${res.status} ${res.statusText}` };
+      if (!p.expect) return { ...p, state: 'ok' };
+      const body = await res.text();
+      return body.includes(p.expect)
+        ? { ...p, state: 'ok' }
+        : { ...p, state: 'wrong', detail: `answered, but not with what the adapter reads` };
+    } catch {
+      return { ...p, state: 'unreachable' };
+    } finally { clearTimeout(t); }
+  }));
+
+  const answering = results.filter((r) => r.state === 'ok');
+  ok(`${answering.length} of ${results.length} checked sources are answering`);
+
+  for (const r of results.filter((r) => r.state !== 'ok')) {
+    if (r.state === 'unreachable') {
+      warn(`${r.name} — cannot reach right now`);
+      info('Not a problem: the OS keeps working offline using what it already downloaded.');
+    } else if (r.state === 'wrong') {
+      // The dangerous one. Loud here so it cannot be quiet downstream.
+      warn(`${r.name} — answering, but not with what the adapter reads`);
+      info(`Expected to find "${r.expect}" in the reply and did not. The service may have changed.`);
+      problems++;
+    } else {
+      warn(`${r.name} — reachable but unhappy (${r.detail})`);
+    }
+  }
+
+  if (unprobeable.length) {
+    info(`${unprobeable.length} cannot be health-checked, which is not the same as failing:`);
+    for (const u of unprobeable) info(`  ${u.name} — ${u.why}`);
+  }
 }
 
 // AI

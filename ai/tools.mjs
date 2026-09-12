@@ -15,6 +15,11 @@ import * as koi from '../adapters/koi.mjs';
 import { atlasGeoJSON, signalsFromGeoJSON } from '../adapters/geo.mjs';
 import { ecoregionPolygons } from '../adapters/layers.mjs';
 import * as operator from '../engines/operator.mjs';
+import * as ground from '../engines/ground.mjs';
+import * as registry from '../adapters/registry.mjs';
+import * as firstrun from '../engines/firstrun.mjs';
+import * as loops from '../engines/loops.mjs';
+import * as dispatch from '../engines/dispatch.mjs';
 
 const S = (props, required = []) => ({ type: 'object', properties: props, required });
 const str = (description) => ({ type: 'string', description });
@@ -25,6 +30,26 @@ function defaultChapter() {
   return one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id ?? null;
 }
 const ch = (input) => input.chapter_id || defaultChapter();
+
+/**
+ * The place a land question means when nobody said which — the same anchor
+ * ground_today uses, so "how is it out there?" and "what is the soil like?"
+ * resolve to the same ground instead of one working and one refusing.
+ * Returns null only when the chapter has no located place at all.
+ */
+function anchorId(input) {
+  const chapter = ch(input);
+  if (!chapter) return null;
+  try { return ground.anchorPlace(chapter)?.id ?? null; } catch { return null; }
+}
+
+/** One refusal, so the three land tools word it identically. */
+const noWhere = () => ({
+  error: 'no_location',
+  message: 'Add a place with coordinates, or pass a lat/lng — everything the land ' +
+           'can tell you hangs off a point on it.',
+  action: { tool: 'add_place', input: {} },
+});
 
 export const TOOLS = [
   // ---------- orientation ----------
@@ -160,10 +185,20 @@ export const TOOLS = [
       description: str('What was observed'), location_name: str(''),
       lat: num(''), lng: num(''), author: str('Who observed it'),
       sensitivity: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+      source: {
+        type: 'string', enum: ['notice', 'manual'],
+        description:
+          'How it was observed: "notice" for the one-line daily prompt in the interface, "manual" ' +
+          'for a full entry by a person. Leave unset when the assistant is recording it — an ' +
+          'observation must never be filed as if a human made it.',
+      },
     }, ['title']),
-    handler: (i) => create('signals', 'signal', ch(i), {
-      ...i, chapter_id: ch(i), verified: 0, source_adapter: 'assistant',
-    }, i.sensitivity ?? 'public'),
+    handler: (i) => {
+      const { source, ...row } = i;
+      return create('signals', 'signal', ch(i), {
+        ...row, chapter_id: ch(i), verified: 0, source_adapter: source ?? 'assistant',
+      }, i.sensitivity ?? 'public');
+    },
   },
   {
     name: 'ingest_water_data',
@@ -697,17 +732,16 @@ export const TOOLS = [
     description: 'Which of the twelve atlas layers exist, their sources, licences and sensitivity.',
     input_schema: S({ chapter_id: str('') }),
     handler: (i) => {
-      const rows = all('SELECT * FROM atlas_layers WHERE chapter_id=? ORDER BY layer_no', ch(i));
-      const NAMES = ['Ecoregions','Watersheds and flow direction','Water systems','Land and soil',
-        'Habitat and biodiversity','Climate stress and hazards','Human settlement and accessibility',
-        'Care and essential systems','Skills, spaces, tools, and institutions',
-        'Food, energy, material, labor, money, and information flows',
-        'Culture, history, and community memory','Active projects, maintenance, and outcomes'];
-      const have = new Set(rows.map((r) => r.layer_no));
+      // The layer names and the open sources that can fill them come from the
+      // registry, not from a second copy of the list living here. The copy that
+      // used to sit in this handler is exactly the drift the registry prevents.
+      const coverage = registry.layerCoverage(ch(i));
       return {
-        registered: rows,
-        missing: NAMES.map((n, idx) => ({ layer_no: idx + 1, name: n }))
-                      .filter((l) => !have.has(l.layer_no)),
+        registered: all('SELECT * FROM atlas_layers WHERE chapter_id=? ORDER BY layer_no', ch(i)),
+        coverage,
+        resolved: coverage.filter((l) => l.resolved).length,
+        missing: coverage.filter((l) => !l.resolved)
+          .map((l) => ({ layer_no: l.layer_no, name: l.name, available_upstream: l.available_upstream })),
       };
     },
   },
@@ -755,6 +789,397 @@ export const TOOLS = [
         n++;
       }
       return { imported: n, note: 'All imported observations are unverified and members-only until reviewed.' };
+    },
+  },
+
+  // ---------- what the land is doing ----------
+  {
+    name: 'ground_today',
+    description:
+      'What the land is doing right now at the chapter\'s anchor place: sun and moon computed ' +
+      'locally, live weather and any official hazard alert, the nearest USGS gage measured against ' +
+      'its own median for THIS calendar day across the whole period of record, and what this week ' +
+      'held in earlier years. Read-only. Use it to answer "how is it out there?" and to open a ' +
+      'briefing before anything is asked of anyone.',
+    input_schema: S({
+      chapter_id: str(''),
+      place_id: str('Look out from this place instead of the chapter default.'),
+    }),
+    handler: (i) => ground.groundToday(ch(i), { place_id: i.place_id ?? null }),
+  },
+  {
+    name: 'this_week_last_year',
+    description:
+      'Observations, decisions and gatherings recorded near this calendar date in earlier years. ' +
+      'The chapter\'s own memory of the season — empty until there is a year of records, and it ' +
+      'says so rather than pretending.',
+    input_schema: S({
+      chapter_id: str(''),
+      window_days: num('How many days either side of today to look. Default 3.'),
+    }),
+    handler: (i) => ground.thisWeekInHistory(ch(i), { window_days: i.window_days ?? 3 }),
+  },
+
+  // ---------- the land itself: soil, life, hazard ----------
+  // These three take a place_id, a lat/lng, or nothing at all. "Nothing" has to
+  // work: ground_today already answers "how is it out there?" with no arguments
+  // by resolving the chapter's anchor place, and a person asking "what is the
+  // soil like here?" is asking the same kind of question. Refusing one while
+  // answering the other is an inconsistency the caller has to learn rather than
+  // one they can guess.
+  {
+    name: 'soil_at',
+    description:
+      'The ground under a place: soil series, taxonomic order, drainage, whether it is hydric, and ' +
+      'depth-weighted pH, organic matter, clay and available water capacity over the top 30 cm — ' +
+      'plus elevation and land cover. USDA SSURGO where it covers, ISRIC SoilGrids anywhere else. ' +
+      'Resolved once and stored on the place; soil does not change on a schedule. Use it before ' +
+      'designing any planting, restoration, septic, drainage or building work.',
+    input_schema: S({
+      place_id: str('A place to read and update; omit if giving coordinates.'),
+      lat: num('Latitude, if no place_id'), lng: num('Longitude, if no place_id'),
+      refresh: bool('Re-ask upstream even if the place already has an answer. Rarely needed.'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.locate(place, { refresh: !!i.refresh });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { groundProfile } = await import('../adapters/soil.mjs');
+      return groundProfile(i.lat, i.lng);
+    },
+  },
+  {
+    name: 'life_here',
+    description:
+      'Atlas layer 5 — what lives here. The ranked species list people have actually identified ' +
+      'nearby, how deeply the place has been recorded and since when, how many records are of ' +
+      'something at risk, and whether the ground is inside a protected area. ' +
+      'READ THIS BEFORE PUBLISHING ANYTHING FROM IT: the threatened block comes back at ' +
+      '"restricted" and must stay there. No coordinates for rare taxa are requested from any ' +
+      'upstream or stored, because aggregating obscured records is how the obscuring gets undone.',
+    input_schema: S({
+      place_id: str('A place; omit if giving coordinates.'),
+      lat: num('Latitude, if no place_id'), lng: num('Longitude, if no place_id'),
+      radius_km: num('Search radius in kilometres. Default 10.'),
+      limit: num('How many species to list. Default 20.'),
+    }),
+    handler: async (i) => {
+      const opts = { radiusKm: i.radius_km ?? 10, limit: i.limit ?? 20 };
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.lifeHere(place, opts);
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { lifeHere } = await import('../adapters/life.mjs');
+      return lifeHere(i.lat, i.lng, opts);
+    },
+  },
+  {
+    name: 'hazards_at',
+    description:
+      'Atlas layer 6 — official National Weather Service alerts in effect, the FEMA regulatory ' +
+      'flood zone, the US Drought Monitor class for the county, and satellite heat detections. ' +
+      'With a place_id it also files active alerts as signals and records the flood zone on the ' +
+      'place. Standing conditions (flood zone, drought class) are never filed as signals — only ' +
+      'things that started. When a source cannot be reached it says so: silence here is never an ' +
+      'all-clear.',
+    input_schema: S({
+      place_id: str('A place; omit if giving coordinates. Required to file signals.'),
+      lat: num('Latitude, if no place_id'), lng: num('Longitude, if no place_id'),
+      ingest: bool('File active alerts as signals. Default true when a place_id is given.'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.hazards(place, { ingest: i.ingest !== false });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { hazardsHere } = await import('../adapters/hazards.mjs');
+      return hazardsHere(i.lat, i.lng);
+    },
+  },
+  {
+    name: 'upstream_sources',
+    description:
+      'Every open dataset and API this OS can reach: what it is, who publishes it, its licence, ' +
+      'which Atlas layer it fills, whether it covers the US only or the whole world, and when it ' +
+      'last actually answered. Also names any source that needs a key this machine does not have. ' +
+      'Use it to answer "where did this number come from?" and to build the attribution an export ' +
+      'has to carry.',
+    input_schema: S({ layer_no: num('Only sources for this Atlas layer, 1-12.') }),
+    handler: (i) => {
+      registry.syncSources();
+      const list = i.layer_no ? registry.sourcesForLayer(i.layer_no) : registry.SOURCES;
+      const fetched = Object.fromEntries(
+        all('SELECT id, last_fetched_at FROM upstream_sources').map((r) => [r.id, r.last_fetched_at]));
+      return {
+        sources: list.map((s) => ({
+          id: s.id, name: s.name, project: s.project, atlas_layer: s.layer,
+          license: s.license, attribution: s.attribution, url: s.url,
+          coverage: s.coverage, adapter: s.adapter, cadence: s.cadence,
+          default_sensitivity: s.sensitivity,
+          needs_key: s.requires_key ?? null,
+          last_answered: fetched[s.id] ?? null,
+          notes: s.notes ?? null,
+        })),
+        needs_keys: registry.missingKeys(),
+        note: 'Declared in adapters/registry.mjs. Licence and attribution live there once, so an ' +
+              'export and the map legend cannot disagree about them.',
+      };
+    },
+  },
+
+  // ---------- the first sixty seconds ----------
+  {
+    name: 'look_around',
+    description:
+      'Everything this OS can find out about a point, live, WITHOUT WRITING ANYTHING: ' +
+      'ecoregion, watershed, the soil under it, what lives around it, the nearest gage against ' +
+      'its own period of record, weather, hazards, and today\'s light. Takes a place name ' +
+      '("Barton Creek Greenbelt, Austin TX") or a lat/lng. Use it to answer "what is it like ' +
+      'there?" for anywhere on earth, and as the first screen a new person ever sees — the ' +
+      'reveal comes before any commitment is asked for. depth "quick" answers in seconds; ' +
+      '"full" adds soil and species and takes longer.',
+    input_schema: S({
+      query: str('A place name, address, creek, or road junction.'),
+      lat: num('Latitude, if you already have it.'),
+      lng: num('Longitude, if you already have it.'),
+      depth: { type: 'string', enum: ['quick', 'full'], description: 'Default quick.' },
+    }),
+    handler: (i) => firstrun.lookAround({
+      query: i.query ?? null, lat: i.lat ?? null, lng: i.lng ?? null, depth: i.depth ?? 'quick',
+    }),
+  },
+  {
+    name: 'begin_here',
+    description:
+      'Found a chapter at a point and resolve it against the real world in one pass. ' +
+      'Requires BOTH what the chapter represents and what it explicitly does not — that gate is ' +
+      'not relaxed for being the first thing somebody does, because the easiest moment to make ' +
+      'an unbounded claim of representation is the moment somebody is excited and typing fast.',
+    input_schema: S({
+      chapter_name: str('What this commons is called'),
+      represents: str('What and whom it DOES represent'),
+      does_not_represent: str('What and whom it explicitly does NOT represent'),
+      place_name: str('The first place — defaults to the chapter name'),
+      lat: num('Latitude'), lng: num('Longitude'),
+      scale: { type: 'string', enum: ['site', 'watershed', 'bioregion', 'ecoregional'] },
+      chapter_id: str('Short slug; derived from the name if omitted'),
+      locality: str('Town/city'), region: str('State/province'), country: str('Country'),
+    }, ['chapter_name', 'represents', 'does_not_represent', 'lat', 'lng']),
+    handler: (i) => firstrun.beginHere(i),
+  },
+
+  // ---------- what came of it ----------
+  {
+    name: 'what_moved',
+    description:
+      'What people\'s observations actually turned into: the chain from a human observation to ' +
+      'the project it started, the gates that closed, the council decision it caused, the ' +
+      'measurements taken and the learning written up. Only observations a PERSON made are ' +
+      'attributed to a person — gage readings, weather alerts and fire detections are excluded, ' +
+      'because crediting somebody for a warning NOAA issued is worse than saying nothing. ' +
+      'Use it to answer "did any of this matter?".',
+    input_schema: S({
+      chapter_id: str(''),
+      since_days: num('Only count chains that moved in this many days. Default 90.'),
+      limit: num('How many to return. Default 12.'),
+    }),
+    handler: (i) => loops.whatMoved(ch(i), {
+      since_days: i.since_days ?? 90, limit: i.limit ?? 12,
+    }),
+  },
+  {
+    name: 'intake_promise',
+    description:
+      'Whether the commons is keeping the promise the protocol makes: a person can submit a ' +
+      'need, receive a response, and appeal. Returns what was brought, what was answered, who ' +
+      'has been waiting longest, and how many are past the fourteen-day mark.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => loops.intakePromise(ch(i)),
+  },
+
+  // ---------- what this locality already publishes ----------
+  {
+    name: 'discover_local_data',
+    description:
+      'Find datasets the chapter\'s OWN city or county publishes about a subject — water, soil, ' +
+      'trees, flooding, historic sites — by asking the Socrata and ArcGIS Hub catalogues what its ' +
+      'local portals hold. This is the layer no federal feed has: a city\'s own monitoring of the ' +
+      'creek a chapter organizes around. Anything unambiguously PUBLIC DOMAIN is added to the ' +
+      'Atlas automatically; every other licence, including open ones with attribution or ' +
+      'share-alike conditions, is held as a candidate for a person to read. Accepting terms on ' +
+      'the commons\' behalf is not something this can do for you.',
+    input_schema: S({
+      chapter_id: str(''),
+      subject: str('What to look for: water, creek, soil, trees, flooding, heat, historic sites…'),
+      locality: str('Override the chapter\'s own locality'),
+      region: str('Override the chapter\'s own region or state'),
+      limit: num('How many to consider. Default 12.'),
+    }, ['subject']),
+    handler: (i) => bio.discoverData(ch(i), {
+      subject: i.subject, locality: i.locality, region: i.region, limit: i.limit ?? 12,
+    }),
+  },
+  {
+    name: 'list_discovered',
+    description:
+      'Datasets found on local portals: what was approved, what was declined and why, and what is ' +
+      'still waiting on somebody to read a licence.',
+    input_schema: S({
+      chapter_id: str(''),
+      status: { type: 'string', enum: ['candidate', 'approved', 'declined'] },
+      subject: str('Only those found while looking for this subject'),
+    }),
+    handler: (i) => bio.listDiscovered(ch(i), { status: i.status ?? null, subject: i.subject ?? null }),
+  },
+  {
+    name: 'approve_dataset',
+    description:
+      'Accept a discovered dataset\'s licence on behalf of the commons and put it on the Atlas. ' +
+      'REFUSED without a named reviewer: this is somebody agreeing to terms, and a decision with ' +
+      'no name on it cannot be questioned later. Public-domain datasets never need this — they ' +
+      'approve themselves.',
+    input_schema: S({
+      dataset_id: str('From list_discovered'),
+      reviewed_by: str('Who read the licence and is accepting it'),
+      note: str('What the terms require — attribution text, share-alike, anything to honour'),
+      sensitivity: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+    }, ['dataset_id', 'reviewed_by']),
+    handler: (i) => bio.approveDataset(i.dataset_id, {
+      reviewed_by: i.reviewed_by, note: i.note ?? null, sensitivity: i.sensitivity ?? 'members',
+    }),
+  },
+  {
+    name: 'decline_dataset',
+    description:
+      'Refuse a discovered dataset, with the reason kept. A refusal nobody can read gets ' +
+      're-litigated next season.',
+    input_schema: S({
+      dataset_id: str(''), reviewed_by: str('Who decided'),
+      reason: str('Why — unclear terms, wrong place, superseded, not ours to publish'),
+    }, ['dataset_id', 'reason']),
+    handler: (i) => bio.declineDataset(i.dataset_id, { reviewed_by: i.reviewed_by ?? null, reason: i.reason }),
+  },
+
+  // ---------- reaching the people who are not the steward ----------
+  {
+    name: 'card_for_the_week',
+    description:
+      'The weekly card: a short, paste-ready block for the group chat the commons already uses. ' +
+      'Carries the land (the part nobody else in that chat can produce), what people\'s ' +
+      'observations turned into, the next gathering with its care provision spelled out, and ' +
+      'ONE ask pointed at somebody who is not the steward. It SENDS NOTHING — a person posts it. ' +
+      'Returns plain text plus structured sections; never carries media, because almost everything ' +
+      'this OS can reach is CC-BY-NC and is not redistributed.',
+    input_schema: S({
+      chapter_id: str(''),
+      days: num('How far back "this week" reaches. Default 7.'),
+    }),
+    handler: (i) => dispatch.cardForTheWeek(ch(i), { days: i.days ?? 7 }),
+  },
+  {
+    name: 'mark_card_sent',
+    description:
+      'Record that a card was produced and posted, so the OS can notice a long silence. Kept in a ' +
+      'local file rather than the database: when a card was last sent is a fact about this ' +
+      'computer, not about the commons, and must never travel to another chapter in an export.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => dispatch.markCardSent(ch(i)),
+  },
+
+  // ---------- the people, the memory, the growing year ----------
+  {
+    name: 'community_here',
+    description:
+      'Atlas layers 7-10 — what is already here. Where care can be reached (clinics, pharmacies, ' +
+      'food banks, refuges, elder care, childcare, community rooms, public water), what is made ' +
+      'and repaired, and how food, materials and energy move. From OpenStreetMap, so it is ' +
+      'community-maintained: good for finding what exists, never a substitute for ringing ahead, ' +
+      'and absence here is not evidence of absence.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''), radius_km: num('Default 3'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.communityAt(place, { radiusKm: i.radius_km ?? 3 });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { communityHere } = await import('../adapters/community.mjs');
+      return communityHere(i.lat, i.lng, { radiusKm: i.radius_km ?? 3 });
+    },
+  },
+  {
+    name: 'culture_here',
+    description:
+      'Atlas layer 11 — this place\'s memory. Historic sites and markers on the ground, Wikipedia ' +
+      'articles anchored to it, digitised newspapers that named it, research published about it, ' +
+      'and field recordings of what lives here. NOTE ON THE RECORDINGS: most are CC-BY-NC, which ' +
+      'this project does not redistribute — audio is linked at its own host and never copied, and ' +
+      'no recording may enter an export or anything shared. The counts, species and dates are ' +
+      'facts and travel freely.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''), radius_km: num('Default 5'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.cultureAt(place, { radiusKm: i.radius_km ?? 5 });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { cultureHere } = await import('../adapters/culture.mjs');
+      return cultureHere(i.lat, i.lng, { radiusKm: i.radius_km ?? 5 });
+    },
+  },
+  {
+    name: 'growing_year',
+    description:
+      'When the land here wakes up, and whether this year is early or late. Thirty-year normal ' +
+      'first-leaf and first-bloom dates from the USA-NPN Spring Index with this year\'s anomaly, ' +
+      'the USDA hardiness zone, and forty years of monthly climate normals. This is the season ' +
+      'clock\'s evidence — the question a seasonal cycle turns on, answerable on day one instead ' +
+      'of after years of the chapter\'s own records.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''), zip: str('US postal code, for the hardiness zone'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.growingYearAt(place, { zip: i.zip ?? null });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { growingYear } = await import('../adapters/phenology.mjs');
+      return growingYear(i.lat, i.lng, { zip: i.zip ?? null });
+    },
+  },
+  {
+    name: 'propose_baseline',
+    description:
+      'Offer a defensible baseline for an indicator from public record, before anyone types a ' +
+      'number. The protocol says monitoring must change decisions, but a decision_trigger set ' +
+      'against a guessed baseline cannot honestly fire — so this draws the starting value from ' +
+      'open data instead: creek discharge against its own multi-decade median for this calendar ' +
+      'day, soil organic matter from the survey, species richness, the normal first-leaf date, ' +
+      'climate normals. Every answer carries its source, licence and method. REFUSES rather than ' +
+      'guesses: a wrong baseline makes a decision look evidenced when it is not.',
+    input_schema: S({
+      chapter_id: str(''),
+      indicator: str('What is being measured — creek flow, soil organic matter, species richness, first leaf date, temperature'),
+      place_id: str('Which place; defaults to the best-resolved one'),
+    }, ['indicator']),
+    handler: (i) => bio.proposeBaseline(ch(i), { indicator: i.indicator, place_id: i.place_id ?? null }),
+  },
+
+  {
+    name: 'rsvp_to_gathering',
+    description:
+      'Say somebody is coming to a gathering that already exists. Increments its count — it does ' +
+      'NOT create a gathering, because a phone at the back of a room tapping "I am coming" must ' +
+      'never be able to invent an event nobody scheduled.',
+    input_schema: S({
+      gathering_id: str('The gathering being answered'),
+      chapter_id: str(''),
+    }, ['gathering_id']),
+    handler: (i) => {
+      const g = one('SELECT * FROM gatherings WHERE id=?', i.gathering_id);
+      if (!g) return { error: 'not_found', message: 'No gathering with that id.' };
+      run('UPDATE gatherings SET rsvp_count = rsvp_count + 1 WHERE id=?', g.id);
+      const after = one('SELECT title, rsvp_count FROM gatherings WHERE id=?', g.id);
+      return { ...after, note: 'Counted. Care provision is what decides who can actually come.' };
     },
   },
 

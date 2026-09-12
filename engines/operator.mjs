@@ -33,6 +33,22 @@ export function whatsNext(chapterId) {
     });
   }
 
+  // ── Stage 4: Map — a discovered dataset nobody has read the terms of ────
+  // These sit here rather than approving themselves because accepting somebody
+  // else's licence on behalf of a commons is a decision a person has to make.
+  // Public-domain datasets never reach this list; they approve on their licence.
+  for (const d of all(
+    `SELECT * FROM discovered_datasets WHERE chapter_id=? AND status='candidate'
+      ORDER BY discovered_at LIMIT 8`, chapterId)) {
+    items.push({
+      kind: 'gap', stage: 'Map',
+      title: `"${truncate(d.title, 60)}" is published locally but nobody has read its licence`,
+      detail: `${d.publisher || d.portal || 'A local portal'} — ${d.license_note}`,
+      rule: 'Sensitive and third-party material is only published under terms someone has accepted.',
+      action: { tool: 'approve_dataset', input: { dataset_id: d.id } },
+    });
+  }
+
   // ── Stage 1: Locate — a place with no ecological ground ─────────────────
   for (const p of all(
     `SELECT * FROM places WHERE chapter_id=? AND (watershed_huc IS NULL OR ecoregion_name IS NULL)`,

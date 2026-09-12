@@ -104,21 +104,57 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
 
     if (showSignals && signals.length) {
       const pts = signals.filter((s) => s.lat != null && s.lng != null);
+      // Two layers, because a pin on a map is a claim and these are two
+      // different claims.
+      //
+      // A surveyed observation and a USGS gage carry their OWN coordinates —
+      // somebody stood there, or the instrument is bolted there. A NOAA advisory
+      // covering sixteen counties is filed at the place's point, and so is a
+      // one-line daily notice typed from the kitchen table. Drawing all four as
+      // identical columns says something the data does not support, so anything
+      // sitting on a borrowed coordinate gets a flat translucent disc instead:
+      // present and locatable, visibly not a pin in the ground.
+      const located = pts.filter((d) => d.at_place_centroid !== 1);
+      const approximate = pts.filter((d) => d.at_place_centroid === 1);
+
+      const hoverFor = (i, kind, extra) => setHover(i.object ? {
+        x: i.x, y: i.y, title: i.object.title,
+        sub: `${i.object.severity} · ${i.object.category}` +
+             (i.object.quantity_value != null ? ` · ${i.object.quantity_value} ${i.object.quantity_unit ?? ''}` : '') +
+             (extra ? ` · ${extra(i.object)}` : ''),
+        kind,
+      } : null);
+
+      if (approximate.length) {
+        L.push(new ScatterplotLayer({
+          id: 'signals-approximate',
+          data: approximate,
+          pickable: true, stroked: true, filled: true,
+          radiusUnits: 'meters', getRadius: 900, radiusMinPixels: 5, radiusMaxPixels: 60,
+          lineWidthMinPixels: 1.5,
+          getPosition: (d) => [d.lng, d.lat],
+          getFillColor: (d) => [...(SEVERITY_COLOR[d.severity] ?? SEVERITY_COLOR.Info), 55],
+          getLineColor: (d) => [...(SEVERITY_COLOR[d.severity] ?? SEVERITY_COLOR.Info), 200],
+          parameters: { depthTest: false },
+          onHover: (i) => hoverFor(i, 'Shown at the place, not its own location',
+            (o) => (o.human_observed === 0
+              ? `reported by ${o.source_adapter ?? 'an upstream'} · real extent is wider than this point`
+              : `noted against the place${o.author ? ` by ${o.author}` : ''}`)),
+          onClick: (i) => i.object && onSelect?.({ type: 'signal', item: i.object }),
+        }));
+      }
+
       L.push(new ColumnLayer({
         id: 'signals',
-        data: pts,
+        data: located,
         diskResolution: 10, radius: 260, extruded: mode === 'terrain',
         pickable: true, elevationScale: 1,
         getPosition: (d) => [d.lng, d.lat],
         getFillColor: (d) => [...(SEVERITY_COLOR[d.severity] ?? SEVERITY_COLOR.Info), 235],
         getElevation: (d) => ({ Critical: 5200, Watch: 3600 }[d.severity] ?? 2200),
         parameters: { depthTest: false },
-        onHover: (i) => setHover(i.object ? {
-          x: i.x, y: i.y, title: i.object.title,
-          sub: `${i.object.severity} · ${i.object.category}` +
-               (i.object.quantity_value != null ? ` · ${i.object.quantity_value} ${i.object.quantity_unit ?? ''}` : ''),
-          kind: 'Signal',
-        } : null),
+        onHover: (i) => hoverFor(i, i.object?.human_observed === 0 ? 'Measured here' : 'Observed here',
+          (o) => (o.verified ? 'verified' : 'unverified')),
         onClick: (i) => i.object && onSelect?.({ type: 'signal', item: i.object }),
       }));
     }
