@@ -287,7 +287,8 @@ export default function App() {
 
         {panel && (
           <aside className="no-print w-[24rem] shrink-0">
-            <Assistant configured={!!status?.ai_configured} toolCount={status?.tools} onRefresh={load} />
+            <Assistant configured={!!status?.ai_configured} claudeCode={status?.claude_code}
+                       toolCount={status?.tools} onRefresh={load} />
           </aside>
         )}
       </div>

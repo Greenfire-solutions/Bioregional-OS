@@ -1399,6 +1399,75 @@ check('a card from a real chapter does not cry wolf about being an example',
     isDemoChapter(DEMO_CHAPTER_ID) === true);
 }
 
+// ── Claude Code in the app: the two guards ───────────────────────────────
+// This route spawns a process on the steward's own subscription. Two things
+// stand between that and the world, and both failed once already:
+//
+//   1. The tool check must be an ALLOWLIST. It began as a denylist, and a
+//      denylist fails OPEN — the global MCP config quietly added 501 tools
+//      including Gmail, Slack, Drive and QuickBooks, and every name on the
+//      denylist was still absent, so a denylist would have passed it.
+//   2. The route must be loopback-only. `--share` binds 0.0.0.0 and there is
+//      no authentication anywhere on this API, so without this a stranger on
+//      the same wifi could spend the steward's subscription.
+//
+// Both are tested by trying to get PAST them, not by confirming they exist.
+{
+  const { __test } = await import('../server/routes/claude.mjs');
+  const { isPermitted, fromThisMachine, GRANTED, DENIED } = __test;
+
+  // The real leak, replayed. None of these are on the denylist.
+  const theLeak = [
+    'mcp__claude_ai_Gmail__send_message',
+    'mcp__claude_ai_Slack__slack_send_message',
+    'mcp__claude_ai_Google_Drive__read_file_content',
+    'mcp__claude_ai_Supabase__execute_sql',
+  ];
+  check('the tool check refuses the tools that actually leaked in',
+    theLeak.every((t) => !isPermitted(t)),
+    theLeak.filter(isPermitted).join(', '));
+  check('a tool nobody has thought of yet is refused by default',
+    !isPermitted('SomeToolShippedNextRelease') && !isPermitted('mcp__something_else__go'),
+    'the check is behaving like a denylist');
+  check('the commons tools are permitted',
+    isPermitted('mcp__bioregional-os__whats_next') && isPermitted('mcp__bioregional-os__propose_decision'));
+
+  // A denylist alone would pass the leak. This asserts the two are not the
+  // same test wearing different names — if someone "simplifies" the check back
+  // into a denylist, this fails.
+  const deniedOnly = (t) => !DENIED.includes(t);
+  check('the check is stricter than the flag it backs up',
+    theLeak.some((t) => deniedOnly(t) && !isPermitted(t)),
+    'the allowlist agrees with the denylist on everything, so it is a denylist');
+
+  // Loopback. The socket shape is what node actually hands over, including the
+  // IPv4-mapped form that looks nothing like 127.0.0.1 until it is unwrapped.
+  const from = (addr) => fromThisMachine({ socket: { remoteAddress: addr } });
+  check('a request from this machine is allowed',
+    from('127.0.0.1') && from('::1') && from('::ffff:127.0.0.1'),
+    'loopback is being refused, so the panel would never work');
+  check('a request from the wifi is refused',
+    !from('192.168.1.44') && !from('10.0.0.7') && !from('::ffff:192.168.1.44'),
+    'the endpoint is reachable from the network');
+  check('a missing address is refused rather than allowed',
+    !from(undefined) && !from(''), 'an unknown origin passes the loopback check');
+
+  // Both flags, doing opposite jobs. With only the denylist every commons call
+  // stopped at a permission prompt and the assistant reported that the PROTOCOL
+  // had refused it — a refusal that was not the real refusal, which is worse
+  // than an error because it teaches a rule that does not exist.
+  const src = readFileSync('server/routes/claude.mjs', 'utf8');
+  check('the CLI is given both the grant and the denial',
+    /'--allowedTools', \.\.\.GRANTED/.test(src) && /'--disallowedTools', \.\.\.DENIED/.test(src),
+    'one of the two flags is missing; disallowed removes, allowed approves');
+  check('only this project’s MCP server is loaded',
+    /'--strict-mcp-config'/.test(src) && /'--mcp-config', '\.mcp\.json'/.test(src),
+    'the global MCP config would be loaded too');
+  check('nothing granted can act outside the commons',
+    GRANTED.every((g) => g.startsWith('mcp__bioregional-os__') || g === 'ToolSearch'),
+    GRANTED.join(', '));
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

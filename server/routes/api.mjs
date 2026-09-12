@@ -14,6 +14,7 @@ import { whatsNext } from '../../engines/operator.mjs';
 import { humanObservedSql, atPlaceCentroidSql } from '../../core/provenance.mjs';
 import { DEMO_CHAPTER_ID } from '../../core/seedData.js';
 import { aiStream } from './ai.mjs';
+import { claudeStream, claudeAvailable } from './claude.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from '../../core/db.mjs';
@@ -26,6 +27,9 @@ export async function api(req, res, url) {
   const chapterId = q.chapter || defaultChapter();
 
   if (req.method === 'POST' && p === 'ai') return aiStream(req, res);   // streams, handles its own response
+  // Claude Code rather than the SDK: the steward's own subscription, no API key,
+  // and loopback-only because it spawns a process and nothing here asks who you are.
+  if (req.method === 'POST' && p === 'claude') return claudeStream(req, res, await readBody(req));
 
   switch (p) {
     case 'status':
@@ -45,6 +49,10 @@ export async function api(req, res, url) {
         demo_chapter: DEMO_CHAPTER_ID,
         ai_configured: !!process.env.ANTHROPIC_API_KEY,
         tools: TOOLS.length,
+        // Two separate facts, kept separate on purpose. An API key and the
+        // Claude Code CLI are different ways in with different bills attached,
+        // and the panel says which one it is about to use.
+        claude_code: await claudeAvailable(),
       };
 
     case 'dashboard':
