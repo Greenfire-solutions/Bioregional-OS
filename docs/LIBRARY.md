@@ -89,15 +89,30 @@ that has never had a network and it all still answers.
 
 `npm run data -- --offline` demonstrates this.
 
-## Sources
+## Sources and credit
 
-All open, all credited in `adapters/registry.mjs`, which is the one place a
-licence is written down:
+Every section declares *which registry sources it drew on*, by id — never a
+licence string of its own. `adapters/registry.mjs` is the single place a source
+is declared, and `SECTION_SOURCES` in `adapters/dossier.mjs` is just the mapping:
 
-EPA Ecoregions Level III & IV (public domain) · iNaturalist · USDA SSURGO
-(public domain) · ISRIC SoilGrids (CC-BY-4.0) · NASA POWER (public domain) ·
-Open-Meteo (CC-BY-4.0) · USGS NWIS and WBD (public domain) · OpenStreetMap (ODbL)
-· NOAA / NWS / US Drought Monitor (public domain)
+```
+identity  → epa-ecoregions
+life      → inaturalist
+climate   → nasa-power
+soil      → usda-ssurgo, isric-soilgrids, usgs-3dep, mrlc-nlcd
+water     → usgs-nwis, water-quality-portal, nhdplus-hr, usgs-wbd
+resources → openstreetmap
+hazards   → nws, usdm, fema-nfhl, nasa-firms
+```
+
+Attribution is rendered from the registry when the file is written, so a dossier
+that travels to another chapter carries correct credit without duplicating a
+licence anywhere. Two tests enforce this: one asserts the dossier adapter
+contains no licence string at all, the other that every source it claims is
+actually declared.
+
+An older dossier is backfilled with source ids the next time it is written — no
+refetch needed.
 
 ## Beyond the United States
 

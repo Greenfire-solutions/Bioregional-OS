@@ -952,6 +952,34 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
   check('a region with no dossier reports every refreshable section as stale',
     stale.includes('life') && stale.includes('soil') && !stale.includes('culture'));
 
+
+  // The registry is the single place a licence is written down. A dossier that
+  // leaves this machine must carry credit rendered from it, not from a string
+  // somebody typed into an adapter.
+  {
+    const fsp = await import('node:fs/promises');
+    const src = await fsp.readFile(new URL('../adapters/dossier.mjs', import.meta.url), 'utf8');
+    check('the dossier adapter declares no licence string of its own',
+      !/CC-BY|CC0|ODbL|Public domain|GPL-/.test(src));
+
+    const D = await import('../adapters/dossier.mjs');
+    const reg = await import('../adapters/registry.mjs');
+    const declared = new Set(reg.SOURCES.map((x) => x.id));
+    const used = [...new Set(Object.values(D.SECTION_SOURCES).flat())];
+    check('every source a dossier section claims is declared in the registry',
+      used.length > 0 && used.every((id) => declared.has(id)),
+      used.filter((id) => !declared.has(id)).join(', '));
+
+    const d = D.loadDossier('30c');
+    if (d) {
+      check('a written dossier carries attribution rendered from the registry',
+        Array.isArray(d.attribution) && d.attribution.length > 0 &&
+        d.attribution.every((a) => a.license && a.attribution));
+      check('every section records which registry sources it drew on',
+        Object.values(d.sections).every((sec) => Array.isArray(sec.sources)));
+    }
+  }
+
   check('soil is not re-asked on the same cadence as a drought',
     (await import('../adapters/dossier.mjs')).CADENCE_DAYS.soil >
     (await import('../adapters/dossier.mjs')).CADENCE_DAYS.hazards * 100);

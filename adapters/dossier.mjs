@@ -17,8 +17,9 @@ import { resolveEcoregion } from './ecoregion.mjs';
 import { groundProfile } from './soil.mjs';
 import { hydrologyHere } from './hydrology.mjs';
 import { communityHere } from './community.mjs';
-import { climateNormals } from './phenology.mjs';
+import { climateAverages } from './phenology.mjs';
 import { hazardsHere } from './hazards.mjs';
+import { attributionFor, markFetched } from './registry.mjs';
 
 export const DOSSIER_DIR = join(ROOT, 'data', 'dossiers');
 export const INDEX_PATH = join(ROOT, 'data', 'regions', 'ecoregions-epa.json');
@@ -29,6 +30,23 @@ export const INDEX_PATH = join(ROOT, 'data', 'regions', 'ecoregions-epa.json');
  * inside it is never re-asked, because re-asking a settled question is just
  * noise with a timer on it.
  */
+/**
+ * Which registry sources each section draws on. IDs only — a licence or an
+ * attribution string written here would be a second place for it to live, and
+ * the second place is always the one that goes stale. registry.mjs is the
+ * single declaration; attributionFor() renders it at export time.
+ */
+export const SECTION_SOURCES = {
+  identity:  ['epa-ecoregions'],
+  climate:   ['nasa-power'],
+  soil:      ['usda-ssurgo', 'isric-soilgrids', 'usgs-3dep', 'mrlc-nlcd'],
+  life:      ['inaturalist'],
+  water:     ['usgs-nwis', 'water-quality-portal', 'nhdplus-hr', 'usgs-wbd'],
+  resources: ['openstreetmap'],
+  hazards:   ['nws', 'usdm', 'fema-nfhl', 'nasa-firms'],
+  culture:   [],
+};
+
 export const CADENCE_DAYS = {
   identity: null,      // from the shipped index; never refetched
   climate: 180,
@@ -246,11 +264,13 @@ export async function compile(code, { scheme = 'epa-l4', force = false, sections
     level3_code: r.level3_code ?? r.code, level3_name: r.level3_name ?? r.name,
     division: r.division, biome: r.biome, states: r.states,
     bbox: r.bbox, centroid: r.centroid,
-    source: 'EPA Ecoregions Level III & IV (public domain)',
   };
-  d.sections.identity = { fetched_at: new Date().toISOString(), source: 'shipped index' };
+  d.sections.identity = { fetched_at: new Date().toISOString(), sources: SECTION_SOURCES.identity };
 
-  if (!want.length) return { region: r.code, unchanged: true, dossier: d };
+  if (!want.length) {
+    writeDossier(r, scheme, d);
+    return { region: r.code, name: r.name, unchanged: true, dossier: d };
+  }
 
   const points = d.sample_points?.length && !force
     ? d.sample_points
@@ -259,18 +279,20 @@ export async function compile(code, { scheme = 'epa-l4', force = false, sections
   const p0 = points[0];
   const say = (s) => onProgress?.(s);
 
-  const stamp = (name, payload, source) => {
+  const stamp = (name, payload) => {
+    const ids = SECTION_SOURCES[name] ?? [];
     d[name] = payload;
-    d.sections[name] = { fetched_at: new Date().toISOString(), source: source ?? null };
+    d.sections[name] = { fetched_at: new Date().toISOString(), sources: ids };
+    for (const id of ids) { try { markFetched(id); } catch { /* source not yet synced */ } }
   };
 
   if (want.includes('life')) {
     say('life');
-    stamp('life', await lifeAcross(r.bbox), 'iNaturalist');
+    stamp('life', await lifeAcross(r.bbox));
   }
   if (want.includes('climate')) {
     say('climate');
-    stamp('climate', await safe(() => climateNormals(p0.lat, p0.lng)), 'Open-Meteo / NOAA');
+    stamp('climate', await safe(() => climateAverages(p0.lat, p0.lng)));
   }
   if (want.includes('soil')) {
     say('soil');
@@ -280,7 +302,7 @@ export async function compile(code, { scheme = 'epa-l4', force = false, sections
       if (g && !g.error) profiles.push({ at: [pt.lat, pt.lng], ...g });
       await pause(400);
     }
-    stamp('soil', { sampled_points: profiles.length, profiles }, 'USDA SSURGO / ISRIC SoilGrids');
+    stamp('soil', { sampled_points: profiles.length, profiles });
   }
   if (want.includes('water')) {
     say('water');
@@ -290,23 +312,40 @@ export async function compile(code, { scheme = 'epa-l4', force = false, sections
       if (h && !h.error) water.push({ at: [pt.lat, pt.lng], ...h });
       await pause(400);
     }
-    stamp('water', { sampled_points: water.length, readings: water }, 'USGS / EPA');
+    stamp('water', { sampled_points: water.length, readings: water });
   }
   if (want.includes('resources')) {
     say('resources');
-    stamp('resources', await safe(() => communityHere(p0.lat, p0.lng, { radiusKm: 25 })), 'OpenStreetMap (ODbL)');
+    stamp('resources', await safe(() => communityHere(p0.lat, p0.lng, { radiusKm: 25 })));
   }
   if (want.includes('hazards')) {
     say('hazards');
-    stamp('hazards', await safe(() => hazardsHere(p0.lat, p0.lng)), 'NWS / FEMA / Drought Monitor');
+    stamp('hazards', await safe(() => hazardsHere(p0.lat, p0.lng)));
   }
   if (!d.culture) d.culture = cultureSlot(r);
 
+  const path = writeDossier(r, scheme, d);
+  return { region: r.code, name: r.name, refreshed: want, bytes: statSync(path).size, dossier: d };
+}
+
+/** Stamp attribution from the registry and write. Never touches the network. */
+function writeDossier(r, scheme, d) {
+  // Backfill: a dossier written before sources were declared here keeps its
+  // fetched_at but gains the source ids, so an older file becomes correctly
+  // attributed without refetching anything.
+  for (const [section, ids] of Object.entries(SECTION_SOURCES)) {
+    const sec = d.sections?.[section];
+    if (sec && !sec.sources) { sec.sources = ids; delete sec.source; }
+  }
+  const used = Object.entries(SECTION_SOURCES)
+    .filter(([section]) => d.sections?.[section])
+    .flatMap(([, ids]) => ids);
+  d.attribution = attributionFor([...new Set(used)]);
   d.updated_at = new Date().toISOString();
   const path = dossierPath(r.code, scheme);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(d, null, 1));
-  return { region: r.code, name: r.name, refreshed: want, bytes: statSync(path).size, dossier: d };
+  return path;
 }
 
 async function safe(fn) {
