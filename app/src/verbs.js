@@ -51,6 +51,12 @@ const VERB = {
   who_could_help: 'See who could help',
   place_attention: 'See where nobody has been',
 
+  // devices — a second person writing, without an account
+  invite_device: 'Add a device',
+  enrol_device: 'Join with this code',
+  revoke_device: 'Revoke',
+  list_devices: 'See the devices',
+
   // what travels
   publish_learning: 'Write it up',
   open_season: 'Open the season',

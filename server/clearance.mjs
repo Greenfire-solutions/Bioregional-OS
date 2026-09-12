@@ -40,8 +40,63 @@ export const STRANGER = 'public';
  */
 export const NETWORK_CEILING = 'council';
 
-const LADDER = ['public', 'members', 'council', 'restricted', 'sacred'];
+export const LADDER = ['public', 'members', 'council', 'restricted', 'sacred'];
 const lower = (a, b) => (LADDER.indexOf(a) <= LADDER.indexOf(b) ? a : b);
+
+/**
+ * Strip from an answer every object the connection may not see.
+ *
+ * The export routes already filter by clearance inside their adapters. Every
+ * other answer — a tool result, a list route — was handed back whole, so a
+ * member's device on the wifi calling `list_signals` received a sacred
+ * observation alongside the public ones, and NETWORK_CEILING above was a
+ * promise the tool route did not keep.
+ *
+ * This walks the answer once and removes any object whose id belongs to a RID
+ * above the clearance, counting what it removed into `withheld` so protection
+ * is visible rather than silent — the same rule the exports follow. Applied at
+ * one place (server/routes/api.mjs) to everything that leaves over HTTP, so a
+ * new tool or route is covered by default.
+ *
+ * At the keyboard it returns the answer untouched, and quickly.
+ */
+export function withhold(out, clearance, deps) {
+  if (clearance === FULL || out === undefined || out === null || typeof out !== 'object') return out;
+  const above = LADDER.slice(LADDER.indexOf(clearance) + 1);
+  if (!above.length) return out;
+  const hidden = deps.hiddenIds(above);
+  if (!hidden.size) return out;
+
+  let n = 0;
+  const walk = (v) => {
+    if (Array.isArray(v)) {
+      const kept = [];
+      for (const x of v) {
+        if (x && typeof x === 'object' && !Array.isArray(x) && hidden.has(x.id)) { n++; continue; }
+        kept.push(walk(x));
+      }
+      return kept;
+    }
+    if (v && typeof v === 'object') {
+      const o = {};
+      for (const [k, x] of Object.entries(v)) {
+        if (x && typeof x === 'object' && !Array.isArray(x) && hidden.has(x.id)) { n++; continue; }
+        o[k] = walk(x);
+      }
+      return o;
+    }
+    return v;
+  };
+
+  // A single protected object asked for by id is refused outright rather than
+  // returned hollow.
+  if (!Array.isArray(out) && hidden.has(out.id)) {
+    return { error: 'withheld', message: 'That is above what this connection may read.' };
+  }
+  const result = walk(out);
+  if (n && !Array.isArray(result)) result.withheld = (result.withheld ?? 0) + n;
+  return result;
+}
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost']);
 

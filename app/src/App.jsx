@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, RefreshCcw, BookOpen, Shield,
-  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity, Home,
+  Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity, Home, KeyRound,
 } from 'lucide-react';
+import Devices from './components/Devices.jsx';
 import Map3D from './components/Map3D.jsx';
 import RegionPanel from './components/RegionPanel.jsx';
 import MapPanel from './components/MapPanel.jsx';
@@ -18,7 +19,7 @@ import ToolForm from './components/ToolForm.jsx';
 import {
   MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
 } from './views/Views.jsx';
-import { get, callTool } from './api.js';
+import { get, callTool, device } from './api.js';
 
 // ── The shape of the thing ────────────────────────────────────────────────
 // Thirteen flat tabs were thirteen decisions to make before doing anything.
@@ -60,6 +61,7 @@ const GROUPS = [
     { id: 'gatherings', label: 'Gatherings', icon: Users,     add: 'add_gathering',    addLabel: 'Schedule a gathering' },
     { id: 'exchange',   label: 'Exchange',   icon: RefreshCw, add: 'record_exchange',  addLabel: 'Log a contribution' },
     { id: 'season',     label: 'The season', icon: RefreshCcw },
+    { id: 'devices',    label: 'Devices',    icon: KeyRound },
   ] },
   { id: 'travels', label: 'What travels', icon: Send, sub: [
     { id: 'card',       label: 'The card',   icon: Send },
@@ -169,6 +171,9 @@ export default function App() {
 
   const active = TABS.find((t) => t.id === tab);
   const group = groupOf(tab);
+  // Whether this browser is an enrolled device, named in the header so a
+  // person at somebody else's laptop can see whose it is writing as.
+  const enrolledAs = device();
   const showMap = tab === 'atlas' || tab === 'place';
   const blocking = dash?.viability ? dash.viability.total - dash.viability.passed : 0;
 
@@ -184,7 +189,7 @@ export default function App() {
             BioRegional OS
           </div>
           <div className="truncate text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
-            {status?.chapters?.[0]?.name ?? 'no chapter'} · local-first
+            {status?.chapters?.[0]?.name ?? 'no chapter'} · {enrolledAs ? `${enrolledAs.label} · ${enrolledAs.role}` : 'local-first'}
           </div>
         </div>
         <div className="ml-auto flex items-center gap-4">
@@ -322,6 +327,7 @@ export default function App() {
                 {tab === 'today' && <Today onChanged={load} />}
                 {tab === 'vitals' && <Vitals />}
                 {tab === 'season' && <Season />}
+                {tab === 'devices' && <Devices />}
                 {tab === 'listen' && <Listen primary={primary('listen')} intake={intake} />}
                 {tab === 'signals' && <Signals primary={primary('signals')} signals={signals} onFocus={focusOn} />}
                 {tab === 'quests' && <Quests primary={primary('quests')} quests={quests} gates={gates} onLoadGates={loadGates}

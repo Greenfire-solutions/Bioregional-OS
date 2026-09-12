@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Loader2, ArrowRight, MapPin, Droplets, AlertTriangle, Sun, Flag, Users, HandHeart,
-  Sprout, Globe2, CheckCircle2, Compass, Layers,
+  Sprout, Globe2, CheckCircle2, Compass, Layers, KeyRound,
 } from 'lucide-react';
 import { callTool } from '../api.js';
 import ToolForm from './ToolForm.jsx';
@@ -127,11 +127,16 @@ export default function Commons({ onGoTo, onChanged }) {
 
         {!h.deputy && (
           // The single most consequential missing arrangement, and the one
-          // nobody thinks about until the day it is too late to ask.
-          <button onClick={() => setForm({ tool: 'name_deputy', prefill: {} })}
-            className="mt-2 text-[11px] text-[var(--clay)] underline underline-offset-2">
-            Nobody holds this commons if {h.steward || 'you'} cannot. Name a deputy →
-          </button>
+          // nobody thinks about until the day it is too late to ask. A button,
+          // not underlined text: this was the one action on the board still
+          // drawn as a footnote.
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-[var(--clay)]">
+            <span>Nobody holds this commons if {h.steward || 'you'} cannot.</span>
+            <button onClick={() => setForm({ tool: 'name_deputy', prefill: {} })}
+              className="rounded border border-[#E4C9C2] bg-[#FBF1EE] px-2.5 py-1 font-medium text-[var(--clay)] hover:border-[var(--clay)]">
+              {verb('name_deputy')}
+            </button>
+          </div>
         )}
       </section>
 
@@ -212,7 +217,13 @@ export default function Commons({ onGoTo, onChanged }) {
       {/* ── Who is here ─────────────────────────────────────────────────── */}
       {(b.people.length > 0 || b.could_help.length > 0) && (
         <section>
-          <Head Icon={Users} label="People" onMore={() => onGoTo?.('exchange')} />
+          <Head Icon={Users} label="People" onMore={() => onGoTo?.('exchange')}
+                aside={
+                  <button onClick={() => onGoTo?.('devices')}
+                    className="flex items-center gap-1 rounded border border-[var(--line)] bg-[var(--paper)] px-2.5 py-1 text-[11px] font-medium text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]">
+                    <KeyRound className="h-3 w-3" /> {verb('invite_device')}
+                  </button>
+                } />
           {b.people.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {b.people.map((p) => (
@@ -297,18 +308,20 @@ const TONE = {
 // One label per tool, from ../verbs.js. This used to be a third copy of the
 // same map, already drifted from the other two in eight places.
 
-function Head({ Icon, label, note, onMore }) {
+function Head({ Icon, label, note, onMore, aside }) {
   return (
-    <div className="mb-2 flex items-baseline gap-2">
-      <Icon className="h-3.5 w-3.5 translate-y-0.5 text-[var(--ink-3)]" />
+    <div className="mb-2 flex flex-wrap items-center gap-2">
+      <Icon className="h-3.5 w-3.5 text-[var(--ink-3)]" />
       <h3 className="text-xs font-medium">{label}</h3>
       {note && <span className="text-[11px] text-[var(--ink-3)]">{note}</span>}
-      {onMore && (
-        <button onClick={onMore}
-          className="ml-auto text-[11px] text-[var(--ink-3)] hover:text-[var(--moss)]">
-          all of it →
-        </button>
-      )}
+      <span className="ml-auto flex items-center gap-2">
+        {aside}
+        {onMore && (
+          <button onClick={onMore} className="text-[11px] text-[var(--ink-3)] hover:text-[var(--moss)]">
+            all of it →
+          </button>
+        )}
+      </span>
     </div>
   );
 }

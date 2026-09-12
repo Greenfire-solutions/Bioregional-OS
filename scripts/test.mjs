@@ -3213,6 +3213,135 @@ check('a card from a real chapter does not cry wolf about being an example',
     'deleting commons.db by hand leaves the log, which holds most of the content');
 }
 
+// ── The door the enrolment engine was protecting ──────────────────────────
+// server/clearance.mjs decided what a connection had earned, and three export
+// routes asked it. `POST /api/tool` ran every tool for whoever was on the wifi,
+// so with --share on a stranger could mint a coordinator code or revoke the
+// steward's devices. ai/access.mjs is the policy; these prove the route
+// actually consults it, and that an answer leaving over the wifi is stripped
+// of anything above the connection's clearance.
+{
+  const { api } = await import('../server/routes/api.mjs');
+  const { withhold, LADDER } = await import('../server/clearance.mjs');
+  const access = await import('../ai/access.mjs');
+  const E = await import('../engines/enrol.mjs');
+  const { TOOLS } = await import('../ai/tools.mjs');
+  const CH = one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id;
+
+  // The policy names only tools that exist. A renamed tool would otherwise
+  // silently fall back to the keyboard — the safe direction, but a stale name
+  // is still a lie in the policy.
+  const names = new Set(TOOLS.map((t) => t.name));
+  const stale = access.POLICY_NAMES.filter((n) => !names.has(n));
+  check('the access policy names only tools that exist', stale.length === 0, stale.join(', '));
+  check('a tool the policy does not mention is keyboard-only',
+    access.requiredFor('a_tool_that_does_not_exist') === access.KEYBOARD);
+
+  // Property, not mechanism: every tool that mints, revokes, consents or
+  // overrides is unreachable from any network clearance.
+  const guarded = ['invite_device', 'revoke_device', 'record_consent', 'withdraw_consent',
+    'override_gate', 'name_deputy', 'create_chapter', 'publish_to_network', 'import_field_data'];
+  check('nothing over a network can enrol, revoke, consent, override or found',
+    guarded.every((n) => !access.mayRun(n, 'council')), guarded.filter((n) => access.mayRun(n, 'council')).join(', '));
+
+  const res = { writeHead() {}, end() {}, write() {} };
+  const post = async (name, input, headers = {}, addr = '192.168.1.44') => {
+    const body = Buffer.from(JSON.stringify({ name, input }));
+    const req = { method: 'POST', socket: { remoteAddress: addr }, headers,
+      async *[Symbol.asyncIterator]() { yield body; } };
+    return api(req, res, new URL('http://localhost/api/tool'));
+  };
+
+  // A stranger on the wifi.
+  const r1 = await post('revoke_device', { device_id: 'x' });
+  check('a stranger on the wifi cannot revoke a device', r1?.error === 'not_from_here', JSON.stringify(r1));
+  const r2 = await post('invite_device', {});
+  check('a stranger on the wifi cannot mint an invitation', r2?.error === 'not_from_here' && !r2?.code);
+  const r3 = await post('submit_intake', { kind: 'need', body: 'a stranger brought this', private: 1 });
+  check('a stranger can still bring a need through the join page', !r3?.error, JSON.stringify(r3));
+  const r4 = await post('list_signals', {});
+  check('a stranger cannot read the commons through the tool route', r4?.error === 'not_from_here');
+
+  // An enrolled member.
+  const m = E.enrolDevice(CH, { code: E.inviteDevice(CH, { role: 'member' }).code, label: 'Access test member' });
+  const mh = { 'x-bros-device': m.token };
+  const r5 = await post('commons_board', {}, mh);
+  check('an enrolled member reads the board over the wifi', !r5?.error && r5?.here, JSON.stringify(r5).slice(0, 80));
+  const r6 = await post('decide_council_item', { decision_id: 'x' }, mh);
+  check('an enrolled member cannot do council work', r6?.error === 'not_from_here');
+  const r7 = await post('invite_device', {}, mh);
+  check('an enrolled member cannot invite another device', r7?.error === 'not_from_here');
+
+  // A coordinator.
+  const co = E.enrolDevice(CH, { code: E.inviteDevice(CH, { role: 'coordinator' }).code, label: 'Access test coordinator' });
+  const coh = { 'x-bros-device': co.token };
+  const r8 = await post('decide_council_item', { decision_id: 'nope' }, coh);
+  check('a coordinator reaches council work and meets the protocol, not the door',
+    r8?.error !== 'not_from_here', JSON.stringify(r8));
+  const r9 = await post('revoke_device', { device_id: m.device.id }, coh);
+  check('a coordinator still cannot revoke a device from the wifi', r9?.error === 'not_from_here');
+
+  // The keyboard is ungated, and the local callers pass no clearance at all.
+  const r10 = await post('list_devices', {}, {}, '127.0.0.1');
+  check('the steward at the keyboard lists devices', Array.isArray(r10?.devices));
+  const r11 = await runTool('list_devices', {});
+  check('a local caller passing no clearance is never gated', Array.isArray(r11?.devices));
+
+  // The refusal is one a person can act on.
+  check('the refusal says where the thing can be done instead',
+    /computer|steward|coordinator/.test(r1?.message ?? '') && r1?.needs && r1?.has === 'public');
+
+  // ── withhold: nothing above the clearance leaves ────────────────────────
+  const sacred = create('signals', 'signal', CH,
+    { chapter_id: CH, title: 'Access test — sacred site', category: 'Cultural', severity: 'Info', source_adapter: 'test', sensitivity: 'sacred' },
+    'sacred');
+  const pub = create('signals', 'signal', CH,
+    { chapter_id: CH, title: 'Access test — public creek', category: 'Ecological', severity: 'Info', source_adapter: 'test' },
+    'public');
+  const asMember = await post('list_signals', {}, mh);
+  const rows = Array.isArray(asMember) ? asMember : (asMember?.signals ?? []);
+  check('a sacred object is withheld from a member over the wifi',
+    !JSON.stringify(asMember).includes(sacred.id) && JSON.stringify(asMember).includes(pub.id),
+    `sacred present=${JSON.stringify(asMember).includes(sacred.id)}, public present=${JSON.stringify(asMember).includes(pub.id)}`);
+  const atKeyboard = await runTool('list_signals', {});
+  check('and is there at the keyboard', JSON.stringify(atKeyboard).includes(sacred.id));
+
+  // The count is visible, never silent, and the walk reaches nested objects.
+  const deps = { hiddenIds: () => new Set(['h1', 'h2']) };
+  const w = withhold({ items: [{ id: 'ok' }, { id: 'h1' }], nested: { thing: { id: 'h2' }, keep: { id: 'k' } } }, 'members', deps);
+  check('withhold strips nested protected objects and counts them',
+    w.items.length === 1 && !('thing' in w.nested) && w.nested.keep.id === 'k' && w.withheld === 2, JSON.stringify(w));
+  check('withhold refuses a single protected object rather than hollowing it',
+    withhold({ id: 'h1', title: 'x' }, 'members', deps)?.error === 'withheld');
+  check('withhold touches nothing at the keyboard',
+    withhold({ id: 'h1' }, 'sacred', deps)?.id === 'h1');
+  check('the ladder withhold reads is the ladder clearance uses', LADDER.length === 5 && LADDER[0] === 'public');
+
+  // The QR is made at the keyboard only.
+  const qr = async (addr) => {
+    const body = Buffer.from(JSON.stringify({ text: 'http://x/join#enrol=ABCD-EFGH' }));
+    const req = { method: 'POST', socket: { remoteAddress: addr }, headers: {}, async *[Symbol.asyncIterator]() { yield body; } };
+    return api(req, res, new URL('http://localhost/api/qr'));
+  };
+  check('a stranger cannot ask the machine to draw a QR', (await qr('192.168.1.44'))?.status === 403);
+  check('the steward gets one', /^data:image\/png/.test((await qr('127.0.0.1'))?.qr ?? ''));
+
+  // ── the screens exist, and carry the token the right way ────────────────
+  const apiJs = readFileSync(new URL('../app/src/api.js', import.meta.url), 'utf8');
+  check('the interface sends the device token as a header on every call',
+    /x-bros-device/.test(apiJs) && !/x-bros-device.*URLSearchParams|URLSearchParams.*x-bros-device/s.test(apiJs.split('\n').filter((l) => /device/.test(l)).join('\n')));
+  const join = readFileSync(new URL('../app/src/components/Join.jsx', import.meta.url), 'utf8');
+  check('the join page can redeem a code, from the fragment or typed',
+    /enrol_device/.test(join) && /location\.hash/.test(join) && /rememberDevice/.test(join));
+  check('a spent code is taken out of the address bar', /replaceState/.test(join));
+  const devices = readFileSync(new URL('../app/src/components/Devices.jsx', import.meta.url), 'utf8');
+  check('the steward has a screen that invites, lists and revokes',
+    /invite_device/.test(devices) && /list_devices/.test(devices) && /revoke_device/.test(devices));
+  check('the invitation link carries the code in the fragment, never the query',
+    /\/join#enrol=/.test(devices) && !/\/join\?/.test(devices));
+  check('the screen says out loud when nobody else can reach this computer', /--share/.test(devices));
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

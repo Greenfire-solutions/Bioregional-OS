@@ -13,7 +13,7 @@ import * as heartbeat from '../../engines/heartbeat.mjs';
 import { whatsNext } from '../../engines/operator.mjs';
 import { humanObservedSql, atPlaceCentroidSql } from '../../core/provenance.mjs';
 import { DEMO_CHAPTER_ID } from '../../core/seedData.js';
-import { clearanceFor } from '../clearance.mjs';
+import { clearanceFor, withhold, FULL } from '../clearance.mjs';
 import { aiStream } from './ai.mjs';
 import { claudeStream, claudeAvailable } from './claude.mjs';
 import { readFileSync, existsSync } from 'node:fs';
@@ -22,13 +22,34 @@ import { ROOT } from '../../core/db.mjs';
 
 const defaultChapter = () => one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id ?? null;
 
+/**
+ * Everything that leaves over HTTP passes through here once.
+ *
+ * The route answers; then, for any connection below the keyboard, every object
+ * the connection may not read is withheld and counted. Streams return
+ * undefined and are untouched. Done here rather than inside each route so a
+ * route added next month is covered without anybody remembering.
+ */
 export async function api(req, res, url) {
+  const clearance = clearanceFor(req);
+  const out = await route(req, res, url, clearance);
+  if (out === undefined || clearance === FULL) return out;
+  const deps = { hiddenIds: (levels) => new Set(
+    all(`SELECT local_id FROM rids WHERE sensitivity IN (${levels.map(() => '?').join(',')})`, ...levels)
+      .map((r) => r.local_id)) };
+  if (out && typeof out === 'object' && 'status' in out && 'body' in out) {
+    return { ...out, body: withhold(out.body, clearance, deps) };
+  }
+  return withhold(out, clearance, deps);
+}
+
+async function route(req, res, url, clearance) {
   const p = url.pathname.replace(/^\/api\/?/, '');
   const q = Object.fromEntries(url.searchParams);
   const chapterId = q.chapter || defaultChapter();
-  // Earned from the connection, never read from the request. See ../clearance.mjs —
-  // `?clearance=sacred` used to be honoured, which defeated the entire ladder.
-  const clearance = clearanceFor(req);
+  // `clearance` is earned from the connection, never read from the request. See
+  // ../clearance.mjs — `?clearance=sacred` used to be honoured, which defeated
+  // the entire ladder.
 
   if (req.method === 'POST' && p === 'ai') return aiStream(req, res);   // streams, handles its own response
   // Claude Code rather than the SDK: the steward's own subscription, no API key,
@@ -143,7 +164,29 @@ export async function api(req, res, url) {
     case 'tool': {
       if (req.method !== 'POST') return { status: 405, body: { error: 'POST required' } };
       const body = await readBody(req);
-      return await runTool(body.name, body.input ?? {});
+      // The clearance travels with the call. Until it did, this line ran every
+      // tool in the registry for whoever was on the wifi — see ai/access.mjs.
+      return await runTool(body.name, body.input ?? {}, { via: 'ui', clearance });
+    }
+
+    // A QR for something the steward is about to show a room — the join link
+    // with an invitation code in it. Keyboard only: a stranger has no business
+    // asking this machine to draw pictures, and the code it carries was minted
+    // at the keyboard a moment ago.
+    case 'qr': {
+      if (req.method !== 'POST') return { status: 405, body: { error: 'POST required' } };
+      if (clearance !== FULL) {
+        return { status: 403, body: { error: 'not_from_here', message: 'Made at the keyboard only.' } };
+      }
+      const body = await readBody(req);
+      const text = String(body.text ?? '').trim();
+      if (!text) return { status: 400, body: { error: 'missing_required', message: 'text is required.' } };
+      try {
+        const QRCode = (await import('qrcode')).default;
+        return { text, qr: await QRCode.toDataURL(text, { margin: 1, width: 280 }) };
+      } catch (err) {
+        return { text, qr: null, error: 'qr_unavailable', message: err.message };
+      }
     }
 
     default:

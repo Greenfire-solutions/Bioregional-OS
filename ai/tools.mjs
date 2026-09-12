@@ -31,6 +31,7 @@ import * as mapboard from '../engines/mapboard.mjs';
 import * as enrol from '../engines/enrol.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
+import * as access from './access.mjs';
 
 const S = (props, required = []) => ({ type: 'object', properties: props, required });
 const str = (description) => ({ type: 'string', description });
@@ -1805,9 +1806,18 @@ export const MATERIAL_TOOLS = new Set([
  */
 const AI_CALLERS = new Set(['assistant', 'mcp', 'claude-code']);
 
-export async function runTool(name, input = {}, { via = 'ui' } = {}) {
+export async function runTool(name, input = {}, { via = 'ui', clearance = null } = {}) {
   const t = TOOL_MAP[name];
   if (!t) return { error: `unknown tool ${name}` };
+  // Who is asking, when the call arrived over a network. Local callers — MCP,
+  // the assistant, the suite, the prover — pass no clearance and are the
+  // steward's own process. The HTTP route passes what the connection earned,
+  // and the policy in ai/access.mjs says what that clearance may run. Checked
+  // before `required`, because telling a stranger which fields a tool wants is
+  // telling them about a tool they may not use.
+  if (clearance !== null && !access.mayRun(name, clearance)) {
+    return access.refusal(name, clearance);
+  }
   // Required fields are enforced here, not in each handler, so every caller —
   // MCP, the assistant, the REST API, the generated forms — gets the same answer.
   const missing = (t.input_schema?.required ?? []).filter((k) => {

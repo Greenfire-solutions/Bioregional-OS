@@ -54,6 +54,10 @@ Run `npm run connect`. It prints every option, including a **QR code** — someo
 points their phone camera at it and the commons opens in their browser. No app,
 no account, no login.
 
+If somebody should be able to *write* — not just bring a need — open
+**Together → Devices** and press **Add a device**. They type the code on their
+own laptop or phone and that browser is enrolled. No account, no password.
+
 That link only works for people already on your wifi. Nothing is published to the
 internet unless you deliberately choose to.
 

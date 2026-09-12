@@ -1,6 +1,6 @@
 # Where this is
 
-Written 2026-09-12, at the end of a long build session. This is the handover
+Written 2026-09-12, at the end of a long build session; updated the same evening. This is the handover
 note: what exists, what does not, and what the next person — or the next
 session — should not have to rediscover.
 
@@ -59,9 +59,19 @@ to the code on every run.
 world-readable global index — was the only place that did not check
 `intake.private`.
 
-### Device enrolment
-A second person can write, without accounts. See **Not built** for the part
-that is missing.
+### Device enrolment, with a screen
+A second person can write, without accounts. **Together → Devices** mints the
+code and shows it as a QR; the join page redeems it, typed or from the link's
+fragment; the token rides as a header on every call. Revocation keeps the row.
+
+### The door the enrolment engine was protecting
+`POST /api/tool` ran every tool in the registry for whoever was on the wifi.
+The clearance layer existed and three export routes asked it; the tool route
+never did, so with `--share` on a stranger could mint a coordinator code or
+revoke the steward's devices. `ai/access.mjs` is now the policy — public,
+members, council, keyboard, with the keyboard as the default for anything
+unlisted — and every answer leaving over HTTP is stripped of objects above the
+connection's clearance, with the count reported as `withheld`.
 
 ---
 
@@ -69,15 +79,7 @@ that is missing.
 
 Ordered by how much each would change what a real chapter can do.
 
-**1. There is no UI for device enrolment.** `invite_device`, `enrol_device`,
-`list_devices` and `revoke_device` all work and are tested, reachable from the
-assistant and from `POST /api/tool`. What does not exist is the screen: an
-"Add a device" panel that shows the code as a QR, a page the phone lands on to
-redeem it, and somewhere on the phone to keep the token. Until that exists the
-feature is real and unusable by anybody who is not comfortable calling a tool.
-*This is the single highest-value next piece.*
-
-**2. Setup can finish with an empty database.** The strongest finding in
+**1. Setup can finish with an empty database.** The strongest finding in
 `docs/COMMUNICATIONS.md`: 93% of 12,795 Ushahidi Crowdmaps held fewer than ten
 reports and 61% were untouched defaults, and the top self-reported cause was
 social, not technical. The fix is that onboarding should not be completable
@@ -85,17 +87,17 @@ until real local content is in — "type the three things people already noticed
 this month". About a day of work, and it is the biggest gap between *installed*
 and *used*.
 
-**3. US only.** The ecoregion index is EPA: 85 Level III, 967 Level IV.
+**2. US only.** The ecoregion index is EPA: 85 Level III, 967 Level IV.
 `data/upstream/global-ecoregions.geojson` is absent, so `look_around` outside
 the United States resolves a place and finds no ecoregion polygon. The intended
 source is RESOLVE 2017 (CC-BY) — One Earth is CC-BY-**NC** and must not be
 redistributed. See `docs/DATA_SOURCES.md`.
 
-**4. The region library is ~509 of 967 downloaded.** Regenerable and
+**3. The region library is ~509 of 967 downloaded.** Regenerable and
 gitignored. `npm run data -- --all` resumes and skips what is current. An
 uncompiled region still shows its identity and a download button.
 
-**5. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
+**4. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
 carries the whole decision. The recommendation is **inbound only** — a
 neighbour can text or speak a need and get an acknowledgement; the OS never
 broadcasts. Before any of it: `contact_channels`, shaped like `media_consent`
@@ -103,17 +105,17 @@ with `granted_at` / `withdrawable` / `withdrawn_at`, because `agents.contact`
 and `intake.contact` are free text with no channel type, no verification and no
 opt-out, and retrofitting consent onto a live roster is work nobody ever does.
 
-**6. Voice: researched, nothing built.** Secondary but first-class — capture
+**5. Voice: researched, nothing built.** Secondary but first-class — capture
 and playback, never an interaction channel. Note the blocker recorded in the
 doc: `getUserMedia` needs a secure context, so over `http://192.168.x.x` the
 `/join` page **cannot** record audio. The way round is
 `<input type="file" accept="audio/*" capture>`.
 
-**7. No sync between two stewards' machines.** `--share` is same-wifi only. The
+**6. No sync between two stewards' machines.** `--share` is same-wifi only. The
 outbox design (one append-only file per device, never the live database) is
 written up and unbuilt.
 
-**8. Nothing happens when the laptop is closed.** Deliberate and documented,
+**7. Nothing happens when the laptop is closed.** Deliberate and documented,
 and still a real constraint on what a chapter can rely on.
 
 ---

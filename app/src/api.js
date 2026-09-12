@@ -1,19 +1,47 @@
 const base = '';
 
+// ── The device this browser is, if it has been enrolled ───────────────────
+// A token handed over once by the steward, kept here and sent as a header on
+// every call. A header rather than the URL, because a URL ends up in history,
+// in server logs and in the Referer of every outbound link, and a token in any
+// of those has left the room it was given in. See server/clearance.mjs.
+//
+// Nothing here is a sign-in. There is no account and no password; the browser
+// either holds a token or it does not, and forgetting it is one click.
+const DEVICE_KEY = 'bros.device';
+
+export function device() {
+  try { return JSON.parse(localStorage.getItem(DEVICE_KEY) ?? 'null'); } catch { return null; }
+}
+export function rememberDevice(d) {
+  try { localStorage.setItem(DEVICE_KEY, JSON.stringify(d)); } catch { /* private window */ }
+}
+export function forgetDevice() {
+  try { localStorage.removeItem(DEVICE_KEY); } catch { /* private window */ }
+}
+function headers(extra = {}) {
+  const d = device();
+  return d?.token ? { ...extra, 'x-bros-device': d.token } : extra;
+}
+
 export async function get(path, params) {
   const q = params ? '?' + new URLSearchParams(params) : '';
-  const r = await fetch(`${base}/api/${path}${q}`);
+  const r = await fetch(`${base}/api/${path}${q}`, { headers: headers() });
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
   return r.json();
 }
 
-export async function callTool(name, input = {}) {
-  const r = await fetch(`${base}/api/tool`, {
+export async function post(path, body = {}) {
+  const r = await fetch(`${base}/api/${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, input }),
+    headers: headers({ 'content-type': 'application/json' }),
+    body: JSON.stringify(body),
   });
   return r.json();
+}
+
+export async function callTool(name, input = {}) {
+  return post('tool', { name, input });
 }
 
 /** Stream the assistant. onEvent(type, data) fires for text / tool / tool_result / done / error. */
@@ -37,7 +65,7 @@ export async function askAssistant(messages, onEvent, signal) {
 async function sseStream(path, payload, onEvent, signal) {
   const res = await fetch(`${base}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: headers({ 'content-type': 'application/json' }),
     body: JSON.stringify(payload),
     signal,
   });

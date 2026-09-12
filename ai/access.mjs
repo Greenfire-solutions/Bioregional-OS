@@ -1,0 +1,115 @@
+// ── What a connection may ask the registry to do ──────────────────────────
+// server/clearance.mjs decides what a connection has EARNED: `sacred` at the
+// steward's own keyboard, `members` or `council` for an enrolled device, and
+// `public` for a stranger on the wifi. It was consulted by three export routes
+// and by nothing else. `POST /api/tool` ran every tool in the registry for
+// whoever asked — so with --share on, anybody on the gathering wifi could
+// mint themselves a coordinator code, revoke the steward's devices, or decide
+// a council item, and the enrolment engine beneath it, hashed tokens and
+// constant-time compares and all, protected a door that was never closed.
+//
+// This is the door. One policy, stated once, read by runTool on every call
+// that arrived over a network.
+//
+// THE DEFAULT IS THE KEYBOARD. A tool not named here can only be run from the
+// machine the commons lives on. That is the direction a mistake should fail in:
+// forgetting to list a new tool makes it unreachable from the wifi, which
+// somebody notices and fixes, rather than reachable by strangers, which nobody
+// notices at all. Local callers — Claude Code over MCP, the in-app assistant,
+// the test suite, the prover — are the steward's own process and are never
+// gated by this.
+//
+// The tiers follow the sensitivity ladder because a device's role IS its
+// clearance (see ROLE_CLEARANCE in engines/enrol.mjs), so there is exactly one
+// ladder in the system and not a second one for verbs.
+//
+//   public    a stranger who scanned the code on the wall. The join page.
+//             Bringing a need, noticing something, saying they are coming,
+//             and redeeming an invitation. Nothing that reads the commons.
+//   members   an enrolled device. Reads the commons at members level and does
+//             ordinary field work: places, readings, gatherings, contributions.
+//   council   a coordinator's device. Council work: proposing and deciding,
+//             answering needs, closing gates, the season.
+//   keyboard  everything else. Founding, consent, devices, overrides, the
+//             deputy, publishing to the world, anything that reads or writes
+//             this machine's files.
+//
+// Two placements that are judgement rather than lookup:
+//
+//   satisfy_quest_gate is council, not members, because three of the gates it
+//   closes are the ones that never graduate — rights-holder consent, indigenous
+//   consent, youth safeguarding — and the test for those is whether the person
+//   clicking could be the person the gate protects. A device enrolled in a
+//   room is a device somebody handed over, not a council.
+//
+//   record_consent and withdraw_consent stay at the keyboard. A consent record
+//   is the one row a rights-holder may later ask to see honoured, and the
+//   protocol's whole position is that nothing over a network reaches what
+//   they protect. Writing the record from the wifi would be a promise the
+//   transport cannot keep.
+
+import { LADDER } from '../server/clearance.mjs';
+
+const PUBLIC = [
+  'submit_intake', 'add_signal', 'rsvp_to_gathering', 'enrol_device',
+];
+
+const MEMBERS = [
+  // reading the commons
+  'chapter_status', 'list_places', 'get_ecoregion_layer', 'list_signals', 'list_quests',
+  'quest_gates', 'check_quest_advance', 'council_agenda', 'minimum_viable_test',
+  'benefit_flow', 'list_indicators', 'list_gatherings', 'list_agents', 'list_atlas_layers',
+  'ground_today', 'this_week_last_year', 'soil_at', 'life_here', 'hazards_at',
+  'upstream_sources', 'what_moved', 'intake_promise', 'carrying', 'place_attention',
+  'vitals', 'neighbours', 'seasons', 'land_seat_brief', 'quest_score',
+  'seasonal_priorities', 'map_features', 'commons_board', 'who_could_help',
+  'list_discovered', 'card_for_the_week', 'community_here', 'culture_here',
+  'growing_year', 'water_here', 'whats_next', 'library_status', 'list_regions',
+  'region_brief', 'find_species',
+  // ordinary field work
+  'add_place', 'locate_place', 'ingest_water_data', 'record_measurement', 'add_indicator',
+  'propose_baseline', 'set_indicator_baseline', 'add_gathering', 'update_gathering',
+  'record_exchange', 'publish_learning', 'mark_card_sent', 'add_hub', 'add_agent',
+  'open_quest', 'update_quest',
+];
+
+const COUNCIL = [
+  'propose_decision', 'decide_council_item', 'clear_red_flag', 'satisfy_quest_gate',
+  'advance_quest', 'respond_to_intake', 'list_intake', 'season_review', 'open_season',
+  'close_season', 'register_atlas_layer', 'discover_peers', 'discover_local_data',
+  'murmurations_profile', 'approve_dataset', 'decline_dataset',
+];
+
+const REQUIRED = new Map();
+for (const n of PUBLIC) REQUIRED.set(n, 'public');
+for (const n of MEMBERS) REQUIRED.set(n, 'members');
+for (const n of COUNCIL) REQUIRED.set(n, 'council');
+
+/** The keyboard, spelled as the top of the ladder so one comparison serves. */
+export const KEYBOARD = 'sacred';
+
+/** The clearance a tool needs. Unlisted means the keyboard. */
+export function requiredFor(name) {
+  return REQUIRED.get(name) ?? KEYBOARD;
+}
+
+/** Whether a connection at `clearance` may run `name`. */
+export function mayRun(name, clearance) {
+  const need = LADDER.indexOf(requiredFor(name));
+  const have = LADDER.indexOf(clearance);
+  return have >= 0 && have >= need;
+}
+
+/** The refusal, worded for the person holding the device rather than the code. */
+export function refusal(name, clearance) {
+  const need = requiredFor(name);
+  const message = need === KEYBOARD
+    ? `${name} is done at the computer the commons lives on, not over the wifi.`
+    : need === 'council'
+      ? `${name} is council work. This device is enrolled as a member; a coordinator's device or the steward's computer can do it.`
+      : `${name} needs a device enrolled in this commons. Ask the steward for a code.`;
+  return { error: 'not_from_here', message, needs: need, has: clearance };
+}
+
+/** Every name the policy mentions, so a test can check none has gone stale. */
+export const POLICY_NAMES = [...PUBLIC, ...MEMBERS, ...COUNCIL];

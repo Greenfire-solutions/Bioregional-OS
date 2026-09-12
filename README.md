@@ -186,6 +186,7 @@ with nothing to measure yet says so rather than reporting a zero.
 | **Council** | Decisions, the Land Seat report, red flags, review dates |
 | **Gatherings** | Events, scored on care provision — meals, transport, childcare, accessibility |
 | **Exchange** | Contributions as ValueFlows events. Flags a commons running on unpaid labour |
+| **Devices** | Letting a second person write, without an account. A code read off this screen enrols one browser on the wifi — a laptop, a tablet, a phone — as a member or a coordinator. Revoked devices stay listed as the author of what they wrote |
 | **The season** | Where the twelve-stage loop actually closes. What the readings say — anything smaller than its own error bar reported as no change — then the three questions a database cannot answer: what did *not* change, what unintended effects appeared, whose experience is missing. It refuses to close without them |
 
 **What travels**
@@ -197,6 +198,20 @@ with nothing to measure yet says so rather than reporting a zero.
 | **Federation** | Other chapters, discovered over Murmurations |
 
 ---
+
+## Letting a second person write
+
+Start the OS with `npm run os -- --share`, open **Together → Devices**, press
+**Add a device**, and read the code out. On the other computer, open the wifi
+link, press *Join this device*, type the code. That browser can now write to the
+commons at the role you chose. No account, no password, nothing to remember;
+lose the device and you revoke it, not recover it.
+
+What a connection may do is decided by where it came from, never by what it
+claims: the keyboard the commons lives on does everything, an enrolled device
+does field or council work, and a stranger on the wifi can bring a need, notice
+something, or say they are coming. The policy is one file, `ai/access.mjs`, and
+a tool it does not name can only be run at the keyboard.
 
 ## Every way in
 
