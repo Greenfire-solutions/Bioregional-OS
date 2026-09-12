@@ -29,6 +29,7 @@ import { groundProfile } from '../adapters/soil.mjs';
 import { lifeHere } from '../adapters/life.mjs';
 import * as bio from './bioregional.mjs';
 import { nearestGageContext } from './ground.mjs';
+import { attributionFor } from '../adapters/registry.mjs';
 
 /**
  * What is true about a point, gathered live and kept in memory.
@@ -54,6 +55,7 @@ export async function lookAround({ query = null, lat = null, lng = null, depth =
     // More than one plausible answer is a question for the person, not a guess.
     [place, ...alternatives] = found.results;
     place.geocoder = found.source;
+    place.geocoder_id = found.source_id ?? null;
   } else {
     place = { name: null, lat: Number(lat), lng: Number(lng) };
     const named = await geocode.reverse(place.lat, place.lng).catch(() => null);
@@ -80,6 +82,10 @@ export async function lookAround({ query = null, lat = null, lng = null, depth =
       lat: y, lng: x,
       locality: place.locality ?? null, region: place.region ?? null, country: place.country ?? null,
       geocoder: place.geocoder ?? place.source ?? null,
+      // The licence moved out of the adapter's prose and into the registry,
+      // which is right — but the credit a person actually sees is the half with
+      // legal weight, and ODbL requires it. Resolve it rather than reprinting it.
+      geocoder_credit: credit(place.geocoder_id),
     },
     alternatives,
     ecoregion, watershed, sky, weather, water, ground, life,
@@ -224,6 +230,12 @@ export async function beginHere({
     located,
     next: 'Open Today. The land will tell you something before it asks you for anything.',
   };
+}
+
+/** Attribution for a source id, from the one registry that holds licences. */
+function credit(id) {
+  if (!id) return null;
+  return attributionFor([id])[0]?.attribution ?? null;
 }
 
 const slug = (s) =>

@@ -7,7 +7,7 @@ import { resolveWatershed, waterSignals } from '../adapters/watershed.mjs';
 import { groundProfile } from '../adapters/soil.mjs';
 import { lifeHere as lifeUpstream } from '../adapters/life.mjs';
 import { hazardsHere as hazardsUpstream, hazardSignals } from '../adapters/hazards.mjs';
-import { registerLayer, registerDiscovered, source as registrySource } from '../adapters/registry.mjs';
+import { registerLayer, registerDiscovered, source as registrySource, attributionFor } from '../adapters/registry.mjs';
 import { discover as discoverUpstream, classifyLicense } from '../adapters/discover.mjs';
 import { humanObservedSql, automatedSql, humanObserved as humanSource } from '../core/provenance.mjs';
 
@@ -111,7 +111,7 @@ export async function lifeHere(placeId, { radiusKm = 10, limit = 20 } = {}) {
   if (life.species?.available || life.record_depth?.available) {
     registerLayer(p.chapter_id, life.species?.available ? 'inaturalist' : 'gbif');
   }
-  return { place: { id: p.id, name: p.name }, ...life };
+  return withAttribution({ place: { id: p.id, name: p.name }, ...life });
 }
 
 /**
@@ -232,6 +232,28 @@ export function dashboard(chapterId) {
   };
 }
 
+
+/**
+ * Collect every registry id a result mentions and render the credit from the
+ * registry — so the line a PERSON reads comes from the same declaration the
+ * export does, rather than being retyped in a component.
+ *
+ * The interface was carrying five hardcoded licence strings. The adapters had
+ * already been corrected to point at `source_id`, which meant the code was
+ * right and the sentence on screen could still go stale — and the sentence is
+ * the half with legal weight, because it is the one somebody quotes.
+ */
+export function withAttribution(result) {
+  const ids = new Set();
+  (function walk(v, depth) {
+    if (!v || depth > 4) return;
+    if (Array.isArray(v)) { for (const x of v) walk(x, depth + 1); return; }
+    if (typeof v !== 'object') return;
+    if (typeof v.source_id === 'string') ids.add(v.source_id);
+    for (const x of Object.values(v)) walk(x, depth + 1);
+  })(result, 0);
+  return { ...result, attribution: attributionFor([...ids]) };
+}
 
 // ── Stage 4: Map — what this locality already publishes ───────────────────
 
@@ -568,7 +590,7 @@ export async function communityAt(placeId, { radiusKm = 3 } = {}) {
   if (r.available) {
     for (const n of layersCovered(r)) registerLayer(p.chapter_id, 'openstreetmap', { layer: n });
   }
-  return { place: { id: p.id, name: p.name }, ...r };
+  return withAttribution({ place: { id: p.id, name: p.name }, ...r });
 }
 
 /** Atlas layer 11 — culture, memory, and the sound of the place. */
@@ -581,7 +603,7 @@ export async function cultureAt(placeId, { radiusKm = 5 } = {}) {
   if (r.historic?.available || r.articles?.available) registerLayer(p.chapter_id, 'openstreetmap');
   if (r.papers?.available) registerLayer(p.chapter_id, 'chronicling-america');
   if (r.research?.available) registerLayer(p.chapter_id, 'openalex');
-  return { place: { id: p.id, name: p.name }, ...r };
+  return withAttribution({ place: { id: p.id, name: p.name }, ...r });
 }
 
 /** The growing year at a place. */
@@ -593,7 +615,7 @@ export async function growingYearAt(placeId, { zip = null } = {}) {
   const r = await growingYear(p.lat, p.lng, { zip });
   if (r.spring?.available) registerLayer(p.chapter_id, 'usa-npn');
   if (r.normals?.available) registerLayer(p.chapter_id, 'nasa-power');
-  return { place: { id: p.id, name: p.name }, ...r };
+  return withAttribution({ place: { id: p.id, name: p.name }, ...r });
 }
 
 /** Atlas layers 2 and 3 — what is in the water, and where it goes. */
@@ -605,7 +627,7 @@ export async function hydrologyAt(placeId, { radiusKm = 5, sinceYears = 3 } = {}
   const r = await hydrologyHere(p.lat, p.lng, { radiusKm, sinceYears });
   if (r.network?.available) registerLayer(p.chapter_id, 'nhdplus-hr');
   if (r.quality?.available) registerLayer(p.chapter_id, 'water-quality-portal');
-  return { place: { id: p.id, name: p.name }, ...r };
+  return withAttribution({ place: { id: p.id, name: p.name }, ...r });
 }
 
 /**

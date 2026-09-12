@@ -1,35 +1,239 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
 
-:root {
-  --paper:#F7F5F0; --paper-2:#F2EFE9; --line:#E3DFD5; --line-2:#EAE6DD;
-  --ink:#2C2A29; --ink-2:#5C574F; --ink-3:#7C776F;
-  --moss:#4A5D4E; --gold:#D4AF37; --clay:#A65F3E; --water:#3E6B7C;
+/* ═══════════════════════════════════════════════════════════════════════════
+   AN INSTRUMENT READING A LIVING WORLD
+
+   The shell is a dark console: deep green-black, hairlines, luminous data. The
+   things you hand to a human — the weekly card, the field sheet — stay paper.
+   That split is the argument, not decoration. Dark is the machine observing;
+   light is what a person carries out of the building.
+
+   Everything in this app styles through these eleven variables, so the palette
+   lives here and nowhere else. Redefining a token re-skins every component at
+   once, including ones nobody has opened in a week.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Vendored, not linked. This OS is expected to work with the wifi off, and a
+   webfont that silently falls back to a system face is the exact failure mode
+   this project keeps finding elsewhere. 86KB, latin subset. */
+@font-face {
+  font-family: 'Fraunces';
+  src: url('./fonts/fraunces-300-700.woff2') format('woff2-variations');
+  font-weight: 300 700; font-style: normal; font-display: swap;
 }
-html,body,#root { height:100%; margin:0; }
-body { background:var(--paper); color:var(--ink);
-  font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
-.scrollbar-none::-webkit-scrollbar { display:none; }
-.scrollbar-none { scrollbar-width:none; }
-.maplibregl-ctrl-attrib { font-size:10px; }
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('./fonts/plexmono-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Plex Mono';
+  src: url('./fonts/plexmono-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* ── ground and surfaces ───────────────────────────────────────────────
+     Never pure black. A green bias throughout, so the dark reads as forest
+     floor at night rather than as a terminal. */
+  --paper:   #080F0D;
+  --paper-2: #0E1815;
+  --paper-3: #14211D;
+  --line:    #1E2F29;
+  --line-2:  #17251F;
+
+  --ink:   #E9F3EC;
+  --ink-2: #9FB6AB;
+  --ink-3: #647B72;
+
+  /* ── the four voices ───────────────────────────────────────────────────
+     moss   life, action, the thing that is working
+     gold   attention, the sacred, the thing to look at
+     clay   a hazard, a refusal, a red flag
+     water  measurement, telemetry, the cold reading   */
+  --moss:  #4FD6A0;
+  --gold:  #E8C36B;
+  --clay:  #F5906A;
+  --water: #6FC8E6;
+
+  /* Dark text on a luminous ground. Applied automatically below, so a button
+     written as bg-moss + text-white in any component still reads. */
+  --on-accent: #04140F;
+
+  /* ── depth ─────────────────────────────────────────────────────────────
+     One hairline and one halo. No drop shadows: a console is lit from within,
+     not from above. */
+  --halo:  0 0 0 1px var(--line), 0 10px 40px -18px #000;
+  --glow:  0 0 24px -6px color-mix(in oklab, var(--moss) 55%, transparent);
+  --glow-gold: 0 0 22px -6px color-mix(in oklab, var(--gold) 55%, transparent);
+
+  /* ── type ──────────────────────────────────────────────────────────────
+     Fraunces carries the voice — it has an organic, almost devotional weight
+     that a geometric sans cannot. Plex Mono carries every number, because this
+     app is mostly measurements and an instrument should look like one. */
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-data: 'Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* ── motion ────────────────────────────────────────────────────────────
+     One easing. Fast out, settles hard — things arrive and stop, rather than
+     drifting. That is what "snaps into place" is: a short travel and an abrupt
+     settle, never a long ease. */
+  --snap: cubic-bezier(.16, 1, .3, 1);
+  --quick: 160ms;
+  --settle: 280ms;
+}
+
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.55 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  /* A faint aurora sitting behind everything: two cold lights low in the
+     frame, as if the console were near something alive. */
+  background-image:
+    radial-gradient(70rem 40rem at 12% -10%, color-mix(in oklab, var(--moss) 9%, transparent), transparent 60%),
+    radial-gradient(60rem 36rem at 92% 4%, color-mix(in oklab, var(--water) 7%, transparent), transparent 62%);
+  background-attachment: fixed;
+}
+
+/* ── the voice ────────────────────────────────────────────────────────────
+   Headings take the display face everywhere, without a single component
+   needing to ask for it. */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+  font-weight: 500;
+}
+h1 { letter-spacing: -0.025em; }
+
+/* Every eyebrow label in this app is written `uppercase tracking-wide`. This
+   one rule turns all of them — in components neither session has touched —
+   into instrument labels. */
+.uppercase.tracking-wide {
+  font-family: var(--font-data);
+  letter-spacing: 0.16em !important;
+  font-weight: 500;
+}
+
+/* Numbers line up and read as readings. */
+.tabular-nums, input[type="number"] { font-variant-numeric: tabular-nums; }
+
+/* ── contrast repair, applied globally ────────────────────────────────────
+   `bg-[var(--moss)] text-white` appears a dozen times across both sessions'
+   components. Against a luminous green that is unreadable, and editing twelve
+   files in two owners' territory to fix a palette decision would be the wrong
+   shape. One rule fixes all of them, wherever they are. */
+.bg-\[var\(--moss\)\].text-white,
+.hover\:bg-\[var\(--moss\)\]:hover.hover\:text-white:hover {
+  color: var(--on-accent) !important;
+  box-shadow: var(--glow);
+  font-weight: 500;
+}
+
+/* ── surfaces ─────────────────────────────────────────────────────────────
+   Anything a component draws as a bordered panel gets the console treatment
+   without asking: hairline, faint inner lift, no shadow. */
+.border-\[var\(--line\)\] { box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 4%, transparent); }
+
+input, textarea, select { font-family: inherit; color: var(--ink); }
+input::placeholder, textarea::placeholder { color: var(--ink-3); }
+:focus-visible { outline: 2px solid color-mix(in oklab, var(--moss) 70%, transparent); outline-offset: 2px; }
+
+/* ── arrival ──────────────────────────────────────────────────────────────
+   Content rises a few pixels and settles. Staggered by depth so a panel reads
+   as assembling rather than appearing. */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise var(--settle) var(--snap) both; }
+.rise-1 { animation-delay: 40ms; } .rise-2 { animation-delay: 80ms; }
+.rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 160ms; }
+
+@keyframes breathe { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+.breathe { animation: breathe 4s ease-in-out infinite; }
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+.maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib a { color: var(--ink-3) !important; background: transparent !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+
+/* ── tone shim ────────────────────────────────────────────────────────────
+   Sixteen colours were written as literal hex in nine components, across two
+   sessions' territory — pale pastels chosen for a light interface. On a dark
+   ground they are white text on cream, which is not a style problem but an
+   unreadable one.
+
+   Rewriting nine files, five of which belong to someone else, to fix a palette
+   decision would be the wrong shape. These map every literal to a tinted
+   surface derived from the same four voices, so a card written as "alert pink"
+   becomes "alert, on this ground" wherever it lives and whoever wrote it.
+
+   The real lesson is underneath: a literal colour is a token that escaped. Any
+   new one should go through the four voices instead. */
+:root {
+  --tone-good-bg:  color-mix(in oklab, var(--moss)  10%, var(--paper-2));
+  --tone-good-line:color-mix(in oklab, var(--moss)  28%, var(--line));
+  --tone-warn-bg:  color-mix(in oklab, var(--gold)  10%, var(--paper-2));
+  --tone-warn-line:color-mix(in oklab, var(--gold)  30%, var(--line));
+  --tone-alert-bg: color-mix(in oklab, var(--clay)  11%, var(--paper-2));
+  --tone-alert-line:color-mix(in oklab, var(--clay) 30%, var(--line));
+  --tone-cool-bg:  color-mix(in oklab, var(--water) 10%, var(--paper-2));
+  --tone-cool-line:color-mix(in oklab, var(--water) 28%, var(--line));
+}
+
+.bg-\[\#F2F6F2\], .bg-\[\#EEF4EF\], .bg-\[\#E6EFE7\] { background-color: var(--tone-good-bg) !important; }
+.border-\[\#CBDCCD\]                                     { border-color: var(--tone-good-line) !important; }
+.bg-\[\#FBF3DC\], .bg-\[\#FBF7E8\], .bg-\[\#FCFAF2\] { background-color: var(--tone-warn-bg) !important; }
+.border-\[\#E8DCB8\]                                     { border-color: var(--tone-warn-line) !important; }
+.bg-\[\#FBF1EE\]                                         { background-color: var(--tone-alert-bg) !important; }
+.border-\[\#E4C9C2\]                                     { border-color: var(--tone-alert-line) !important; }
+.bg-\[\#EDF2F4\], .bg-\[\#E6EEF1\]                     { background-color: var(--tone-cool-bg) !important; }
+.border-\[\#CFDDE3\]                                     { border-color: var(--tone-cool-line) !important; }
+.text-\[\#8A6D1F\]                                       { color: var(--gold) !important; }
+.bg-\[\#3D4E41\]                                         { background-color: var(--paper-3) !important; }
+.bg-\[\#1C2421\]                                         { background-color: var(--paper-2) !important; }
+
+/* On paper the shim must not fight the print palette — everything goes white. */
+@media print {
+  [class*="bg-["] { background-color: #fff !important; }
+  [class*="border-["] { border-color: #bbb !important; }
+  .text-\[\#8A6D1F\] { color: #8a6d1f !important; }
+}
 
 /* ── Paper ────────────────────────────────────────────────────────────────
    Printing is a full participation path, not a fallback: it is how somebody
    with no smartphone, no signal in a field, or no interest in screens takes
    part. So the printed page is designed, not just the screen minus its chrome.
-   Everything that is navigation, assistance or decoration is removed; what is
-   left is the thing a person carries. */
+
+   The console does not print. On paper the palette inverts back to the field
+   notebook it always was — ink on white, no glow, no aurora — because a dark
+   interface printed is a black rectangle and a waste of somebody's toner. */
 @media print {
+  :root {
+    --paper: #fff; --paper-2: #fff; --paper-3: #fff;
+    --line: #999; --line-2: #ccc;
+    --ink: #111; --ink-2: #444; --ink-3: #666;
+    --moss: #2f5d4a; --gold: #8a6d1f; --clay: #8c3f1d; --water: #1f5468;
+    --on-accent: #fff; --halo: none; --glow: none; --glow-gold: none;
+  }
   @page { margin: 18mm 16mm; }
-  html, body, #root { height: auto; background: #fff; }
+  html, body, #root { height: auto; background: #fff !important; background-image: none !important; }
+  body { color: #111; }
   .no-print, .no-print * { display: none !important; }
   main { overflow: visible !important; }
-  * { box-shadow: none !important; }
+  * { box-shadow: none !important; text-shadow: none !important; }
   a[href]::after { content: ""; }          /* no URLs: none of them work off this wifi */
-  .print-card canvas { max-width: 100%; border: 1px solid #ddd; }
   /* Print one artefact, not the page. Set by app/src/print.js. */
   body.printing-card .print-target-sheet { display: none !important; }
   body.printing-sheet .print-target-card { display: none !important; }
+  .print-card canvas { max-width: 100%; border: 1px solid #ddd; }
   .sheet { break-inside: avoid; }
   .sheet-rule { border-bottom: 1px solid #999; height: 2.1rem; }
   .print-title { font-size: 15pt; font-weight: 600; }

@@ -168,7 +168,7 @@ function Reveal({ look, onPick, onBegin, onBack, blocking, onDismiss }) {
         )}
       </footer>
       <p className="px-5 pb-3 text-[10px] text-[var(--ink-3)]">
-        Nothing above has been saved. {look.place.geocoder ? `Place found via ${look.place.geocoder}.` : ''}
+        Nothing above has been saved. {look.place.geocoder_credit ?? (look.place.geocoder ? `Place found via ${look.place.geocoder}.` : '')}
       </p>
     </>
   );

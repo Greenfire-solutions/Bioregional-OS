@@ -6,17 +6,28 @@ import { Map } from 'react-map-gl/maplibre';
 import { Globe, Mountain, Layers, Loader2 } from 'lucide-react';
 
 // Carto's Positron — an open basemap style that needs no API key.
-const BASEMAP = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+// Dark Matter, not Positron. The Atlas is the hero of this interface and a
+// white rectangle sitting inside a dark console reads as a hole in it. Same
+// open CARTO tiles, same no-key requirement, and extruded ecoregions lit
+// against a dark ground look like what they are: land seen from above at night.
+const BASEMAP = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
+// The same four voices the rest of the interface uses, in the form deck.gl
+// wants. Luminous rather than muted, because on a dark ground a muted marker
+// is not a subtle marker, it is an invisible one.
 const SEVERITY_COLOR = {
-  Critical: [166, 62, 52], Watch: [212, 175, 55], Info: [62, 107, 124],
+  Critical: [245, 144, 106],   // clay
+  Watch:    [232, 195, 107],   // gold
+  Info:     [111, 200, 230],   // water
 };
 
 /** Stable colour per ecoregion name — the same region is the same colour every load. */
 function colorFor(name = '') {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return hsl(h % 360, 38 + (h % 20), 40 + ((h >> 3) % 16));
+  // Lifted in saturation and lightness for a dark basemap — the previous
+  // values were tuned against white and go to mud against black.
+  return hsl(h % 360, 46 + (h % 18), 46 + ((h >> 3) % 14));
 }
 function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -74,7 +85,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         id: 'earth',
         data: [[[-180, 90], [0, 90], [180, 90], [180, -90], [0, -90], [-180, -90]]],
         getPolygon: (d) => d, stroked: false, filled: true,
-        getFillColor: [28, 36, 33], _full3d: false,
+        getFillColor: [10, 20, 17], _full3d: false,
       }));
     }
 
@@ -164,7 +175,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         id: 'hubs', data: hubs.filter((h) => h.lat != null),
         pickable: true, radiusUnits: 'pixels', getRadius: 9,
         getPosition: (d) => [d.lng, d.lat],
-        getFillColor: [74, 93, 78, 255], getLineColor: [247, 245, 240], lineWidthMinPixels: 2, stroked: true,
+        getFillColor: [79, 214, 160, 255], getLineColor: [8, 15, 13], lineWidthMinPixels: 2, stroked: true,
         parameters: { depthTest: false },
         onHover: (i) => setHover(i.object ? { x: i.x, y: i.y, title: i.object.name, sub: i.object.type, kind: 'Hub' } : null),
         onClick: (i) => i.object && onSelect?.({ type: 'hub', item: i.object }),
@@ -176,7 +187,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         id: 'places', data: places.filter((p) => p.lat != null),
         pickable: true, radiusUnits: 'pixels', getRadius: 13,
         getPosition: (d) => [d.lng, d.lat],
-        getFillColor: [212, 175, 55, 255], getLineColor: [44, 42, 41], lineWidthMinPixels: 2.5, stroked: true,
+        getFillColor: [232, 195, 107, 255], getLineColor: [8, 15, 13], lineWidthMinPixels: 2.5, stroked: true,
         parameters: { depthTest: false },
         onHover: (i) => setHover(i.object ? {
           x: i.x, y: i.y, title: i.object.name,
@@ -189,9 +200,9 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         L.push(new TextLayer({
           id: 'place-labels', data: places.filter((p) => p.lat != null),
           getPosition: (d) => [d.lng, d.lat], getText: (d) => d.name,
-          getSize: 12, getColor: [44, 42, 41], getPixelOffset: [0, -20],
+          getSize: 12, getColor: [233, 243, 236], getPixelOffset: [0, -20],
           fontFamily: 'ui-sans-serif, system-ui', background: true,
-          getBackgroundColor: [247, 245, 240, 225], backgroundPadding: [5, 3],
+          getBackgroundColor: [8, 15, 13, 220], backgroundPadding: [6, 4],
           parameters: { depthTest: false },
         }));
       }

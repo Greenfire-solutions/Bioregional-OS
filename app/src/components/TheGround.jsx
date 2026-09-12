@@ -26,6 +26,16 @@ export default function TheGround({ place: given = null }) {
   // App.jsx entirely, and the request is local — the place row already carries
   // soil, elevation, land cover and floodplain from locate().
   const [place, setPlace] = useState(given);
+  // One local call. The registry is the only place a licence is declared, and
+  // the stored soil/elevation/cover facts come off the place row rather than a
+  // tool result, so they need it looked up rather than carried.
+  const [registry, setRegistry] = useState({});
+  useEffect(() => {
+    callTool('upstream_sources', {}).then((r) => {
+      const rows = (r?.result ?? r)?.sources ?? [];
+      setRegistry(Object.fromEntries(rows.map((x) => [x.id, { name: x.name, license: x.license }])));
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     if (given) { setPlace(given); return; }
     let alive = true;
@@ -50,7 +60,7 @@ export default function TheGround({ place: given = null }) {
         The ground here
       </H>
 
-      {hasGround ? <Stored place={place} /> : (
+      {hasGround ? <Stored place={place} registry={registry} /> : (
         <p className="text-xs text-[var(--ink-2)]">
           This place has not been located against the open datasets yet. It happens by itself within
           six hours of the OS running, or ask the assistant to <code>soil_at</code>.
@@ -78,7 +88,7 @@ export default function TheGround({ place: given = null }) {
 
 // ── stored, instant ───────────────────────────────────────────────────────
 
-function Stored({ place }) {
+function Stored({ place, registry }) {
   const soil = [
     place.soil_ph != null && `pH ${place.soil_ph}`,
     place.soil_organic_matter != null && `${place.soil_organic_matter}% organic matter`,
@@ -96,9 +106,9 @@ function Stored({ place }) {
         detail={place.in_floodplain ? 'Inside the 1%-annual-chance floodplain' : place.flood_zone ? 'Outside the special flood hazard area' : null}
         note={place.flood_zone && !place.in_floodplain
           ? 'No mapped hazard is not the same as no flood risk — much flooding happens outside the regulatory map.' : null} />
-      <div className="sm:col-span-3 text-[10px] text-[var(--ink-3)]">
-        {place.soil_source === 'usda-ssurgo' ? 'USDA SSURGO' : place.soil_source === 'isric-soilgrids' ? 'ISRIC SoilGrids (CC-BY-4.0)' : 'soil survey'}
-        {' · USGS 3DEP · USGS NLCD · FEMA NFHL — public domain except where noted'}
+      <div className="sm:col-span-3">
+        <Src registry={registry}
+          fallbackIds={[place.soil_source, 'usgs-3dep', 'mrlc-nlcd', 'fema-nfhl'].filter(Boolean)} />
       </div>
     </div>
   );
@@ -163,7 +173,28 @@ function Section({ place, tool, icon: Icon, label, render, className = '' }) {
 }
 
 const Lead = ({ children }) => <p className="text-xs text-[var(--ink-2)]">{children}</p>;
-const Src = ({ children }) => <p className="mt-2 text-[10px] text-[var(--ink-3)]">{children}</p>;
+
+/**
+ * Credit rendered from the registry, never retyped here.
+ *
+ * This component used to carry five hardcoded licence strings. The adapters
+ * point at `source_id` and the registry declares the licence once — so a
+ * retyped line meant the code could be right while the sentence on screen went
+ * stale, and the sentence is the half somebody quotes.
+ */
+const Src = ({ attribution, fallbackIds, registry, children }) => {
+  const rows = attribution?.length
+    ? attribution
+    : (fallbackIds ?? []).map((id) => registry?.[id]).filter(Boolean);
+  if (!rows.length) return children ? <p className="mt-2 text-[10px] text-[var(--ink-3)]">{children}</p> : null;
+  return (
+    <p className="mt-2 text-[10px] text-[var(--ink-3)]">
+      {rows.map((r, i) => (
+        <span key={i}>{i > 0 && ' · '}{r.source ?? r.name}<span className="opacity-70"> ({r.license})</span></span>
+      ))}
+    </p>
+  );
+};
 const Unavailable = ({ r }) => (
   <p className="text-[11px] text-[var(--ink-3)]">Not available — {r?.reason ?? 'no answer'}.</p>
 );
@@ -201,7 +232,7 @@ function Water({ r }) {
           a median across mg/L as N and as NO₃ is a number nobody measured.
         </p>
       )}
-      <Src>USGS NHDPlus HR · Water Quality Portal (USGS/EPA/NWQMC) — public domain</Src>
+      <Src attribution={r.attribution} />
     </div>
   );
 }
@@ -234,7 +265,7 @@ function Life({ r }) {
         <Lead>This ground sits inside {r.protection.unit ?? 'a protected area'}
           {r.protection.manager ? `, managed by ${r.protection.manager}` : ''}.</Lead>
       )}
-      <Src>iNaturalist · GBIF · PAD-US — CC0 to CC-BY, and public domain</Src>
+      <Src attribution={r.attribution} />
     </div>
   );
 }
@@ -263,7 +294,7 @@ function Community({ r }) {
         );
       })}
       <p className="text-[11px] text-[var(--ink-3)]">{r.caveat}</p>
-      <Src>{r.attribution}</Src>
+      <Src attribution={r.attribution} />
     </div>
   );
 }
@@ -306,7 +337,7 @@ function Culture({ r }) {
           <p className="mt-1.5 text-[10px] text-[var(--ink-3)]">{s.export_note}</p>
         </div>
       )}
-      <Src>Chronicling America (Library of Congress) · OpenAlex (CC0) · Wikipedia (CC-BY-SA) · OpenStreetMap (ODbL) · iNaturalist recordings, each under its own licence</Src>
+      <Src attribution={r.attribution}>Recordings each carry their own licence, shown per item above.</Src>
     </div>
   );
 }
@@ -321,7 +352,7 @@ function Growing({ r }) {
             : `${Math.abs(r.spring.anomaly_days)} days ${r.spring.anomaly_days < 0 ? 'early' : 'late'}`}
         </Pill>
       )}
-      <Src>USA National Phenology Network · USDA Plant Hardiness · NASA POWER — public domain</Src>
+      <Src attribution={r.attribution} />
     </div>
   );
 }
