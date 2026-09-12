@@ -219,7 +219,14 @@ async function paint(canvas, card, scale = 1) {
     blocks[blocks.length - 1].gap = 30;
   }
   blocks.push({ kind: 'foot', lines: ['Written from our own records. Nothing here is on the internet.'],
-                font: `400 19px ${STACK}`, lh: 26, gap: 0 });
+                font: `400 19px ${STACK}`, lh: 26, gap: 6 });
+  // The image travels exactly as far as the text does, so it carries the same
+  // credit. An artifact that drops attribution is already in someone else's
+  // hands by the time anybody checks.
+  if (card.credit) {
+    blocks.push({ kind: 'foot', lines: measure(card.credit, `400 17px ${STACK}`, inner),
+                  font: `400 17px ${STACK}`, lh: 23, gap: 0 });
+  }
 
   const H = PAD * 2 + blocks.reduce((h, b) => h + b.lines.length * b.lh + b.gap, 0);
 

@@ -42,6 +42,9 @@ export default function FieldSheet() {
   // From the NAME, not the id: the code is for a person matching paper to a
   // place, so it has to look like the place. An id gives you "0-0912".
   const code = sheetCode(place, today);
+  // A printed sheet leaves the building. If the line at the top came from an
+  // upstream that asks for credit, the paper carries it too.
+  const credit = ground?.credit ?? null;
 
   return (
     <div className="space-y-3">
@@ -107,6 +110,7 @@ export default function FieldSheet() {
             Quote <strong>{code}</strong> so it lands in the right place and on the right date.
             <br />
             Nothing here goes on the internet.
+            {credit && <><br /><span className="text-[9px]">{credit}</span></>}
           </p>
           {connect?.qr && (
             <img src={connect.qr} alt="Code to open the commons on a phone"

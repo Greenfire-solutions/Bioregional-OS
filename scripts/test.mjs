@@ -17,7 +17,7 @@ import * as bioEngine from '../engines/bioregional.mjs';
 import { skyToday, sunTimes, nextSolarEvent } from '../adapters/sky.mjs';
 import { groundToday, thisWeekInHistory, anchorPlace } from '../engines/ground.mjs';
 import { lookAround, beginHere } from '../engines/firstrun.mjs';
-import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend } from '../engines/dispatch.mjs';
+import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend, credits } from '../engines/dispatch.mjs';
 import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { humanObserved, humanObservedSql, atPlaceCentroidSql } from '../core/provenance.mjs';
@@ -1047,6 +1047,37 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
     (await import('../adapters/dossier.mjs')).CADENCE_DAYS.soil >
     (await import('../adapters/dossier.mjs')).CADENCE_DAYS.hazards * 100);
 }
+
+// ── Every artifact that leaves the machine carries its credit ─────────────
+// A screen missing a credit is a bug a reader could notice. An artifact — a card
+// pasted into a group chat, a printed sheet — is already in somebody else's
+// hands by the time anyone checks, and for a CC-BY source attribution is the
+// condition of being allowed to share it at all.
+//
+// The first version of these tests was written against the finished card and
+// ALL THREE SURVIVED being broken: one had an `|| sources.length === 0` escape
+// hatch that was true whenever the guard was removed, one used `.every()` on a
+// collection that went empty, and one asserted a local filter rather than the
+// function. All three varieties from ARCHITECTURE.md, in one sitting, by the
+// person who wrote them down. They now test the builder directly, with known
+// ids and no network, so each one can fail.
+check('a known source resolves to its attribution',
+  /NOAA/.test(credits(['nws']).credit ?? ''), JSON.stringify(credits(['nws'])));
+check('an unregistered source is NAMED in the credit, not dropped',
+  credits(['a-source-invented-tomorrow']).unresolved_sources.includes('a-source-invented-tomorrow')
+  && /invented-tomorrow/.test(credits(['a-source-invented-tomorrow']).credit ?? ''),
+  JSON.stringify(credits(['a-source-invented-tomorrow'])));
+check('a known and an unknown source both appear',
+  /NOAA/.test(credits(['nws', 'made-up']).credit ?? '')
+  && /made-up/.test(credits(['nws', 'made-up']).credit ?? ''));
+check('nothing to credit produces no credit line',
+  credits([]).credit === null && credits([]).sources.length === 0);
+// And the card actually carries whatever was built: if it resolved sources, the
+// text a person pastes has to contain the credit, not just the object.
+const credited = await cardForTheWeek('test');
+check('whatever the card resolved appears in the text somebody pastes',
+  credited.sources.length === 0 || credited.text.includes(credited.credit),
+  `${credited.sources.length} sources · credit in text: ${credited.credit ? credited.text.includes(credited.credit) : 'n/a'}`);
 
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };

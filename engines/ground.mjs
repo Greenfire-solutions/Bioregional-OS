@@ -15,6 +15,7 @@ import { skyToday } from '../adapters/sky.mjs';
 import { weatherNow } from '../adapters/weather.mjs';
 import { gageContext, waterSignals } from '../adapters/watershed.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
+import { attributionFor, source as registrySource } from '../adapters/registry.mjs';
 
 /**
  * The place the chapter looks out from: an explicit one, else its first located place.
@@ -144,6 +145,17 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
     sky, weather, water, heard,
     history: thisWeekInHistory(chapterId),
   };
+  // Resolved once here so every surface that prints the panel — the screen, the
+  // field sheet, anything later — credits the same sources the same way.
+  const ids = [weather?.source_id, water?.source_id, heard?.source_id].filter(Boolean);
+  const unknown = ids.filter((i) => !registrySource(i));
+  out.sources = attributionFor(ids.filter((i) => registrySource(i)));
+  out.unresolved_sources = unknown;
+  out.credit = [
+    out.sources.map((r) => r.attribution || r.source).filter(Boolean).join(' · '),
+    unknown.length ? `Also drawn from: ${unknown.join(', ')} — check their terms before sharing further.` : null,
+  ].filter(Boolean).join(' ') || null;
+
   out.headline = headline(out);
   return out;
 }

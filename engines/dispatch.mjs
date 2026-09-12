@@ -32,7 +32,7 @@ import { humanObservedSql } from '../core/provenance.mjs';
 import { groundToday } from './ground.mjs';
 import { whatMoved, intakePromise } from './loops.mjs';
 import { whatsNext } from './operator.mjs';
-import { attributionFor } from '../adapters/registry.mjs';
+import { attributionFor, source as registrySource } from '../adapters/registry.mjs';
 
 // Not a schema column: when a card was last produced is a fact about this
 // computer, not about the commons, and it must never travel to another chapter.
@@ -231,14 +231,16 @@ function outwardAsk(chapterId) {
  * none, which is the shape this project keeps finding: absence reading as a
  * clean result.
  */
-function credits(ids) {
+export function credits(ids) {
   if (!ids.length) return { credit: null, sources: [], unresolved_sources: [] };
-  const resolved = attributionFor(ids);
-  const known = new Set(resolved.map((r) => r.id ?? null).filter(Boolean));
-  const unresolved = known.size ? ids.filter((i) => !known.has(i)) : [];
-  const names = resolved.map((r) => r.attribution || r.source).filter(Boolean);
+  // Asked per id. attributionFor() returns no id on its rows, so deriving
+  // "unresolved" from its output gave an empty set every time — a guard that
+  // could never fire, which is worse than no guard because it looks like one.
+  const unresolved = ids.filter((i) => !registrySource(i));
+  const names = attributionFor(ids.filter((i) => registrySource(i)))
+    .map((r) => r.attribution || r.source).filter(Boolean);
   return {
-    sources: resolved,
+    sources: attributionFor(ids.filter((i) => registrySource(i))),
     unresolved_sources: unresolved,
     credit: [
       names.length ? names.join(' · ') : null,
