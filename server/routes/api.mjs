@@ -13,6 +13,7 @@ import * as heartbeat from '../../engines/heartbeat.mjs';
 import { whatsNext } from '../../engines/operator.mjs';
 import { humanObservedSql, atPlaceCentroidSql } from '../../core/provenance.mjs';
 import { DEMO_CHAPTER_ID } from '../../core/seedData.js';
+import { clearanceFor } from '../clearance.mjs';
 import { aiStream } from './ai.mjs';
 import { claudeStream, claudeAvailable } from './claude.mjs';
 import { readFileSync, existsSync } from 'node:fs';
@@ -25,6 +26,9 @@ export async function api(req, res, url) {
   const p = url.pathname.replace(/^\/api\/?/, '');
   const q = Object.fromEntries(url.searchParams);
   const chapterId = q.chapter || defaultChapter();
+  // Earned from the connection, never read from the request. See ../clearance.mjs —
+  // `?clearance=sacred` used to be honoured, which defeated the entire ladder.
+  const clearance = clearanceFor(req);
 
   if (req.method === 'POST' && p === 'ai') return aiStream(req, res);   // streams, handles its own response
   // Claude Code rather than the SDK: the steward's own subscription, no API key,
@@ -117,12 +121,12 @@ export async function api(req, res, url) {
       return await ecoregionPolygons({ west, south, east, north }, { level: q.level ?? 'l3' });
     }
     case 'layers/global': return globalEcoregions();
-    case 'layers/atlas':  return atlasGeoJSON(chapterId, { clearance: q.clearance ?? 'public' });
+    case 'layers/atlas':  return atlasGeoJSON(chapterId, { clearance });
 
     // ---- exports ----
     case 'export/valueflows': return exportLedger(chapterId);
-    case 'export/koi':        return koi.manifest(chapterId, { clearance: q.clearance ?? 'public' });
-    case 'export/geojson':    return atlasGeoJSON(chapterId, { clearance: q.clearance ?? 'members' });
+    case 'export/koi':        return koi.manifest(chapterId, { clearance });
+    case 'export/geojson':    return atlasGeoJSON(chapterId, { clearance });
 
     // ---- protocol text, served to the UI ----
     case 'protocol': {

@@ -2053,6 +2053,90 @@ check('a card from a real chapter does not cry wolf about being an example',
     `${enums.length} enum fields declared`);
 }
 
+// ── A clearance is a fact about the connection, never a field in the request ──
+// The sensitivity ladder was enforced correctly everywhere except where the
+// level was chosen. Three routes read it from the query string, so
+// `GET /api/export/koi?clearance=sacred` returned every restricted and sacred
+// object and the bundle route returned their contents. The gate function was
+// never wrong — it was asked to open by the person standing outside it. With
+// --share binding 0.0.0.0 and the connect QR handing out the LAN address, that
+// was reachable by anyone on the gathering wifi.
+{
+  const { clearanceFor, isLoopback, FULL, STRANGER } = await import('../server/clearance.mjs');
+
+  check('the machine the commons runs on is the steward',
+    isLoopback('127.0.0.1') && isLoopback('::1'));
+  // Node reports IPv4 loopback over a dual-stack socket in the mapped form.
+  // Missing it demotes the steward's OWN browser to a stranger, which fails in
+  // the safe direction and is therefore diagnosed as "the map is broken".
+  check('IPv4 loopback mapped into IPv6 is still loopback',
+    isLoopback('::ffff:127.0.0.1'));
+  check('all of 127.0.0.0/8 is loopback, not just .1', isLoopback('127.0.0.53'));
+  check('anybody else on the wifi is a stranger',
+    !isLoopback('192.168.1.44') && !isLoopback('10.0.0.7') && !isLoopback('::ffff:192.168.1.44'));
+  check('no socket is no proof', !isLoopback(null) && !isLoopback(''));
+
+  check('a stranger gets public, the steward gets everything',
+    clearanceFor({ socket: { remoteAddress: '192.168.1.44' } }) === STRANGER &&
+    clearanceFor({ socket: { remoteAddress: '127.0.0.1' } }) === FULL);
+
+  // The actual escalation, and the property that kills it: nothing the client
+  // sends may raise the level. A forwarding header is set by whoever is in
+  // front, and nothing is in front of this.
+  const asStranger = { socket: { remoteAddress: '192.168.1.44' },
+    headers: { 'x-forwarded-for': '127.0.0.1' }, query: { clearance: 'sacred' } };
+  check('a stranger cannot ask for sacred and be given it',
+    clearanceFor(asStranger) === STRANGER);
+  check('a stranger cannot claim to be the steward with a header',
+    clearanceFor(asStranger) === STRANGER);
+
+  // And the routes must no longer read one from the URL at all. A default of
+  // 'public' on the same line would still be a line that can be given a value.
+  const routes = readFileSync(new URL('../server/routes/api.mjs', import.meta.url), 'utf8');
+  check('no route takes its clearance from the query string',
+    !/clearance:\s*q\.clearance/.test(routes) && !/q\.clearance/.test(routes),
+    'a clearance read from the request is a clearance the requester chooses');
+
+  // The gate itself, proven end to end rather than assumed.
+  const koi = await import('../adapters/koi.mjs');
+  const sacred = await runTool('add_signal',
+    { chapter_id: 'test', title: 'A place that is not to be mapped', category: 'Cultural' });
+  dbRun(`UPDATE rids SET sensitivity='sacred' WHERE local_id=?`, sacred.id);
+  const rid = one(`SELECT rid FROM rids WHERE local_id=?`, sacred.id).rid;
+  check('at public clearance a sacred object is not in the manifest',
+    !koi.manifest('test', { clearance: STRANGER }).objects.some((o) => o.rid === rid));
+  check('at public clearance its contents are withheld',
+    koi.bundle(rid, { clearance: STRANGER })?.error === 'withheld');
+  check('at the steward\'s own keyboard it is there',
+    koi.manifest('test', { clearance: FULL }).objects.some((o) => o.rid === rid));
+  dbRun(`DELETE FROM signals WHERE id=?`, sacred.id);
+  dbRun(`DELETE FROM rids WHERE local_id=?`, sacred.id);
+}
+
+// ── A private need does not go to an index that cannot take it back ────────
+// `intake.private` is honoured in the listing route, in the tool that reads
+// intake, and in the sensitivity the row is filed at. It was not honoured in
+// the one function that publishes an intake item to a public global index —
+// which is unauthenticated, indexes geolocation, and whose removal is
+// best-effort because aggregators may already hold a copy. Federation is
+// one-way with respect to erasure.
+{
+  const { offerWantProfile } = await import('../adapters/murmurations.mjs');
+  const chapter = { name: 'Test', lat: 30.2, lng: -97.8, murmurations_primary_url: 'https://example.invalid' };
+
+  const open = offerWantProfile(
+    { body: 'We need a hand clearing the culvert.', kind: 'need', private: 0 }, chapter);
+  check('a need brought in the open can reach the network', open.title && !open.error);
+
+  const priv = offerWantProfile(
+    { body: 'I cannot afford the water bill and I am behind on rent.', kind: 'need', private: 1 },
+    chapter);
+  check('a private need is refused before it is turned into a profile',
+    priv.error === 'private', JSON.stringify(priv).slice(0, 120));
+  check('and the refusal carries none of what it was protecting',
+    !JSON.stringify(priv).includes('rent'), JSON.stringify(priv));
+}
+
 // ── A CHECK that was widened, on a commons that already existed ────────────
 // `federation_peers.kind` allowed only chapter/network/registry/index, and
 // discovery filed EVERY node the Murmurations index returned as a chapter. The

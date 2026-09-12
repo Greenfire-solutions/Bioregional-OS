@@ -28,8 +28,30 @@ export function chapterProfile(chapter, { primaryUrl } = {}) {
   };
 }
 
-/** An Offers & Wants profile from an intake item — how a need reaches the network. */
+/**
+ * An Offers & Wants profile from an intake item — how a need reaches the network.
+ *
+ * REFUSES a private item, and that refusal is the whole point of the function
+ * having one. `intake.private` is honoured in the listing route, in the tool
+ * that reads intake, and in the sensitivity it is filed at — and was not
+ * honoured HERE, in the one place that publishes to a world-readable global
+ * index that cannot be un-published. A need marked private is marked private
+ * because it carries somebody's personal circumstances.
+ *
+ * The index is real and it is open: the live Murmurations index serves
+ * thousands of profiles unauthenticated, with geolocation a first-class indexed
+ * field, and removal is best-effort because aggregators may already have copied
+ * the record. Federation is one-way with respect to erasure, which makes this
+ * the wrong gate to leave to the caller.
+ */
 export function offerWantProfile(item, chapter, { primaryUrl } = {}) {
+  if (item?.private) {
+    return {
+      error: 'private',
+      message: 'This need is marked private. It stays in the commons — it does not go to a ' +
+               'public index that cannot take it back.',
+    };
+  }
   return {
     linked_schemas: ['offers_wants_schema-v1.0.0'],
     title: item.body.slice(0, 100),

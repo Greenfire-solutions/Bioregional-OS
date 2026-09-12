@@ -23,6 +23,43 @@ const NO_BEAT = argv.includes('--no-heartbeat');
 const OPEN = argv.includes('--open');
 const PORT = Number(process.env.PORT || 4180);
 const HOST = SHARE ? '0.0.0.0' : '127.0.0.1';
+
+// ── Sharing is a decision about a room, so it is made out loud ────────────
+// --share binds 0.0.0.0 and the connect QR hands out http://<lan-ip>:4180, so
+// everyone on the gathering wifi can reach the OS. Requests from off this
+// machine are held at `public` (see routes/clearance.mjs) and cannot ask for
+// more, so nothing protected is served — but a steward about to project a QR
+// code in a room should be told what is in the commons before they do it,
+// rather than trusting that a gate they cannot see is holding.
+//
+// It refuses rather than warns, because a warning printed above a running
+// server is a warning nobody reads. --share-anyway is the same decision made
+// knowingly, which is the only version of it worth having.
+if (SHARE) {
+  const held = one(
+    `SELECT COUNT(*) n FROM rids WHERE sensitivity IN ('restricted','sacred')`)?.n ?? 0;
+  if (held && !argv.includes('--share-anyway')) {
+    const byKind = (await import('../core/db.mjs')).all(
+      `SELECT sensitivity, object_type, COUNT(*) n FROM rids
+        WHERE sensitivity IN ('restricted','sacred')
+        GROUP BY sensitivity, object_type ORDER BY sensitivity DESC, n DESC`);
+    console.log(`
+  Not sharing on the wifi.
+
+  This commons holds ${held} thing${held === 1 ? '' : 's'} above members-only:`);
+    for (const r of byKind) console.log(`    ${String(r.n).padStart(4)}  ${r.sensitivity}  ${r.object_type}`);
+    console.log(`
+  Phones on the wifi are only ever served public material — they cannot ask
+  for more. But sharing a commons that holds restricted or sacred records is
+  a decision for the people those records belong to, not for whoever is at
+  the keyboard.
+
+  If they have said yes:   npm run os -- --share --share-anyway
+  To share nothing:        npm run os
+`);
+    process.exit(2);
+  }
+}
 const APP_DIST = join(ROOT, 'app', 'dist');
 
 const MIME = {
