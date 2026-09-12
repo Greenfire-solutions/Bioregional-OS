@@ -1122,6 +1122,81 @@ check('the intake promise states itself in words a person can read',
     `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak — ties resolve arbitrarily`);
 }
 
+// ── A field the form cannot render is a field that arrives wrong ──────────
+// The generated form renders anything that is not a boolean, a number or an
+// enum as a text box. A field declared `array` therefore came back as a STRING,
+// and nothing errored: a string has a .length, so every guard downstream passed
+// it through and it surfaced only as a list that would not render.
+{
+  const seasonChapter = 'list-coercion';
+  await runTool('create_chapter', {
+    id: seasonChapter, name: 'List Coercion', scale: 'site',
+    represents: 'itself', does_not_represent: 'anyone else', lat: 30.2, lng: -97.8,
+  });
+
+  // Exactly what a person typing into the generated form sends.
+  const typed = await runTool('open_season', {
+    chapter_id: seasonChapter, name: 'Autumn 2026',
+    priorities: 'fix the culvert, plant the bank',
+  });
+  check('a list typed as a sentence arrives as a list',
+    Array.isArray(typed.priorities) && typed.priorities.length === 2,
+    JSON.stringify(typed.priorities));
+  check('and is split on the separators a person actually types',
+    typed.priorities[0] === 'fix the culvert' && typed.priorities[1] === 'plant the bank',
+    JSON.stringify(typed.priorities));
+
+  // Corrected in runTool rather than in the form, because the form is not the
+  // only caller that gets this wrong — MCP clients enforce a schema's types no
+  // more than they enforce `required`.
+  const viaMcp = await runTool('open_season',
+    { chapter_id: 'no-such-chapter-for-lists', name: 'x', priorities: 'a\nb\nc' });
+  check('an assistant sending a string into a list field is corrected too',
+    viaMcp.error ? true : Array.isArray(viaMcp.priorities));
+
+  // Anything structured is left alone. A wrong guess about shape is worse than
+  // a clean refusal.
+  const already = await runTool('open_season', {
+    chapter_id: seasonChapter, name: 'ignored while one is open', priorities: ['already', 'a list'],
+  });
+  check('a real list is not re-split or otherwise improved',
+    already.error === 'season_already_open');
+
+  // The same field was parsed for closed seasons and returned raw for the open
+  // one, so it was an array in one half of the answer and a JSON string in the
+  // other — and the open season is the half anything would try to render.
+  const listed = await runTool('seasons', { chapter_id: seasonChapter });
+  check('the open season reports its priorities the same way a closed one does',
+    Array.isArray(listed.open?.priorities),
+    JSON.stringify(listed.open?.priorities));
+}
+
+// ── An error code a caller can branch on ──────────────────────────────────
+// Every tool answers a refusal with a short machine-readable code plus a
+// sentence. import_field_data put the whole sentence IN the code, so an AI
+// caller had nothing to switch on and a person read the same text twice.
+{
+  const missing = await runTool('import_field_data',
+    { chapter_id: 'test', path: '/tmp/definitely-not-here-8f3a.geojson' });
+  check('a path that does not exist refuses with a code, not a paragraph',
+    missing.error === 'file_not_found' && missing.error.length < 30, JSON.stringify(missing.error));
+  check('and the sentence explains what to do instead',
+    /full path/.test(missing.message ?? ''), missing.message);
+
+  // Two genuinely different problems with different fixes — a path that does
+  // not exist is a typo, a file that will not parse is the wrong export — so
+  // they must not collapse into one string.
+  const { writeFileSync: wf } = await import('node:fs');
+  const bad = `${process.env.BROS_DB}.notgeojson`;
+  wf(bad, 'this is not geojson at all');
+  const unreadable = await runTool('import_field_data', { chapter_id: 'test', path: bad });
+  check('a file that is not GeoJSON refuses differently from one that is absent',
+    unreadable.error === 'unreadable_geojson' && unreadable.error !== missing.error,
+    JSON.stringify(unreadable.error));
+  check('and says which exports are known to work',
+    /CoMapeo|QGIS/.test(unreadable.message ?? ''), unreadable.message);
+}
+
 // ── The assistant knows where it is standing ──────────────────────────────
 // The prompt used to carry one fact about the place — the chapter's name — and
 // several hundred words about the protocol. So the one surface that people

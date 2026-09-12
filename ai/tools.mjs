@@ -792,7 +792,27 @@ export const TOOLS = [
       const id = ch(i);
       let drafts;
       try { drafts = signalsFromGeoJSON(i.path, { chapterId: id, placeId: i.place_id ?? null }); }
-      catch (e) { return { error: `could not read ${i.path}: ${e.message}` }; }
+      catch (e) {
+        // A code the caller can switch on, not prose in the code field. Every
+        // other tool here answers with a short machine-readable error plus a
+        // sentence; this one put the whole sentence IN the code, so an AI
+        // caller had nothing to branch on and a human got the same text twice.
+        //
+        // The two cases are also genuinely different problems with different
+        // fixes — a path that does not exist is a typo, a file that will not
+        // parse is the wrong export — and collapsing them into one string made
+        // the caller guess which it was.
+        const missing = /ENOENT|no such file/i.test(e.message);
+        return {
+          error: missing ? 'file_not_found' : 'unreadable_geojson',
+          message: missing
+            ? `No file at ${i.path}. Give the full path to a .geojson file on this computer — ` +
+              'nothing is uploaded, it is read from disk where it already is.'
+            : `${i.path} could not be read as GeoJSON: ${e.message}. CoMapeo, Mapeo and QGIS ` +
+              'all export a FeatureCollection; a shapefile or a .zip has to be converted first.',
+          path: i.path,
+        };
+      }
       if (i.dry_run) return { would_import: drafts.length, preview: drafts.slice(0, 10) };
       let n = 0;
       for (const d of drafts) {
@@ -1612,6 +1632,29 @@ export async function runTool(name, input = {}, { via = 'ui' } = {}) {
   // first responder. Add the next rule here; nothing else has to change.
   const props = t.input_schema?.properties ?? {};
   const given = input ?? {};
+
+  // ── Coerce a list that arrived as a line of text ─────────────────────────
+  // The generated form renders anything that is not a boolean, a number or an
+  // enum as a text box, so a field declared `array` came back as a string: type
+  // "fix the culvert, plant the bank" into open_season's priorities and the
+  // season stored the sentence instead of two priorities. Nothing errored —
+  // a string has a .length, so every guard downstream passed it through, and it
+  // only surfaced as a list that would not render.
+  //
+  // Corrected here rather than in the form, because the form is not the only
+  // caller that gets this wrong: JSON Schema types are not enforced by MCP
+  // clients any more than `required` is, so an assistant can send a string into
+  // an array field just as easily as a person can.
+  //
+  // Only for arrays OF STRINGS, and only splitting on newlines, commas and
+  // semicolons. Anything structured is left exactly as it arrived rather than
+  // guessed at — a wrong guess about shape is worse than a clean refusal.
+  for (const [k, spec] of Object.entries(props)) {
+    if (spec?.type !== 'array' || spec?.items?.type !== 'string') continue;
+    if (typeof given[k] !== 'string') continue;
+    given[k] = given[k].split(/[\n,;]+/).map((v) => v.trim()).filter(Boolean);
+  }
+
   const RULES = [
     {
       error: 'not_allowed_value',

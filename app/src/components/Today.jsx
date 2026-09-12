@@ -186,5 +186,6 @@ const LABELS = {
   clear_red_flag: 'Resolve flag', decide_council_item: 'Decide', council_agenda: 'Open agenda',
   publish_learning: 'Write it up', add_gathering: 'Add care',
   carrying: 'Who is carrying it', place_attention: 'Where nobody has been',
+  add_place: 'Add the place', approve_dataset: 'Read the licence', open_season: 'Open the season',
 };
 const label = (tool) => LABELS[tool] ?? tool.replace(/_/g, ' ');

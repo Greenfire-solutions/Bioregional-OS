@@ -293,9 +293,14 @@ export function seasons(chapterId) {
             unintended_effects, whose_experience_is_missing, stops, continues, changes, travels,
             priorities
        FROM seasons WHERE chapter_id = ? ORDER BY opened_at DESC`, chapterId);
+  // Parsed on BOTH branches. It was parsed for closed seasons and returned raw
+  // for the open one, so the same field was an array in one half of the answer
+  // and a JSON string in the other — and the open season is the half anything
+  // would actually try to render.
+  const withPriorities = (r) => ({ ...r, priorities: parse(r.priorities) });
   return {
-    open: rows.find((r) => !r.closed_at) ?? null,
-    closed: rows.filter((r) => r.closed_at).map((r) => ({ ...r, priorities: parse(r.priorities) })),
+    open: rows.filter((r) => !r.closed_at).map(withPriorities)[0] ?? null,
+    closed: rows.filter((r) => r.closed_at).map(withPriorities),
     total: rows.length,
     sentence: !rows.length
       ? 'No season has been opened yet. The twelve-stage loop is seasonal — without one it ' +

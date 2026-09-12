@@ -35,6 +35,10 @@ export default function ToolForm({ tool, prefill = {}, onDone, onClose }) {
         name, def, required: required.has(name),
         kind: def.enum ? 'enum' : def.type === 'boolean' ? 'bool'
             : def.type === 'number' ? 'number'
+            // A list gets a box that looks like a list. Without this it fell
+            // through to a one-line text input and a person typed a sentence
+            // into a field the tool reads as an array.
+            : def.type === 'array' ? 'list'
             : (def.description ?? '').length > 44 || /body|description|detail|report|evidence|summary|notes|response|purpose|statement|condition|experiment|trigger|method|plan/.test(name)
               ? 'text' : 'line',
       }))
@@ -165,6 +169,17 @@ function Field({ field, value, onChange }) {
       {kind === 'number' && (
         <input type="number" step="any" className={base} value={value ?? ''}
                onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))} />
+      )}
+      {kind === 'list' && (
+        <>
+          <textarea rows={3} className={`${base} resize-y`}
+                    placeholder={'One per line'}
+                    value={Array.isArray(value) ? value.join('\n') : (value ?? '')}
+                    onChange={(e) => onChange(e.target.value)} />
+          <span className="mt-0.5 block text-[10px] text-[var(--ink-3)]">
+            One per line. Commas and semicolons work too.
+          </span>
+        </>
       )}
       {kind === 'text' && (
         <textarea rows={3} className={`${base} resize-y`} value={value ?? ''}

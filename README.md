@@ -200,6 +200,7 @@ clean copy to hand another community.
 | `npm run data -- --status` | What is downloaded, what has gone stale |
 | `npm run seed -- --reset` | Start over with the demonstration commons (fictional) |
 | `npm test` | The protocol test suite — proves the gates actually refuse |
+| `npm run prove` | Presses every button — runs every tool and every route against a throwaway commons, and tells a clean refusal from a crash |
 
 ---
 
