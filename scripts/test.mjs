@@ -3693,6 +3693,53 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('settledIn writes nothing', one('SELECT COUNT(*) n FROM signals WHERE chapter_id=?', C).n === SETTLING_OBSERVATIONS * 2);
 }
 
+// ── What a button on a list actually does ─────────────────────────────────
+//
+// There were two lists of "needs no form" and they had drifted: the board knew
+// six tools, Today knew three. So `carrying` ran instantly on one screen and,
+// on the other, opened a modal titled `carrying` with NO FIELDS and a Save
+// button, because that tool's schema has no properties. Same item, same action,
+// two behaviours depending on where you were standing.
+{
+  const { readFileSync } = await import('node:fs');
+  const actions = await import('../app/src/actions.js');
+  const { TOOLS } = await import('../ai/tools.mjs');
+  const names = new Set(TOOLS.map((t) => t.name));
+
+  check('every tool that runs without a form is a tool that exists',
+    [...actions.DIRECT].every((t) => names.has(t)),
+    [...actions.DIRECT].filter((t) => !names.has(t)).join(', '));
+  check('and so is every tool that opens a screen instead',
+    [...actions.GO_TO.keys()].every((t) => names.has(t)),
+    [...actions.GO_TO.keys()].filter((t) => !names.has(t)).join(', '));
+
+  // A tool cannot be both, and the order in actionKind() would silently pick
+  // one — the same shape as a tool listed in two clearance tiers.
+  const both = [...actions.GO_TO.keys()].filter((t) => actions.DIRECT.has(t));
+  check('no tool is both a direct run and a screen', both.length === 0, both.join(', '));
+
+  // The tabs GO_TO names have to be real, or the button navigates nowhere.
+  const app = readFileSync('app/src/App.jsx', 'utf8');
+  const missing = [...actions.GO_TO.values()].filter((tab) => !app.includes(`id: '${tab}'`));
+  check('and every screen it sends somebody to is a tab that exists',
+    missing.length === 0, missing.join(', '));
+
+  // The one that started it: the round asks for the card, so pressing it has to
+  // reach the card SCREEN — the one with copy-as-text, print, and the button
+  // that marks it sent. A generated form asked "how far back does this week
+  // reach", recorded nothing, and left the item to be asked again next week.
+  check('asking for the card opens the card, not a form about the card',
+    actions.actionKind('card_for_the_week') === 'go'
+      && actions.goesTo('card_for_the_week') === 'card');
+
+  // Both screens consult the same rules. The point of the file.
+  for (const f of ['app/src/components/Commons.jsx', 'app/src/components/Today.jsx']) {
+    const src = readFileSync(f, 'utf8');
+    check(`${f.split('/').pop()} reads the shared rules rather than its own copy`,
+      src.includes("from '../actions.js'") && !/const DIRECT = new Set/.test(src));
+  }
+}
+
 // ── Reading a stamp back ──────────────────────────────────────────────────
 //
 // `String.replace(' ', 'T')` replaces the FIRST space only. Eleven copies of

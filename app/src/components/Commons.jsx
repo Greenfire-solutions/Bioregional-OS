@@ -7,6 +7,7 @@ import { callTool } from '../api.js';
 import ToolForm from './ToolForm.jsx';
 import GroundForAnyone from './GroundForAnyone.jsx';
 import { verb } from '../verbs.js';
+import { actionKind, goesTo } from '../actions.js';
 
 /**
  * The board.
@@ -52,15 +53,12 @@ export default function Commons({ onGoTo, onChanged }) {
   }
   useEffect(() => { load(); }, []);
 
-  // Some actions need nothing from a person. Opening a form to show them an
-  // empty form is a step that exists only because the interface could not tell.
-  const DIRECT = new Set(['locate_place', 'ingest_water_data', 'council_agenda',
-    'carrying', 'place_attention', 'refresh_library']);
-
   async function act(item, key) {
     const a = item.action;
     if (!a) return;
-    if (DIRECT.has(a.tool)) {
+    // Some actions are a SCREEN, not a form. See app/src/actions.js.
+    if (actionKind(a.tool) === 'go') { onGoTo?.(goesTo(a.tool)); return; }
+    if (actionKind(a.tool) === 'run') {
       setBusy((s) => ({ ...s, [key]: true }));
       await callTool(a.tool, a.input ?? {});
       setBusy((s) => ({ ...s, [key]: false }));

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { actionKind, goesTo } from '../actions.js';
 import {
   AlertOctagon, Clock, CircleDashed, Circle, ArrowRight, Loader2, CheckCircle2, RotateCw,
 } from 'lucide-react';
@@ -20,7 +21,7 @@ const KIND = {
   open:     { label: 'Waiting',    icon: Circle,        cls: 'text-[var(--ink-3)]', bg: 'bg-[var(--paper-2)] border-[var(--line)]' },
 };
 
-export default function Today({ onChanged }) {
+export default function Today({ onChanged, onGoTo }) {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(null);
@@ -33,13 +34,13 @@ export default function Today({ onChanged }) {
   }
   useEffect(() => { load(); }, []);
 
-  /** Some actions need no human input — run them directly rather than showing an empty form. */
-  const DIRECT = new Set(['locate_place', 'ingest_water_data', 'council_agenda']);
-
   async function act(item, idx) {
     const a = item.action;
     if (!a) return;
-    if (DIRECT.has(a.tool)) {
+    // Same rules as the board. This file kept its own shorter list, so the same
+    // item behaved differently depending on which screen you were standing on.
+    if (actionKind(a.tool) === 'go') { onGoTo?.(goesTo(a.tool)); return; }
+    if (actionKind(a.tool) === 'run') {
       setRan((s) => ({ ...s, [idx]: 'running' }));
       const out = await callTool(a.tool, a.input ?? {});
       setRan((s) => ({ ...s, [idx]: out?.error ? `error: ${out.message || out.error}` : 'done' }));

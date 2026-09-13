@@ -324,7 +324,7 @@ export default function App() {
             <div className="h-full overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl">
                 {tab === 'home' && <Commons onGoTo={setTab} onChanged={load} />}
-                {tab === 'today' && <Today onChanged={load} />}
+                {tab === 'today' && <Today onChanged={load} onGoTo={setTab} />}
                 {tab === 'vitals' && <Vitals />}
                 {tab === 'season' && <Season />}
                 {tab === 'devices' && <Devices />}
