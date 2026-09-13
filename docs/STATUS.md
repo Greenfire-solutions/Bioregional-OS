@@ -13,7 +13,7 @@ aspiration; if it says built, `npm test` covers it.
 ## How to check the state yourself, in four commands
 
 ```
-npm test          # 509 protocol tests — proves the gates REFUSE
+npm test          # the protocol suite — proves the gates REFUSE
 npm run prove     # presses every button — proves the app RESPONDS
 npm run doctor    # is this machine set up, are the upstreams answering
 npm run data -- --status   # how much of the ecoregion library is downloaded
@@ -92,9 +92,11 @@ the United States resolves a place and finds no ecoregion polygon. The intended
 source is RESOLVE 2017 (CC-BY) — One Earth is CC-BY-**NC** and must not be
 redistributed. See `docs/DATA_SOURCES.md`.
 
-**2. The region library is ~509 of 967 downloaded.** Regenerable and
-gitignored. `npm run data -- --all` resumes and skips what is current. An
-uncompiled region still shows its identity and a download button.
+**2. The region library is fully downloaded for the United States.**
+Regenerable and gitignored, so a fresh clone starts empty: `npm run data -- --all`
+compiles it and skips what is current. An uncompiled region still shows its
+identity and a download button. Ask `npm run data -- --status` for the live
+figure rather than reading one here.
 
 **3. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
 carries the whole decision. The recommendation is **inbound only** — a

@@ -2565,7 +2565,15 @@ check('whatever the card resolved appears in the text somebody pastes',
   for (const f of files) {
     let text;
     try { text = readFileSync(f, 'utf8'); } catch { continue; }
-    for (const m of text.matchAll(/\b(\d{2,4})\s+(tools|sources|tests)\b/g)) {
+    // An adjective between the number and the noun was enough to walk straight
+    // through the first version of this: "509 protocol tests" sat in STATUS.md
+    // for a day while the suite, which forbids stating a test count at all,
+    // stayed green. The filler words are listed rather than matched as \w+,
+    // because a general gap also swallows "12 of the tools", which is not a
+    // count claim and would be reported as drift every run.
+    const FILLER = '(?:(?:protocol|passing|failing|new|total|distinct|separate|live|upstream|open|data)\\s+){0,2}';
+    const countClaim = new RegExp(`\\b(\\d{2,4})\\s+${FILLER}(tools|sources|tests)\\b`, 'g');
+    for (const m of text.matchAll(countClaim)) {
       if (m[2] === 'tests') unverifiable.push(`${f}: "${m[1]} tests"`);
       else if (Number(m[1]) !== truth[m[2]]) drifted.push(`${f}: "${m[1]} ${m[2]}" is now ${truth[m[2]]}`);
     }

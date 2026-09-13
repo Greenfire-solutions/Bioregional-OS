@@ -374,7 +374,7 @@ into the registry, not left to whichever adapter was written first.
   than rendering as "no alerts".
 - New `places` columns with an idempotent migration in `db.mjs`; a
   `watch_hazards` heartbeat task; `soil_at`, `life_here`, `hazards_at` and
-  `upstream_sources` in the one tool registry. 16 new protocol tests; 56 pass.
+  `upstream_sources` in the one tool registry, with protocol tests to match.
 
 Atlas coverage went from 2/12 to **6/12**, and 12 of the 17 declared sources
 answered live on the first run.
