@@ -30,7 +30,7 @@ import { whatsNext } from './operator.mjs';
 import { carrying } from './attention.mjs';
 import { whoCouldHelp } from './matching.mjs';
 import { priorities } from './quest.mjs';
-import { myRegions, brief as regionBrief } from './library.mjs';
+import { myRegions, homeRegion, brief as regionBrief } from './library.mjs';
 import { settledIn } from './firstrun.mjs';
 
 export function board(chapterId, { actions = 5, projects = 8 } = {}) {
@@ -45,8 +45,13 @@ export function board(chapterId, { actions = 5, projects = 8 } = {}) {
   const chapter = one('SELECT * FROM chapters WHERE id=?', chapterId);
   const land = safely(() => landSeatBrief(chapterId)) ?? {};
   const regions = safely(() => myRegions(chapterId)) ?? {};
-  const l4 = regions.level4?.[0] ?? null;
-  const region = l4 ? safely(() => regionBrief(l4.code)) : null;
+  // myRegions() is the DOWNLOAD list — every region whose bounding box overlaps
+  // this chapter. Taking [0] from it made the header name the wrong ecoregion
+  // for essentially every chapter that is not the demo. homeRegion() asks the
+  // question the header is actually asking, and answers it from the EPA polygon
+  // already stored on the place row.
+  const l4 = safely(() => homeRegion(chapterId)) ?? null;
+  const region = l4?.code ? safely(() => regionBrief(l4.code)) : null;
 
   // ── What can I do ───────────────────────────────────────────────────────
   // The operator already ranks everything by what blocks other work. The board
@@ -129,7 +134,9 @@ export function board(chapterId, { actions = 5, projects = 8 } = {}) {
       deputy: chapter?.deputy ?? null,
       place: land.place?.name ?? null,
       places: all('SELECT id, name, lat, lng FROM places WHERE chapter_id=?', chapterId),
-      ecoregion: l4 ? { code: l4.code, name: l4.name, biome: l4.biome, level3: l4.level3_name } : null,
+      ecoregion: l4
+        ? { code: l4.code, name: l4.name, biome: l4.biome, level3: l4.level3_name, basis: l4.basis }
+        : null,
       watershed: land.watershed ?? null,
       region_downloaded: !!region?.downloaded,
       now: {

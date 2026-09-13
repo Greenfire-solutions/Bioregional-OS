@@ -2409,6 +2409,47 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
   check('a point resolves to candidate ecoregions offline, without claiming certainty',
     lib.regionsAt(30.26, -97.79).level4.some((r) => r.code === '30c'));
 
+  // ── Where am I, versus what should I download ──────────────────────────
+  //
+  // These are different questions and one function was answering both. The
+  // board took `myRegions(...).level4[0]` — the arbitrary first BOUNDING-BOX
+  // hit — and named it as the chapter's ecoregion. Measured on real points, it
+  // was wrong for Bend, Asheville and Missoula and right for Barton Creek,
+  // which is the seeded demo and the only place anybody looked.
+  //
+  // The polygon answer has always been on the place row. These assert that it
+  // is what wins, that a bbox-only answer is LABELLED as a guess rather than
+  // presented as a fact, and — the one that actually catches a regression —
+  // that the header and the ground line cannot disagree.
+  {
+    const bendBbox = lib.regionsAt(44.0582, -121.3153).level4;
+    check('a bounding box at Bend, Oregon offers several ecoregions, first of which is wrong',
+      bendBbox.length > 1 && bendBbox[0].code !== '9d', bendBbox.map((r) => r.code).join(','));
+
+    // Its own chapter, so this does not depend on which place the test chapter
+    // happens to carry or in what order — homeRegion picks one located place,
+    // and borrowing a populated chapter would make the assertion about rowid
+    // order rather than about the polygon.
+    dbRun(`INSERT INTO chapters (id, name, scale, steward) VALUES ('bend','Bend','watershed','T')`);
+    dbRun(`INSERT INTO places (id, chapter_id, name, lat, lng, ecoregion_name, bioregion_name)
+           VALUES ('plac-bend','bend','Bend test',44.0582,-121.3153,
+                   'Ponderosa Pine/Bitterbrush Woodland','Eastern Cascades Slopes and Foothills')`);
+    const home = lib.homeRegion('bend');
+    check('the polygon answer on the place row decides, not the first bbox hit',
+      home?.code === '9d' && home.basis === 'polygon', JSON.stringify(home?.code));
+
+    dbRun(`UPDATE places SET ecoregion_name=NULL WHERE id='plac-bend'`);
+    const guessed = lib.homeRegion('bend');
+    check('a place that was never located is answered with a guess, and says so',
+      guessed?.basis === 'guess', JSON.stringify(guessed?.basis));
+    // The property that matters: a guess must never be indistinguishable from a
+    // resolved answer, because the board prints one and means the other.
+    check('and a guess is never labelled as a polygon answer',
+      guessed?.basis !== 'polygon');
+    dbRun(`DELETE FROM places WHERE id='plac-bend'`);
+    dbRun(`DELETE FROM chapters WHERE id='bend'`);
+  }
+
   check('adjacency is computed from the shipped index, offline',
     lib.neighbours('30c').some((n) => n.code === '30a'));
 
