@@ -102,9 +102,18 @@ export function theRound(chapterId, { size = 5 } = {}) {
   if (!r) {
     const picked = live.slice(0, size).map(itemKey);
     const id = newId('rnd');
-    run(`INSERT INTO rounds (id, chapter_id, picked) VALUES (?,?,?)`,
-      id, chapterId, JSON.stringify(picked));
-    r = one('SELECT * FROM rounds WHERE id=?', id);
+    try {
+      run(`INSERT INTO rounds (id, chapter_id, picked) VALUES (?,?,?)`,
+        id, chapterId, JSON.stringify(picked));
+      r = one('SELECT * FROM rounds WHERE id=?', id);
+    } catch {
+      // Somebody else opened this week's round between the read and the write.
+      // A partial unique index makes that a refusal rather than a second open
+      // round, and the right answer is simply theirs — a round is the
+      // chapter's week, not this caller's.
+      r = openRound(chapterId);
+      if (!r) return { error: 'could_not_open_round' };
+    }
   }
 
   const picked = parseList(r.picked);

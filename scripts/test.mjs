@@ -3794,6 +3794,40 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('a round holds keys, not a copy of what the commons said that day',
     !/ cannot be built | brought a need /.test(stored?.picked ?? ''), stored?.picked?.slice(0, 80));
 
+  // ── One open round per chapter, enforced by the database ─────────────
+  // `theRound()` reads for an open round and inserts one if there is none, and
+  // those are two statements. Four processes asked at once on a throwaway and
+  // two rounds came back open — one of them invisible from then on, holding
+  // items that would never clear. Structurally impossible beats unlikely.
+  {
+    R.theRound(C);
+    let refused = false;
+    try {
+      dbRun(`INSERT INTO rounds (id, chapter_id, picked) VALUES ('rnd-second','test','[]')`);
+    } catch { refused = true; }
+    check('a second open round cannot exist for one chapter',
+      refused, 'the insert was allowed');
+    check('and closing the first makes room for the next week',
+      (() => {
+        dbRun(`UPDATE rounds SET closed_at=datetime('now') WHERE chapter_id='test' AND closed_at IS NULL`);
+        try {
+          dbRun(`INSERT INTO rounds (id, chapter_id, picked) VALUES ('rnd-next','test','[]')`);
+          return true;
+        } catch { return false; }
+      })());
+    dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+  }
+
+  // A writer that meets another writer waits instead of throwing. `busy_timeout`
+  // defaults to 0 and, unlike journal_mode, does not persist in the file — so
+  // the launcher's heartbeat and any command a person types were one collision
+  // away from SQLite's vocabulary appearing in a terminal.
+  check('a busy database is waited for, not given up on',
+    (all('PRAGMA busy_timeout')[0]?.timeout ?? 0) >= 1000,
+    JSON.stringify(all('PRAGMA busy_timeout')[0]));
+  check('and the journal is still WAL, which is what backup depends on',
+    String(all('PRAGMA journal_mode')[0]?.journal_mode).toLowerCase() === 'wal');
+
   dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
 }
 

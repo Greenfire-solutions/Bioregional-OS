@@ -25,6 +25,20 @@ export function db() {
   _path = dbPath();
   mkdirSync(dirname(_path), { recursive: true });
   _db = new DatabaseSync(_path);
+  // Wait for a busy database rather than failing instantly.
+  //
+  // `busy_timeout` defaults to 0 and does not persist in the file the way
+  // `journal_mode=wal` does, so every writer that met another writer got
+  // `database is locked` immediately. That is not hypothetical here: the
+  // launcher leaves a server running with a heartbeat writing to this file, and
+  // any command a person types — a backup, a region download, a tool call — is
+  // a second process. Found by racing six processes at the round; two of them
+  // simply threw.
+  //
+  // Five seconds, not because contention lasts that long but because the loser
+  // of a race should retry rather than surface SQLite's vocabulary to somebody
+  // who ran `npm run data`.
+  _db.exec('PRAGMA busy_timeout = 5000');
   _db.exec(readFileSync(join(HERE, 'schema.sql'), 'utf8'));
   migrate(_db);
   return _db;
@@ -133,8 +147,41 @@ CREATE TABLE IF NOT EXISTS federation_peers (
   notes       TEXT
 )`;
 
+/**
+ * One open round per chapter, enforced by the database.
+ *
+ * `theRound()` reads for an open round and inserts one if there is none, and
+ * those are two statements. Four processes asked at once on a throwaway commons
+ * and two rounds came back open — one of them invisible from then on, holding
+ * items that would never clear. Structurally impossible beats unlikely, which
+ * is the same argument the sync design makes for one writer per file.
+ *
+ * NOT in schema.sql, deliberately. schema.sql is executed on every open, before
+ * this runs, so a `CREATE UNIQUE INDEX` there would THROW on any database that
+ * already has two open rounds — and the only databases that have two are the
+ * ones that hit the bug. A migration that refuses to open the commons it was
+ * written to repair is worse than the bug.
+ */
+function oneOpenRoundPerChapter(d) {
+  try { d.prepare('SELECT 1 FROM rounds LIMIT 1').get(); } catch { return; }  // table not created yet
+  // Close the losers first — oldest kept, because it is the one whose keys were
+  // shown to somebody. rowid breaks the tie, since opened_at is a DATE and two
+  // rounds opened in the same second sort arbitrarily without it.
+  d.exec(`UPDATE rounds SET closed_at = datetime('now')
+           WHERE closed_at IS NULL AND id NOT IN (
+             SELECT id FROM (
+               SELECT id, ROW_NUMBER() OVER (
+                 PARTITION BY chapter_id ORDER BY opened_at ASC, rowid ASC) AS n
+               FROM rounds WHERE closed_at IS NULL
+             ) WHERE n = 1
+           )`);
+  d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS rounds_one_open
+            ON rounds(chapter_id) WHERE closed_at IS NULL`);
+}
+
 function migrate(d) {
   widenPeerKind(d);
+  oneOpenRoundPerChapter(d);
   for (const [table, columns] of Object.entries(ADDED_COLUMNS)) {
     let existing;
     try { existing = new Set(d.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)); }
