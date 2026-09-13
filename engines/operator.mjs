@@ -6,15 +6,29 @@
 // Nothing here invents priorities — each item cites the protocol rule it comes
 // from, so a steward can argue with it.
 import { all, one } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { carrying, placeAttention } from './attention.mjs';
 import { priorities, openGatesSql } from './quest.mjs';
 import { daysSinceLastCard } from './dispatch.mjs';
 
 // blocking  — other work cannot proceed until this moves
 // slipped   — a commitment already made has passed its date
+// waiting   — a PERSON is waiting on this commons to answer them
 // open      — waiting, but nothing is stuck behind it
 // gap       — something the protocol expects to exist and does not
-const WEIGHT = { blocking: 0, slipped: 1, gap: 2, open: 3 };
+//
+// `waiting` exists because the ranking was wrong in a way that mattered. A need
+// brought yesterday was `open`, the LOWEST weight, and only became `slipped`
+// after fourteen days — so on a loaded commons the line "Ana brought a need and
+// has had no answer" sat at position 16 of 18, below three notes about projects
+// not being fully defined. Its own cited rule is "a person must be able to
+// submit a need, receive a response, and appeal", which is one of the
+// protocol's hard requirements, and it was ranked beneath bookkeeping.
+//
+// Above `gap` and below `slipped`: something already promised and missed still
+// comes first, but a person waiting comes before anything the protocol merely
+// expects to exist.
+const WEIGHT = { blocking: 0, slipped: 1, waiting: 2, gap: 3, open: 4 };
 
 export function whatsNext(chapterId) {
   if (!chapterId) return { error: 'no_chapter' };
@@ -26,7 +40,7 @@ export function whatsNext(chapterId) {
     `SELECT * FROM intake WHERE chapter_id=? AND status='received' ORDER BY created_at`, chapterId)) {
     const days = daysSince(r.created_at);
     add({
-      kind: days > 14 ? 'slipped' : 'open',
+      kind: days > 14 ? 'slipped' : 'waiting',
       stage: 'Listen',
       title: `${r.submitted_by || 'Someone'} brought a ${r.kind} and has had no answer`,
       detail: truncate(r.body, 160),
@@ -148,19 +162,26 @@ export function whatsNext(chapterId) {
   }
 
   // ── Stages 7-8: Design & Build — gates and definitions ──────────────────
+  //
+  // Gated projects are collected and emitted as ONE item when there is more
+  // than one, rather than one line each.
+  //
+  // Not tidiness. The board shows five things, and on an ordinary commons three
+  // of those five were this same line about different projects — same verb,
+  // same council-only clearance, all saying a number is too high. Everything a
+  // person would actually act on was below the fold: the card, an unverified
+  // observation, and somebody waiting for an answer. One new signal was enough
+  // to push the card off the board entirely.
+  //
+  // A gated project is also the item least likely to move today. Nine gates
+  // close on evidence and a named reviewer, which is deliberate, slow, and not
+  // what a steward does with twenty minutes on a Tuesday.
+  const gated = [];
   for (const q of all(
     `SELECT * FROM quests WHERE chapter_id=? AND status IN ('Open','Active')`, chapterId)) {
     const openGates = all(
       openGatesSql(), q.id);
-    if (openGates.length) {
-      add({
-        kind: 'blocking', stage: 'Design',
-        title: `${q.title} cannot be built — ${openGates.length} gate${openGates.length === 1 ? '' : 's'} open`,
-        detail: openGates.map((g) => g.gate.replace(/_/g, ' ')).join(', '),
-        rule: 'A high project score never overrides a red flag, missing consent, or an absent maintenance owner.',
-        action: { tool: 'satisfy_quest_gate', input: { quest_id: q.id, gate: openGates[0].gate } },
-      });
-    }
+    if (openGates.length) gated.push({ quest: q, gates: openGates });
     if (!q.smallest_experiment || !q.maintenance_owner) {
       add({
         kind: 'gap', stage: 'Design',
@@ -182,6 +203,40 @@ export function whatsNext(chapterId) {
         action: { tool: 'add_indicator', input: { quest_id: q.id } },
       });
     }
+  }
+
+  // One line for the gated projects, or the specific one when there is only
+  // one. A single project keeps its own title and its own first gate, because
+  // then the line IS the work; folding one thing into a summary of one thing
+  // would be worse than the problem.
+  if (gated.length === 1) {
+    const { quest: q, gates } = gated[0];
+    add({
+      kind: 'blocking', stage: 'Design',
+      title: `${q.title} cannot be built — ${gates.length} gate${gates.length === 1 ? '' : 's'} open`,
+      detail: gates.map((g) => g.gate.replace(/_/g, ' ')).join(', '),
+      rule: 'A high project score never overrides a red flag, missing consent, or an absent maintenance owner.',
+      action: { tool: 'satisfy_quest_gate', input: { quest_id: q.id, gate: gates[0].gate } },
+    });
+  } else if (gated.length > 1) {
+    const total = gated.reduce((n, g) => n + g.gates.length, 0);
+    add({
+      kind: 'blocking', stage: 'Design',
+      title: `${gated.length} projects are waiting on gates — ${total} between them`,
+      // Named, not counted. A steward has to be able to tell whether the
+      // project they care about is in here without opening anything.
+      detail: gated.map(({ quest, gates }) => `${quest.title} (${gates.length})`).join(' · '),
+      rule: 'A high project score never overrides a red flag, missing consent, or an absent maintenance owner.',
+      // The action goes to the project with the FEWEST gates left, which is the
+      // one closest to being buildable — not the first row the database
+      // returned, which is what the per-project lines effectively picked.
+      action: (() => {
+        const nearest = [...gated].sort((a, b) => a.gates.length - b.gates.length
+          || String(a.quest.id).localeCompare(String(b.quest.id)))[0];
+        return { tool: 'satisfy_quest_gate',
+          input: { quest_id: nearest.quest.id, gate: nearest.gates[0].gate } };
+      })(),
+    });
   }
 
   // ── Stage 6: Prioritize ─────────────────────────────────────────────────
@@ -411,7 +466,7 @@ export function whatsNext(chapterId) {
 
 function daysSince(ts) {
   if (!ts) return 0;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return 0;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

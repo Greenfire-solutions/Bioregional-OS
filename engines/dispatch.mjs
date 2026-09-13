@@ -25,6 +25,7 @@
 //      is left out entirely. A heading with nothing under it is the worst of
 //      the three, because it teaches people to skip the section.
 import { all, one } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { dbPath } from '../core/db.mjs';
@@ -356,7 +357,7 @@ function friendlyDate(d) {
 }
 function friendly(ts) {
   try {
-    const d = new Date(String(ts).replace(' ', 'T'));
+    const d = parseStamp(ts);
     return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
            (/\d\d:\d\d/.test(String(ts)) ? `, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : '');
   } catch { return String(ts); }

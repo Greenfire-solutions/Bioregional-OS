@@ -32,6 +32,7 @@
 //   the same contract every item in engines/operator.mjs keeps by citing the
 //   protocol rule it came from.
 import { all, one } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 
 const WINDOW_DAYS = 90;
@@ -350,7 +351,7 @@ function lower(q) {
 
 function daysSince(ts) {
   if (!ts) return null;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return null;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

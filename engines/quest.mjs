@@ -3,6 +3,7 @@
 // "A high project score never overrides a red flag, missing consent, unsafe
 //  conditions, ecological harm, or the absence of a maintenance owner."
 import { all, one, create, run } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 
 export const STAGES = [
   'signal', 'listening', 'baseline', 'council_review', 'research', 'co_design',
@@ -418,7 +419,7 @@ export function priorities(chapterId) {
 function clamp(n) { return Number(Math.max(0, Math.min(1, n)).toFixed(2)); }
 function daysSince(ts) {
   if (!ts) return null;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return null;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

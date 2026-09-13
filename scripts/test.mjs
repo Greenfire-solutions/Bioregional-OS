@@ -3693,6 +3693,106 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('settledIn writes nothing', one('SELECT COUNT(*) n FROM signals WHERE chapter_id=?', C).n === SETTLING_OBSERVATIONS * 2);
 }
 
+// ── Reading a stamp back ──────────────────────────────────────────────────
+//
+// `String.replace(' ', 'T')` replaces the FIRST space only. Eleven copies of
+// that line existed. It is fine for "2026-09-21 14:00", which the database
+// writes, and wrong for "2026-09-20 10:00 AM", which is what add_gathering
+// stores when a person types it and what this project's own seed writes — the
+// second space survives, the Date is Invalid, and every comparison against it
+// is quietly false. The join page picks the next gathering that way, so a
+// person at the creek clean-up scanned the QR and was offered the next day's
+// seed swap.
+{
+  const { parseStamp } = await import('../core/time.mjs');
+  const iso = (t) => parseStamp(t)?.toISOString() ?? null;
+
+  check('a twelve-hour stamp is read, not thrown away',
+    iso('2026-09-20 10:00 AM') !== null && iso('2026-09-20 2:00 PM') !== null,
+    `${iso('2026-09-20 10:00 AM')} / ${iso('2026-09-20 2:00 PM')}`);
+  check('and read correctly, rather than merely parsed',
+    parseStamp('2026-09-20 2:00 PM').getHours() === 14,
+    String(parseStamp('2026-09-20 2:00 PM')?.getHours()));
+  check('midnight and noon do not swap, which is where twelve-hour clocks fail',
+    parseStamp('2026-09-20 12:00 AM').getHours() === 0
+      && parseStamp('2026-09-20 12:00 PM').getHours() === 12);
+  check('the format the database writes still reads the same as it always did',
+    iso('2026-09-21 14:00') === new Date('2026-09-21T14:00').toISOString());
+  // Null, not Invalid Date. A null fails a comparison loudly the first time
+  // somebody looks; an Invalid Date fails every comparison quietly forever,
+  // which is exactly how this one survived.
+  check('something unreadable comes back as null, and says so',
+    parseStamp('not a date') === null && parseStamp(null) === null && parseStamp('') === null);
+
+  // The property, so the eleven copies cannot quietly return: the seed's own
+  // gatherings must all be readable, whatever format they were typed in.
+  const stamps = all(`SELECT starts_at FROM gatherings WHERE starts_at IS NOT NULL`)
+    .map((r) => r.starts_at);
+  const unreadable = stamps.filter((t) => parseStamp(t) === null);
+  check('every gathering this commons holds can actually be read back',
+    unreadable.length === 0, unreadable.join(' · '));
+}
+
+// ── The board is five things this person can do ───────────────────────────
+//
+// Three findings from walking the app as a newly enrolled member, all in one
+// place because they are one problem: the five slots were spent on work she was
+// not allowed to do, about projects, while a person waited.
+{
+  const { whatsNext } = await import('../engines/operator.mjs');
+  const { board } = await import('../engines/board.mjs');
+  const { mayRun } = await import('../ai/access.mjs');
+  const C = 'test';
+
+  // A person waiting outranks paperwork. It was `open` — the LOWEST weight —
+  // until fourteen days had passed, so "Ana brought a need and has had no
+  // answer" sat at position 16 of 18, below three notes about projects not
+  // being fully defined, under a rule that reads "a person must be able to
+  // submit a need, receive a response, and appeal".
+  dbRun(`INSERT INTO intake (id, chapter_id, kind, body, submitted_by, status, created_at)
+         VALUES ('inta-ana','test','need','The path floods','Ana','received', datetime('now','-2 days'))`);
+  const withNeed = whatsNext(C);
+  const ana = withNeed.items.findIndex((i) => /Ana brought a need/.test(i.title));
+  const firstGap = withNeed.items.findIndex((i) => i.kind === 'gap');
+  check('a person waiting is ranked above anything the protocol merely expects',
+    ana >= 0 && (firstGap === -1 || ana < firstGap), `need at ${ana}, first gap at ${firstGap}`);
+  check('and a need brought yesterday is not filed as the lowest kind there is',
+    withNeed.items[ana]?.kind === 'waiting', withNeed.items[ana]?.kind);
+
+  // Gated projects fold into one line. Three of five board slots were the same
+  // sentence about different projects, all council-only, and one new signal was
+  // enough to push the card off the board entirely.
+  const gatedLines = withNeed.items.filter((i) => /waiting on gates|cannot be built/.test(i.title));
+  check('several gated projects are one line, not one line each',
+    gatedLines.length <= 1, `${gatedLines.length} lines`);
+  if (gatedLines.length === 1 && /waiting on gates/.test(gatedLines[0].title)) {
+    // Named, not counted: a steward has to see whether the project they care
+    // about is in there without opening anything.
+    check('and the folded line names the projects rather than only counting them',
+      /\w+.*\(\d+\)/.test(gatedLines[0].detail ?? ''), gatedLines[0].detail);
+  }
+
+  // The board does not offer a button that will refuse. She opened the form,
+  // typed a paragraph of evidence and a reviewer's name, pressed save, and only
+  // then was told the protocol refused it.
+  const asMember = board(C, { clearance: 'members' });
+  const offered = (asMember.todo ?? []).map((t) => t.action?.tool).filter(Boolean);
+  const wouldRefuse = offered.filter((t) => !mayRun(t, 'members'));
+  check('nothing on a member\'s board is a button that would refuse them',
+    wouldRefuse.length === 0, wouldRefuse.join(', '));
+  check('and the work held for the council is counted, not silently hidden',
+    typeof asMember.for_the_council === 'number');
+  check('at the keyboard nothing is held back',
+    board(C).for_the_council === 0);
+  // The slots REFILL rather than emptying — otherwise a member sees two things
+  // and three holes, which reads as a broken screen.
+  check('a member still gets a full board, not the leftovers',
+    (asMember.todo ?? []).length === (board(C).todo ?? []).length,
+    `${(asMember.todo ?? []).length} vs ${(board(C).todo ?? []).length}`);
+
+  dbRun(`DELETE FROM intake WHERE id='inta-ana'`);
+}
+
 // ── Over a real socket ────────────────────────────────────────────────────
 //
 // Everything above calls `api()` in process, and so does `npm run prove` —

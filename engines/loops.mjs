@@ -18,6 +18,7 @@
 // for a Heat Advisory that NOAA issued. Only human-observed signals are ever
 // attributed to a human.
 import { all, one, latestMeasurement } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 
 /**
@@ -196,7 +197,7 @@ export function intakePromise(chapterId) {
 
 function daysSince(ts) {
   if (!ts) return 0;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return 0;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

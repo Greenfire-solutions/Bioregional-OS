@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Flame, Check, Loader2, Ear, Eye, CalendarCheck, Lock, KeyRound, ArrowRight } from 'lucide-react';
 import { callTool, get, device, rememberDevice, forgetDevice } from '../api.js';
 import GroundForAnyone from './GroundForAnyone.jsx';
+import { parseStamp } from '../../../core/time.mjs';
 
 /**
  * The page another device lands on — after scanning the code at a gathering,
@@ -56,7 +57,13 @@ export default function Join() {
     get('status').then(setStatus).catch(() => {});
     get('gatherings').then((g) => {
       const next = (g ?? []).filter((x) => x.starts_at).sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)))
-        .find((x) => new Date(String(x.starts_at).replace(' ', 'T')) >= new Date(Date.now() - 12 * 3600e3));
+        // parseStamp, not `replace(' ', 'T')`. A string pattern replaces the
+      // FIRST space only, so "2026-09-20 10:00 AM" became
+      // "2026-09-20T10:00 AM" — Invalid Date — and the comparison was silently
+      // false. That is the format add_gathering stores when a person types it,
+      // and the format this project's own seed writes, so a person standing at
+      // the clean-up scanned the QR and was offered the next day's seed swap.
+      .find((x) => { const d = parseStamp(x.starts_at); return d && d >= new Date(Date.now() - 12 * 3600e3); });
       setGathering(next ?? null);
     }).catch(() => {});
   }, []);

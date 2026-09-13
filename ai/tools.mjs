@@ -1282,7 +1282,8 @@ export const TOOLS = [
       actions: num('How many things to do. Default 5.'),
       projects: num('How many projects. Default 8.'),
     }),
-    handler: (i) => board.board(ch(i), { actions: i.actions ?? 5, projects: i.projects ?? 8 }),
+    handler: (i, ctx) => board.board(ch(i),
+      { actions: i.actions ?? 5, projects: i.projects ?? 8, clearance: ctx?.clearance ?? null }),
   },
   {
     name: 'override_gate',
@@ -1984,7 +1985,15 @@ export async function runTool(name, input = {}, { via = 'ui', clearance = null }
     if (found.length) return { error: rule.error, message: rule.say(found[0]), invalid: found };
   }
   try {
-    const out = await t.handler(input ?? {});
+    // Handlers receive the connection's clearance as a second argument.
+    //
+    // Almost none of them want it, and `(i) => ...` simply ignores it. The one
+    // that does is the board: it picks the five things to show, and without
+    // knowing who is looking it handed a newly enrolled member four buttons
+    // that refuse — after she had opened the form and typed a paragraph of
+    // evidence and a reviewer's name into it. `runTool` knew the answer the
+    // whole time.
+    const out = await t.handler(input ?? {}, { clearance, via });
     // Logged AFTER the handler and only on success, because the register is a
     // record of what the AI actually changed — an attempt the gates refused is
     // the protocol working, not a material act, and recording it would fill the

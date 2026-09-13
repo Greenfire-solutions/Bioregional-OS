@@ -39,6 +39,7 @@
 //   belongs to them, about their ground, and the provenance rules everywhere
 //   else in this project exist precisely so that stream stays clean.
 import { all, one, run } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { getJSON } from '../adapters/http.mjs';
 import { classifyPeer } from '../adapters/murmurations.mjs';
 
@@ -206,7 +207,7 @@ function clean(s) {
 
 function daysSince(ts) {
   if (!ts) return 0;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return 0;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

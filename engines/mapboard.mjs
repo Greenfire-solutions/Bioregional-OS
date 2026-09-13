@@ -21,6 +21,7 @@
 // differently — the same rule core/provenance.mjs already applies to signals,
 // extended to everything else that reaches the map.
 import { all, one } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 import { openGatesSql } from './quest.mjs';
 
@@ -248,7 +249,7 @@ function truncate(s, n) {
 }
 function daysSince(ts) {
   if (!ts) return 0;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return 0;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

@@ -30,6 +30,7 @@
 // machine. No network call, because a council meeting in a church hall with no
 // wifi must still be able to seat the land.
 import { all, one } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { skyToday, nextSolarEvent } from '../adapters/sky.mjs';
 import { anchorPlace } from './ground.mjs';
 import { humanObservedSql, automatedSql } from '../core/provenance.mjs';
@@ -211,7 +212,7 @@ function waterReading(w) {
 
 function daysSince(ts) {
   if (!ts) return null;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return null;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

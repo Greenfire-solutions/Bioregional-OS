@@ -29,6 +29,7 @@
 // ground, and point it at PLACES so it can never become a ranking of people.
 // "Nobody has been to the Spring in 71 days" is a fact about the Spring.
 import { all, one, LATEST_MEASUREMENT, latestMeasurement } from '../core/db.mjs';
+import { parseStamp } from '../core/time.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 import { benefitFlow } from './exchange.mjs';
 
@@ -467,7 +468,7 @@ function commonest(spellings) {
 
 function daysSince(ts) {
   if (!ts) return 0;
-  const d = new Date(String(ts).replace(' ', 'T'));
+  const d = parseStamp(ts);
   if (Number.isNaN(d.getTime())) return 0;
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000));
 }

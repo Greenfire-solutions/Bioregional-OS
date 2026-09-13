@@ -31,9 +31,10 @@ import { carrying } from './attention.mjs';
 import { whoCouldHelp } from './matching.mjs';
 import { priorities } from './quest.mjs';
 import { myRegions, homeRegion, brief as regionBrief } from './library.mjs';
+import { mayRun } from '../ai/access.mjs';
 import { settledIn } from './firstrun.mjs';
 
-export function board(chapterId, { actions = 5, projects = 8 } = {}) {
+export function board(chapterId, { actions = 5, projects = 8, clearance = null } = {}) {
   if (!chapterId) {
     return {
       error: 'no_chapter',
@@ -58,7 +59,27 @@ export function board(chapterId, { actions = 5, projects = 8 } = {}) {
   // takes only the top few, because a list of thirty things is a list nobody
   // starts. The rest stays one click away rather than being hidden.
   const next = safely(() => whatsNext(chapterId)) ?? { items: [], total: 0 };
-  const doable = (next.items ?? []).filter((i) => i.action);
+  // Five things this connection can actually do.
+  //
+  // The board used to take the top five by priority and hand them over
+  // regardless of who was looking, so a newly enrolled member's first screen
+  // offered: start a project (works), close a gate (council), close a gate
+  // (council), resolve the flag (council), locate it (works). And
+  // `satisfy_quest_gate` is not a direct action, so the refusal arrived AFTER
+  // she had opened the form and typed a paragraph of evidence and a reviewer's
+  // name into it. Member is the default role in the invite dropdown, so that is
+  // the ordinary path, not an edge.
+  //
+  // Filtered BEFORE the cap, so the slots refill with work she can do rather
+  // than showing her three things and two gaps. The items themselves are not
+  // hidden — the count below says how many are held, and every one of them is
+  // still in `whats_next`, which she can read. A commons that concealed its own
+  // council work from its members would be a worse answer than one that offered
+  // it and refused.
+  const runnable = (i) => clearance == null || mayRun(i.action.tool, clearance);
+  const withActions = (next.items ?? []).filter((i) => i.action);
+  const doable = withActions.filter(runnable);
+  const forOthers = withActions.length - doable.length;
   // Settling in comes first, always, until it is done. An installed commons
   // with nothing in it is the way these die (docs/COMMUNICATIONS.md), so the
   // three things that make it about somewhere and someone are not a wizard
@@ -150,6 +171,10 @@ export function board(chapterId, { actions = 5, projects = 8 } = {}) {
     },
     todo,
     todo_total: doable.length + settle.length,
+    // Held back because this connection may not run them, not hidden. Zero at
+    // the keyboard. The interface says so in a line rather than leaving a
+    // member to wonder why their board is shorter than the steward's.
+    for_the_council: forOthers,
     settling,
     blocked_count: (next.items ?? []).filter((i) => i.kind === 'blocking').length,
     projects: quests,

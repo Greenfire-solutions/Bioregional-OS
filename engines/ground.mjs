@@ -11,6 +11,7 @@
 // Everything here is read-only and gives before it asks. Nothing in it is a
 // score, a streak or a count of the person's own activity.
 import { all, one } from '../core/db.mjs';
+import { msSince } from '../core/time.mjs';
 import { skyToday } from '../adapters/sky.mjs';
 import { weatherNow } from '../adapters/weather.mjs';
 import { gageContext, waterSignals } from '../adapters/watershed.mjs';
@@ -332,7 +333,7 @@ export function thisWeekInHistory(chapterId, { window_days = 3 } = {}) {
   const earliest = one(
     `SELECT min(created_at) t FROM signals WHERE chapter_id=?`, chapterId)?.t ?? null;
   const yearsHeld = earliest
-    ? Math.floor((Date.now() - new Date(String(earliest).replace(' ', 'T')).getTime()) / (365.25 * 86400000))
+    ? Math.floor((msSince(earliest) ?? 0) / (365.25 * 86400000))
     : 0;
 
   return {
