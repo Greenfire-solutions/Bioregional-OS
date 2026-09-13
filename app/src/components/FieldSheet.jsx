@@ -124,7 +124,7 @@ export default function FieldSheet() {
 
       {!connect?.lan_url && (
         <p className="text-[11px] text-[var(--ink-3)] no-print">
-          Run <code className="rounded bg-[var(--paper-2)] px-1">npm run os -- --share</code> before
+          Turn on sharing in <strong>Together → Devices</strong> before
           printing and the sheet carries a link and a scannable code for phones on this wifi.
         </p>
       )}

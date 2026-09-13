@@ -95,6 +95,12 @@ const MEMBERS = [
   'open_quest', 'update_quest',
 ];
 
+// Sharing is a decision about a room, made at the machine the commons lives on.
+// Not listed anywhere below: unlisted means keyboard, which is the right
+// direction for this one. A device on the wifi must never be able to widen the
+// door it came through, and `sharing_status` is at the keyboard too, because
+// telling a stranger whether the wifi door is open is telling them about a door.
+
 const COUNCIL = [
   'propose_decision', 'decide_council_item', 'clear_red_flag', 'satisfy_quest_gate',
   'advance_quest', 'respond_to_intake', 'list_intake', 'season_review', 'open_season',

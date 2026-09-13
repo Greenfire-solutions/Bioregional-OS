@@ -3472,6 +3472,55 @@ check('a card from a real chapter does not cry wolf about being an example',
     check('no tool is listed in two clearance tiers', doubled.length === 0, doubled.join(' · '));
   }
 
+  // ── Sharing is a decision about a room, made at the machine ────────────
+  //
+  // It was a start-up flag, so turning it on meant quitting the OS and using a
+  // terminal — and a chapter that installs by double-clicking never passes any
+  // flag at all, so it was on 127.0.0.1 permanently. That put a command line in
+  // front of the second person, the QR at a gathering and the join page: every
+  // social thing this project is for.
+  //
+  // What must stay true now that it is a button.
+  {
+    const shareTools = ['start_sharing', 'stop_sharing', 'sharing_status'];
+    for (const t of shareTools) {
+      check(`${t} cannot be reached from the wifi`,
+        (await runTool(t, {}, { clearance: 'members' }))?.error === 'not_from_here');
+    }
+    // A device must never be able to widen the door it came through, and that
+    // includes a coordinator's.
+    check('not even a coordinator device can open the wifi door',
+      (await runTool('start_sharing', {}, { clearance: 'council' }))?.error === 'not_from_here');
+
+    const sh = await import('../server/share.mjs');
+
+    // The consent gate REFUSES rather than warns — a warning above a running
+    // server is a warning nobody reads — and it hands back WHAT is held, so the
+    // decision is made by somebody looking at it rather than at a number.
+    dbRun(`UPDATE rids SET sensitivity='sacred' WHERE rowid IN (SELECT rowid FROM rids LIMIT 1)`);
+    const refused = await sh.startSharing({});
+    check('a commons holding sacred records refuses to be shared',
+      refused.error === 'holds_protected_records', JSON.stringify(refused.error));
+    check('and says what it is holding, rather than only that it is holding something',
+      Array.isArray(refused.held) && refused.held.length > 0 && refused.held[0].sensitivity,
+      JSON.stringify(refused.held));
+    check('and names the knowing version, instead of being a dead end',
+      refused.confirm_with?.tool === 'start_sharing' && refused.confirm_with?.input?.anyway === true);
+    check('the refusal cites the rule it is enforcing',
+      /restricted or sacred/i.test(refused.rule ?? ''), refused.rule);
+
+    // One definition of what is held, shared with the start-up flag. Two copies
+    // of this rule is how two surfaces come to disagree about what is safe.
+    const idx = readFileSync('server/index.mjs', 'utf8');
+    check('the --share flag and the button ask the same question',
+      idx.includes('heldAboveMembers')
+        && !/SELECT COUNT\(\*\) n FROM rids WHERE sensitivity IN/.test(idx));
+
+    dbRun(`UPDATE rids SET sensitivity='public' WHERE sensitivity='sacred'`);
+    check('with nothing above members-only, the gate does not stand in the way',
+      (await sh.startSharing({})).error !== 'holds_protected_records');
+  }
+
   const names = new Set(TOOLS.map((t) => t.name));
   const stale = access.POLICY_NAMES.filter((n) => !names.has(n));
   check('the access policy names only tools that exist', stale.length === 0, stale.join(', '));

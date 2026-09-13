@@ -19,9 +19,10 @@ import { verb } from '../verbs.js';
  *
  * Two things this page says out loud rather than assuming:
  *
- *   • Whether other computers can reach this one at all. Enrolment is
- *     pointless unless the OS was started with --share, so the page checks and
- *     says so before a code is minted into the void.
+ *   • Whether other devices can reach this one at all. Enrolment is pointless
+ *     if nothing else can get here, so the page checks and says so before a
+ *     code is minted into the void — and then offers the button that fixes it,
+ *     rather than the terminal command it used to print.
  *
  *   • That a revoked device stays on the list. It is still the recorded author
  *     of everything it filed; a device that vanished would take the record of
@@ -35,14 +36,42 @@ export default function Devices() {
   const [invite, setInvite] = useState(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(null);
+  const [busyShare, setBusyShare] = useState(false);
+  const [held, setHeld] = useState(null);       // the consent gate's own answer
+  const [shareError, setShareError] = useState(null);
 
   async function load() {
     setList(await callTool('list_devices', {}));
   }
+  async function refreshConn() {
+    await get('connect').then(setConn).catch(() => {});
+  }
   useEffect(() => {
     load();
-    get('connect').then(setConn).catch(() => {});
+    refreshConn();
   }, []);
+
+  // Turning the wifi door on. The first press asks without `anyway`, so a
+  // commons holding restricted or sacred records refuses and hands back WHAT it
+  // holds; the button then offers the knowing version, which is the decision
+  // the CLI's refusal described and gave nobody a way to make.
+  async function share(knowingly) {
+    setBusyShare(true); setShareError(null);
+    const r = await callTool('start_sharing', knowingly ? { anyway: true } : {});
+    setBusyShare(false);
+    if (r?.error === 'holds_protected_records') { setHeld(r); return; }
+    if (r?.error) { setShareError(r.message || r.error); return; }
+    setHeld(null);
+    await refreshConn();
+  }
+
+  async function unshare() {
+    setBusyShare(true); setShareError(null);
+    const r = await callTool('stop_sharing', {});
+    setBusyShare(false);
+    if (r?.error) { setShareError(r.message || r.error); return; }
+    await refreshConn();
+  }
 
   async function addDevice() {
     setBusy(true);
@@ -100,14 +129,58 @@ export default function Devices() {
           the wifi write to this commons. No account, no password, nothing for anybody to remember.
         </p>
 
+        {/*
+          This used to end in "stop the OS and start it with npm run os -- --share,
+          then come back". That sentence was the end of the road for a
+          non-technical steward, and it sat in front of everything social in the
+          project: the second person, the QR at a gathering, the join page.
+          Sharing is a button now. The refusal it can return is not an error to
+          swallow — it is the consent gate, and it comes back with the list of
+          what is held, so the decision is made by somebody looking at it.
+        */}
         {!sharing && (
-          <div className="mt-3 flex items-start gap-2 rounded border border-[#E8DCB8] bg-[#FBF3DC] px-3 py-2 text-xs">
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--gold)]" />
-            <div className="text-[var(--ink-2)]">
-              <span className="font-medium text-[var(--ink)]">Only this computer can reach the OS right now.</span>{' '}
-              A code will work, but nobody else can get here to use it. Stop the OS and start it with{' '}
-              <code className="rounded bg-[var(--paper-3)] px-1">npm run os -- --share</code>, then come back.
+          <div className="mt-3 rounded border border-[#E8DCB8] bg-[#FBF3DC] px-3 py-2.5 text-xs">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--gold)]" />
+              <div className="text-[var(--ink-2)]">
+                <span className="font-medium text-[var(--ink)]">Only this computer can reach the OS right now.</span>{' '}
+                A code will work, but nobody else can get here to use it.
+              </div>
             </div>
+            {held && (
+              <div className="mt-2 rounded border border-[var(--line)] bg-[var(--paper)] px-2.5 py-2">
+                <p className="text-[var(--ink)]">{held.message}</p>
+                <ul className="mt-1.5 space-y-0.5 text-[11px] text-[var(--ink-2)]">
+                  {(held.held ?? []).map((h) => (
+                    <li key={`${h.sensitivity}-${h.object_type}`}>
+                      {h.n} {h.sensitivity} {h.object_type}{h.n === 1 ? '' : 's'}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1.5 text-[11px] italic text-[var(--ink-3)]">{held.rule}</p>
+              </div>
+            )}
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <button type="button" disabled={busyShare}
+                onClick={() => share(!!held)}
+                className="rounded bg-[var(--moss)] px-3 py-1.5 text-[11px] font-medium text-white disabled:opacity-50">
+                {busyShare ? 'Opening…' : held ? 'Share anyway — they have said yes' : 'Let this wifi reach the OS'}
+              </button>
+              {shareError && <span className="text-[11px] text-[var(--clay)]">{shareError}</span>}
+            </div>
+          </div>
+        )}
+
+        {sharing && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded border border-[#CBDCCD] bg-[#F2F6F2] px-3 py-2 text-xs">
+            <span className="text-[var(--ink-2)]">
+              <span className="font-medium text-[var(--ink)]">This wifi can reach the OS.</span>{' '}
+              Other devices open <code className="rounded bg-[var(--paper-3)] px-1">{conn?.lan_url}</code>
+            </span>
+            <button type="button" disabled={busyShare} onClick={unshare}
+              className="ml-auto rounded border border-[var(--line)] px-2.5 py-1 text-[11px] text-[var(--ink-2)] disabled:opacity-50">
+              {busyShare ? 'Closing…' : 'Stop sharing'}
+            </button>
           </div>
         )}
 

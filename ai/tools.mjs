@@ -16,6 +16,7 @@ import { atlasGeoJSON, signalsFromGeoJSON } from '../adapters/geo.mjs';
 import { ecoregionPolygons } from '../adapters/layers.mjs';
 import * as operator from '../engines/operator.mjs';
 import * as ground from '../engines/ground.mjs';
+import * as share from '../server/share.mjs';
 import * as registry from '../adapters/registry.mjs';
 import * as firstrun from '../engines/firstrun.mjs';
 import * as loops from '../engines/loops.mjs';
@@ -1312,6 +1313,36 @@ export const TOOLS = [
     }, ['quest_id', 'gate', 'reason', 'overridden_by']),
     handler: (i) => quest.overrideGate(i.quest_id, i.gate,
       { reason: i.reason, overridden_by: i.overridden_by }),
+  },
+  {
+    name: 'sharing_status',
+    description:
+      'Whether other devices on this wifi can reach the OS right now, the address they would '
+      + 'use, and how much this commons holds above members-only. Read-only.',
+    input_schema: S({}),
+    handler: () => share.sharingStatus(),
+  },
+  {
+    name: 'start_sharing',
+    description:
+      'Let other devices on this wifi reach the OS, so a second person can join, a QR at a '
+      + 'gathering works, and the join page is reachable. Nothing restarts and the steward\'s own '
+      + 'session is unaffected. Devices off this machine are held at public and cannot ask for '
+      + 'more. REFUSES if the commons holds anything above members-only, listing what is held; '
+      + 'pass anyway:true to share knowingly once the people those records belong to have said so.',
+    input_schema: S({
+      anyway: bool('Share even though this commons holds restricted or sacred records. '
+        + 'That is a decision for the people those records belong to.'),
+    }),
+    handler: (i) => share.startSharing({ anyway: i.anyway === true }),
+  },
+  {
+    name: 'stop_sharing',
+    description:
+      'Stop other devices on this wifi from reaching the OS. The address stops answering '
+      + 'immediately. Nothing on this computer changes and no data is touched.',
+    input_schema: S({}),
+    handler: () => share.stopSharing(),
   },
   {
     name: 'invite_device',

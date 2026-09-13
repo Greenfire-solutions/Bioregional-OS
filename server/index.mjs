@@ -9,9 +9,9 @@
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
-import { networkInterfaces } from 'node:os';
 import { execFile } from 'node:child_process';
 import { db, ROOT, openPath } from '../core/db.mjs';
+import { useHandler, startSharing, sharingStatus, heldAboveMembers, lanAddress } from './share.mjs';
 import { syncSources } from '../adapters/registry.mjs';
 import { api } from './routes/api.mjs';
 import * as heartbeat from '../engines/heartbeat.mjs';
@@ -22,7 +22,11 @@ const SHARE = argv.includes('--share');
 const NO_BEAT = argv.includes('--no-heartbeat');
 const OPEN = argv.includes('--open');
 const PORT = Number(process.env.PORT || 4180);
-const HOST = SHARE ? '0.0.0.0' : '127.0.0.1';
+// The loopback listener never moves. Sharing opens a SECOND listener on
+// 0.0.0.0 (server/share.mjs), so it can be turned on and off from inside the
+// app without a restart — which is the difference between a chapter that shares
+// and one whose steward was told to quit the app and use a terminal.
+const HOST = '127.0.0.1';
 
 // ── Sharing is a decision about a room, so it is made out loud ────────────
 // --share binds 0.0.0.0 and the connect QR hands out http://<lan-ip>:4180, so
@@ -36,13 +40,11 @@ const HOST = SHARE ? '0.0.0.0' : '127.0.0.1';
 // server is a warning nobody reads. --share-anyway is the same decision made
 // knowingly, which is the only version of it worth having.
 if (SHARE) {
-  const held = one(
-    `SELECT COUNT(*) n FROM rids WHERE sensitivity IN ('restricted','sacred')`)?.n ?? 0;
+  // One definition of "what is held above members-only", shared with the button
+  // in the app. Two copies of this rule is how two surfaces come to disagree
+  // about what is safe to share.
+  const { total: held, by_kind: byKind } = heldAboveMembers();
   if (held && !argv.includes('--share-anyway')) {
-    const byKind = (await import('../core/db.mjs')).all(
-      `SELECT sensitivity, object_type, COUNT(*) n FROM rids
-        WHERE sensitivity IN ('restricted','sacred')
-        GROUP BY sensitivity, object_type ORDER BY sensitivity DESC, n DESC`);
     console.log(`
   Not sharing on the wifi.
 
@@ -69,24 +71,26 @@ const MIME = {
   '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.map': 'application/json',
 };
 
-export function lanAddress() {
-  for (const list of Object.values(networkInterfaces())) {
-    for (const ni of list ?? []) {
-      if (ni.family === 'IPv4' && !ni.internal) return ni.address;
-    }
-  }
-  return null;
-}
+// lanAddress lives in server/share.mjs, with the rest of the network-reach
+// question. Re-exported so existing importers are unaffected.
+export { lanAddress };
 
-const server = createServer(async (req, res) => {
+// Named, so the wifi listener can be handed the same function rather than
+// reaching into the server's event emitter for it.
+const handle = async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname.startsWith('/api/')) {
     try {
       if (url.pathname === '/api/connect') {
+        // Asked, not remembered. This reported the BOOT FLAG, which stopped
+        // being the truth the moment sharing became something you can turn on
+        // and off from the app: the QR and the address would have gone on
+        // describing how the process started rather than what is open now.
+        const now = sharingStatus();
         const ip = lanAddress();
         let qr = null;
-        if (SHARE && ip) {
+        if (now.sharing && ip) {
           try {
             const QRCode = (await import('qrcode')).default;
             qr = await QRCode.toDataURL(`http://${ip}:${PORT}`, { margin: 1, width: 240 });
@@ -95,12 +99,13 @@ const server = createServer(async (req, res) => {
         return send(res, 200, JSON.stringify({
           qr,
           local_url: `http://localhost:${PORT}`,
-          lan_url: SHARE && ip ? `http://${ip}:${PORT}` : null,
-          sharing: SHARE,
+          lan_url: now.address,
+          sharing: now.sharing,
+          held_above_members: now.held_above_members,
           project_path: ROOT,
-          hint: SHARE
-            ? 'Anyone on this wifi can open the wifi link. Close this window to stop sharing.'
-            : 'Only this computer can reach the OS right now. Run it with --share to let phones on the same wifi in.',
+          hint: now.sharing
+            ? 'Anyone on this wifi can open the wifi link. Stop sharing from Together → Devices.'
+            : 'Only this computer can reach the OS right now. Turn sharing on from Together → Devices.',
         }, null, 2), 'application/json; charset=utf-8');
       }
       const out = await api(req, res, url);
@@ -121,7 +126,9 @@ const server = createServer(async (req, res) => {
     file = join(APP_DIST, 'index.html');               // SPA fallback
   }
   send(res, 200, readFileSync(file), MIME[extname(file)] || 'application/octet-stream');
-});
+};
+
+const server = createServer(handle);
 
 function send(res, status, body, type) {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
@@ -148,14 +155,20 @@ db();
 // answer on a brand-new commons, before any adapter has run — and it gives
 // last_fetched_at a row to land on when one does.
 syncSources();
-server.listen(PORT, HOST, () => {
+// The handler the loopback server uses is the handler the wifi listener uses.
+// Registered before listen so `--share` can open the second socket immediately,
+// and so the button can open it later without knowing anything about routing.
+useHandler(handle, PORT);
+
+server.listen(PORT, HOST, async () => {
   const chapter = one('SELECT id, name FROM chapters ORDER BY founded_at LIMIT 1');
   const ip = lanAddress();
+  if (SHARE) await startSharing({ anyway: true });
   const line = '─'.repeat(52);
   console.log(`\n  🌿  BioRegional OS is running\n  ${line}`);
   console.log(`  On this computer   http://localhost:${PORT}`);
-  if (SHARE && ip) console.log(`  On this wifi       http://${ip}:${PORT}   ← phones & laptops`);
-  else console.log(`  Share on wifi      npm run os -- --share`);
+  if (SHARE && ip) console.log(`  On this wifi       http://${ip}:${PORT}   ← other devices`);
+  else console.log(`  Share on wifi      the button on Together → Devices, or --share`);
   // The file actually open, not the default one. These differ whenever BROS_DB
   // is set, and a banner that names the wrong database is the same class of
   // problem as a scheduler that lies about running.

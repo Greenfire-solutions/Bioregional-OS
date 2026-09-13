@@ -58,7 +58,7 @@ const HELP = {
   learn: { title: 'Learn', what: 'What this commons knows, written so another place can use it.',
     do: ['"May travel" means another chapter can receive it.', 'The doctrine card is the thinking the whole OS runs on.'] },
   devices: { title: 'Devices', what: 'Other people writing to this commons from their own laptop or phone — without an account.',
-    do: ['Start the OS with --share so other computers on the wifi can reach this one.',
+    do: ['Turn on sharing in Together → Devices, so other devices on the wifi can reach this one.',
          'Press "Add a device". Read the code out or let them scan it; it works once, for twenty minutes.',
          'A revoked device stays on the list. It is still the author of what it wrote.'] },
   federation: { title: 'Federation', what: 'Other groups doing this work near you.',
@@ -137,7 +137,7 @@ export default function Guide({ tab }) {
           ) : (
             <p className="mt-1.5 text-xs text-[var(--ink-2)]">
               Right now only this computer can see it. To let phones on the same wifi in, stop the OS
-              and start it with <code className="rounded bg-[var(--line-2)] px-1">npm run os -- --share</code>
+              and turn on sharing in <strong>Together → Devices</strong>
             </p>
           )}
         </div>
