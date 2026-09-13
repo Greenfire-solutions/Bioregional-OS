@@ -3360,6 +3360,67 @@ check('a card from a real chapter does not cry wolf about being an example',
   // The policy names only tools that exist. A renamed tool would otherwise
   // silently fall back to the keyboard — the safe direction, but a stale name
   // is still a lie in the policy.
+  // ── The day clock is for anyone, and it hands over nothing else ────────
+  //
+  // The public tier was four tools and all four were WRITES: a stranger could
+  // contribute to a commons they were not allowed to look at. That is inverted
+  // from how people use community software — the 90 in 90-9-1 participate by
+  // READING — and DAILY_USE.md §4 had already specified the day clock as
+  // "60 seconds, ANYONE, gives before it asks".
+  //
+  // These assert the two halves: a stranger CAN read the land, and the reading
+  // is a projection that fails closed. The second half is the one that matters
+  // in a year, when somebody adds a field to groundToday() without knowing this
+  // exists.
+  {
+    const asStranger = await runTool('ground_today', {}, { clearance: 'public' });
+    check('a stranger can read what the land is doing, without enrolling anything',
+      !asStranger.error && !!asStranger.sky && asStranger.for_a_stranger === true,
+      JSON.stringify(asStranger.error ?? Object.keys(asStranger).slice(0, 6)));
+
+    const leaked = JSON.stringify(asStranger);
+    check('and it hands a stranger no coordinates',
+      !/"lat"|"lng"/.test(leaked));
+    check('no id to ask about the place by',
+      !asStranger.place?.id && !/"huc"/.test(leaked));
+    check('and none of the chapter\'s own records',
+      !('history' in asStranger));
+    // The property, not the three fields above: everything a stranger receives
+    // was NAMED by the projection. A new field on groundToday() is private
+    // until somebody adds it here on purpose.
+    const { forAStranger } = await import('../engines/ground.mjs');
+    const invented = forAStranger({
+      generated_at: 'x', place: { name: 'P', id: 'plac-secret', lat: 1, lng: 2 },
+      history: { items: [{ id: 'sig-secret' }] },
+      a_field_added_later: 'should not travel',
+      contact: 'someone@example.com',
+    });
+    check('the projection is an allowlist, so a field added later is private until named',
+      !('a_field_added_later' in invented) && !('contact' in invented)
+        && !('history' in invented) && !invented.place.id && !invented.place.lat,
+      JSON.stringify(Object.keys(invented)));
+
+    // The half of the ground line made ENTIRELY of the chapter's own records
+    // stays where it was.
+    const history = await runTool('this_week_last_year', {}, { clearance: 'public' });
+    check('a stranger still cannot read the chapter\'s own history',
+      !!history.error, JSON.stringify(history.error));
+
+    // A tool in two tiers is resolved by whichever list is walked last. That
+    // silently kept ground_today at members after it was moved to public, and
+    // the only symptom was a refusal the policy said should not happen.
+    const tiers = new Map();
+    let doubled = [];
+    for (const [tier, list] of [['public', access.PUBLIC_NAMES], ['members', access.MEMBERS_NAMES],
+      ['council', access.COUNCIL_NAMES]]) {
+      for (const n of list ?? []) {
+        if (tiers.has(n)) doubled.push(`${n}: ${tiers.get(n)} + ${tier}`);
+        tiers.set(n, tier);
+      }
+    }
+    check('no tool is listed in two clearance tiers', doubled.length === 0, doubled.join(' · '));
+  }
+
   const names = new Set(TOOLS.map((t) => t.name));
   const stale = access.POLICY_NAMES.filter((n) => !names.has(n));
   check('the access policy names only tools that exist', stale.length === 0, stale.join(', '));

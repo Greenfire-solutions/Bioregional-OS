@@ -884,6 +884,11 @@ export const TOOLS = [
       place_id: str('Look out from this place instead of the chapter default.'),
     }),
     handler: (i) => ground.groundToday(ch(i), { place_id: i.place_id ?? null }),
+    // What a stranger gets. Declared HERE, beside the tool, because the one
+    // registry is where a capability's rules live — a route deciding what to
+    // strip would be a second place that knows about audiences, and the next
+    // route would not know.
+    public_view: ground.forAStranger,
   },
   {
     name: 'this_week_last_year',
@@ -1828,6 +1833,12 @@ export async function runTool(name, input = {}, { via = 'ui', clearance = null }
   if (clearance !== null && !access.mayRun(name, clearance)) {
     return access.refusal(name, clearance);
   }
+  // A tool may publish a narrower view of itself to a stranger. Applied here,
+  // once, for every caller — so the answer a stranger gets cannot depend on
+  // which route they arrived through, and a tool that declares no public_view
+  // simply has nothing extra to offer them.
+  const project = (out) =>
+    (clearance === 'public' && typeof t.public_view === 'function' ? t.public_view(out) : out);
   // Required fields are enforced here, not in each handler, so every caller —
   // MCP, the assistant, the REST API, the generated forms — gets the same answer.
   const missing = (t.input_schema?.required ?? []).filter((k) => {
@@ -1911,7 +1922,7 @@ export async function runTool(name, input = {}, { via = 'ui', clearance = null }
         via,
       });
     }
-    return out;
+    return project(out);
   } catch (err) {
     return { error: err.message };
   }

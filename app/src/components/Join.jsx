@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Check, Loader2, Ear, Eye, CalendarCheck, Lock, KeyRound, ArrowRight } from 'lucide-react';
 import { callTool, get, device, rememberDevice, forgetDevice } from '../api.js';
+import GroundForAnyone from './GroundForAnyone.jsx';
 
 /**
  * The page another device lands on — after scanning the code at a gathering,
@@ -51,6 +52,7 @@ export default function Join() {
   const [enrolled, setEnrolled] = useState(() => device());
 
   useEffect(() => {
+    // The land, before anything is asked for: <GroundForAnyone /> below.
     get('status').then(setStatus).catch(() => {});
     get('gatherings').then((g) => {
       const next = (g ?? []).filter((x) => x.starts_at).sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)))
@@ -129,6 +131,8 @@ export default function Join() {
           </p>
         </div>
       </header>
+
+      <GroundForAnyone className="mt-5" />
 
       {enrolled && (
         <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-[#CBDCCD] bg-[#F2F6F2] px-3 py-2 text-[12px]">

@@ -51,7 +51,29 @@
 import { LADDER } from '../server/clearance.mjs';
 
 const PUBLIC = [
+  // Bringing something.
   'submit_intake', 'add_signal', 'rsvp_to_gathering', 'enrol_device',
+  // And ONE read, which is the day clock.
+  //
+  // This list was four tools and every one of them was a write. A stranger
+  // handed a link could contribute to the commons and could not look at it,
+  // which is exactly inverted from how people use community software: the 90 in
+  // 90-9-1 participate BY READING, and most lurkers report that browsing IS
+  // their participation rather than a phase before it. DAILY_USE.md §4 already
+  // specified the day clock as "60 seconds, ANYONE — it gives before it asks",
+  // and the OS was delivering it to nobody.
+  //
+  // `ground_today` is the only read here, and it does not hand over the
+  // commons: it declares a `public_view` in the registry, an ALLOWLIST that
+  // drops coordinates, the place id, and the chapter's own historical records,
+  // leaving the sky, the weather, the gage and an upstream species feed. See
+  // forAStranger() in engines/ground.mjs for what is excluded and why.
+  //
+  // The comment above still holds for everything else: nothing else here reads
+  // the commons. `this_week_last_year` in particular stays at members, because
+  // it is made ENTIRELY of the chapter's own records — the part the projection
+  // deliberately removes.
+  'ground_today',
 ];
 
 const MEMBERS = [
@@ -59,7 +81,7 @@ const MEMBERS = [
   'chapter_status', 'list_places', 'get_ecoregion_layer', 'list_signals', 'list_quests',
   'quest_gates', 'check_quest_advance', 'council_agenda', 'minimum_viable_test',
   'benefit_flow', 'list_indicators', 'list_gatherings', 'list_agents', 'list_atlas_layers',
-  'ground_today', 'this_week_last_year', 'soil_at', 'life_here', 'hazards_at',
+  'this_week_last_year', 'soil_at', 'life_here', 'hazards_at',
   'upstream_sources', 'what_moved', 'intake_promise', 'carrying', 'place_attention',
   'vitals', 'neighbours', 'seasons', 'land_seat_brief', 'quest_score',
   'seasonal_priorities', 'map_features', 'commons_board', 'who_could_help',
@@ -81,9 +103,29 @@ const COUNCIL = [
 ];
 
 const REQUIRED = new Map();
-for (const n of PUBLIC) REQUIRED.set(n, 'public');
-for (const n of MEMBERS) REQUIRED.set(n, 'members');
-for (const n of COUNCIL) REQUIRED.set(n, 'council');
+/**
+ * A tool named in two tiers is resolved by whichever list is walked last, which
+ * is insertion order in this file and nothing a reader would think to check.
+ * Moving `ground_today` to PUBLIC while it was still listed in MEMBERS left it
+ * members-only, silently, and the only symptom was a stranger being refused a
+ * tool the policy said was public.
+ *
+ * The direction of the accident matters: MEMBERS is walked after PUBLIC, so a
+ * duplicate currently fails SAFE. Walk the lists in another order one day and
+ * the same mistake hands a stranger a council tool. Refuse the ambiguity rather
+ * than depending on the order being the lucky one.
+ */
+const claim = (name, tier) => {
+  if (REQUIRED.has(name) && REQUIRED.get(name) !== tier) {
+    throw new Error(
+      `ai/access.mjs: ${name} is listed in two tiers (${REQUIRED.get(name)} and ${tier}). ` +
+      'A tool has one clearance. Remove it from the one that is wrong.');
+  }
+  REQUIRED.set(name, tier);
+};
+for (const n of PUBLIC) claim(n, 'public');
+for (const n of MEMBERS) claim(n, 'members');
+for (const n of COUNCIL) claim(n, 'council');
 
 /** The keyboard, spelled as the top of the ladder so one comparison serves. */
 export const KEYBOARD = 'sacred';
@@ -113,3 +155,12 @@ export function refusal(name, clearance) {
 
 /** Every name the policy mentions, so a test can check none has gone stale. */
 export const POLICY_NAMES = [...PUBLIC, ...MEMBERS, ...COUNCIL];
+
+/**
+ * The tiers themselves, so the suite can assert the property `claim()` enforces
+ * — no tool in two of them — rather than only catching it when the module
+ * throws at import time, which is a failure with no name attached to it.
+ */
+export const PUBLIC_NAMES = [...PUBLIC];
+export const MEMBERS_NAMES = [...MEMBERS];
+export const COUNCIL_NAMES = [...COUNCIL];

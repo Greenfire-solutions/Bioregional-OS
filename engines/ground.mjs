@@ -161,6 +161,60 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
 }
 
 /**
+ * The day clock, for somebody who is not a member of this commons.
+ *
+ * DAILY_USE.md §4 specifies the day clock as "60 seconds, ANYONE: the app must
+ * tell you something true about your place you didn't know. It gives before it
+ * asks." As shipped it gave nothing: every read in the system was members-only
+ * and the four public tools were all WRITES, so a stranger handed a link could
+ * contribute and could not look. That is inverted from how people actually use
+ * community software — the 90 in 90-9-1 participate BY READING, and most
+ * lurkers report that browsing is their participation rather than a stage
+ * before it.
+ *
+ * An ALLOWLIST, not a redaction, and that is the whole point: a field added to
+ * groundToday() later does not quietly become public because somebody forgot
+ * this function exists. Fail closed means new things are private until named.
+ *
+ * What is deliberately not here:
+ *
+ *   place.lat / place.lng   `list_places` is members-only on purpose. A place
+ *                           NAME is a fact about the land; a coordinate is a
+ *                           direction to it. The day clock needs the first.
+ *   place.id                an id is a handle for asking about a thing by id.
+ *   history                 the chapter's OWN records. Everything else here is
+ *                           the sky, the weather, the gage and an upstream
+ *                           species feed — public data about a public place.
+ *                           The chapter's observations are the commons'.
+ *
+ * `withhold()` in server/clearance.mjs still runs over the result, so a place
+ * whose RID is above public is removed entirely on the way out. This function
+ * is the first of the two, not a replacement for it: withhold protects what was
+ * MARKED sensitive, and today every RID is minted `public` by default, so a
+ * projection that fails closed by construction is the one doing the work.
+ */
+export function forAStranger(g) {
+  if (!g || typeof g !== 'object' || g.error) return g;
+  return {
+    generated_at: g.generated_at,
+    place: g.place ? {
+      name: g.place.name,
+      ecoregion: g.place.ecoregion,
+      watershed: g.place.watershed,
+    } : null,
+    sky: g.sky,
+    weather: g.weather,
+    water: g.water,
+    heard: g.heard,
+    headline: g.headline,
+    sources: g.sources,
+    unresolved_sources: g.unresolved_sources,
+    credit: g.credit,
+    for_a_stranger: true,
+  };
+}
+
+/**
  * One sentence, because most days nobody reads the second one.
  * Ordered by what would actually change a person's day: a hazard, then water
  * doing something unusual, then the season turning, then the light.

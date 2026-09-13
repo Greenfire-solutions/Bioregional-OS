@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { callTool } from '../api.js';
 import ToolForm from './ToolForm.jsx';
+import GroundForAnyone from './GroundForAnyone.jsx';
 import { verb } from '../verbs.js';
 
 /**
@@ -73,6 +74,30 @@ export default function Commons({ onGoTo, onChanged }) {
     return <div className="flex items-center gap-2 p-8 text-sm text-[var(--ink-2)]">
       <Loader2 className="h-4 w-4 animate-spin" /> looking around…
     </div>;
+  }
+
+  // Being refused is not the same as there being nothing here.
+  //
+  // Every error landed on the founding screen, so a stranger on the wifi — who
+  // is refused `commons_board` because it is members-only — was shown "no
+  // commons yet, find your bioregion", and the one button on it runs a tool
+  // that is keyboard-only. A permission refusal wearing a welcome screen's
+  // clothes, ending in a second refusal.
+  if (b.error === 'not_from_here') {
+    return (
+      <div className="mx-auto max-w-lg p-8">
+        <GroundForAnyone />
+        <div className="mt-6 rounded border border-[var(--line)] px-4 py-3 text-center">
+          <p className="text-sm">{b.message}</p>
+          <p className="mt-1.5 text-xs text-[var(--ink-2)]">
+            You can still bring something you noticed, or a need, without enrolling anything.
+          </p>
+          <a href="/join" className="mt-3 inline-block rounded bg-[var(--moss)] px-4 py-2 text-xs font-medium text-white">
+            Bring something
+          </a>
+        </div>
+      </div>
+    );
   }
 
   // No commons yet. One thing to do, and it writes nothing.
