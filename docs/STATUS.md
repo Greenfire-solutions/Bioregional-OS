@@ -125,6 +125,31 @@ and still a real constraint on what a chapter can rely on.
 
 Small things seen while building, deliberately left:
 
+- **The weekly round still cannot be finished.** Folding the gated projects into
+  one line freed three of the five board slots, so a person waiting and the
+  weekly card now appear on it — but closing real work still does not empty a
+  slot. An evening of door-knocking moved one digit and left the five lines
+  identical. The designed answer is to pick the five once a week and HOLD them,
+  stored the way the card mark is (a sidecar keyed to the database file), so
+  clearing one leaves a gap rather than promoting the next identical line, and
+  when they are gone the screen says that is the round. Finishing has to be a
+  state the software can be in, or it is not a round.
+- **Paper mode has no transcription path.** The field sheet prints eight ruled
+  lines and a code, and there is nothing that accepts the code back. Fifteen
+  people at a gathering produce 120 lines the steward re-enters one modal at a
+  time. A one-screen grid — code at the top, eight rows, one Save — would turn
+  paper from a gesture into a participation path, and it is the cheapest thing
+  on this list.
+- **Inviting a device before sharing is on produces a localhost link.** The
+  invite panel falls back to `local_url`, so the code and the QR say
+  `http://localhost:4180`, which is nothing anybody else can open. The amber
+  banner sits above the form so most stewards will share first. Disabling the
+  invite button while sharing is off would close it.
+- **The steward's own first line is worse than a stranger's.** The board header
+  uses `land.sentence`, which can read "no water reading has been taken", while
+  `ground_today` for the same chapter has a live hazard alert and a named gage.
+  The land leads for strangers and not for the person who set it up.
+
 - **A quest cannot go backwards, and nothing yet says who could send it back.**
   `canAdvance` now refuses any move that is not to the immediately next stage,
   in either direction, because until 2026-09-13 it enforced no order at all: a
