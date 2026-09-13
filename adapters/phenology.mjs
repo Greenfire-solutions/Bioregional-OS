@@ -64,7 +64,7 @@ export async function springIndex(lat, lng) {
   const anomaly = out.leaf_this_year ?? null;
   return {
     available: true,
-    source: 'USA National Phenology Network, Extended Spring Indices (public domain)',
+    source: 'USA National Phenology Network, Extended Spring Indices',
     source_id: 'usa-npn',
     leaf_out_normal_doy: normal == null ? null : Math.round(normal),
     leaf_out_normal_date: normal == null ? null : dayOfYearToDate(normal),
@@ -121,7 +121,7 @@ export async function hardinessZone(zip) {
   if (!data?.zone) return { available: false, reason: `no hardiness zone for ${clean}`, source: null };
   markFetched('usda-hardiness');
   return {
-    available: true, source: 'USDA Plant Hardiness Zone Map (public domain)', source_id: 'usda-hardiness',
+    available: true, source: 'USDA Plant Hardiness Zone Map', source_id: 'usda-hardiness',
     cached: !!cached, stale: !!stale,
     zone: data.zone,
     low_temp_range_f: data.temperature_range ?? null,
@@ -164,7 +164,7 @@ export async function climateAverages(lat, lng) {
   const driest = MONTHS[rain.indexOf(Math.min(...rain))];
 
   return {
-    available: true, source: 'NASA POWER climatology (public domain)', source_id: 'nasa-power',
+    available: true, source: 'NASA POWER climatology', source_id: 'nasa-power',
     cached: !!cached, stale: !!stale,
     monthly: Object.fromEntries(MONTHS.map((m) => [m.toLowerCase(), {
       mean_c: month('T2M', m), min_c: month('T2M_MIN', m), max_c: month('T2M_MAX', m),

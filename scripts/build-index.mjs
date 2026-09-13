@@ -80,7 +80,13 @@ export async function buildIndex({ log = true } = {}) {
 
   const out = {
     built_at: new Date().toISOString(),
-    source: 'EPA Ecoregions Level III & IV (public domain)',
+    source: 'EPA Ecoregions Level III & IV',
+    // The terms live in adapters/registry.mjs and are resolved from this id.
+    // This file used to bake "(public domain)" into the line above, and the
+    // index it writes is TRACKED — so the one copy of a licence outside the
+    // registry that was world-readable was the one the checker could not see,
+    // because the checker only walked adapters/.
+    source_id: 'epa-ecoregions',
     source_url: 'https://www.epa.gov/eco-research/ecoregions',
     note: 'Extents are coarse (simplified geometry) and are used to scope data queries, ' +
           'not to draw boundaries. The map draws live, precise polygons.',

@@ -201,7 +201,7 @@ export async function inThePapers(placeName, { limit = 8 } = {}) {
   const years = results.map((r) => String(r.date ?? '').slice(0, 4)).filter(Boolean).map(Number).filter(Number.isFinite);
   return {
     available: true,
-    source: 'Chronicling America, Library of Congress (public domain)',
+    source: 'Chronicling America, Library of Congress',
     source_id: 'chronicling-america',
     cached: !!cached, stale: !!stale,
     export_safe: true,          // public domain, all of it

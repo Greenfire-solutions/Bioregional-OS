@@ -256,14 +256,14 @@ export async function protectedArea(lat, lng) {
       markFetched('padus');
       if (!a) {
         return {
-          available: true, protected: false, source: `${attempt.label} (public domain)`,
+          available: true, protected: false, source: attempt.label,
           source_id: 'padus', cached: !!cached, stale: !!stale,
           note: 'No protected-area polygon covers this point in the layer that answered.',
         };
       }
       return {
         available: true, protected: true, ...attempt.map(a),
-        source: `${attempt.label} (public domain)`, source_id: 'padus',
+        source: attempt.label, source_id: 'padus',
         cached: !!cached, stale: !!stale,
       };
     } catch (err) { reasons.push(`${attempt.label}: ${err.message}`); }

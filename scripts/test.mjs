@@ -21,7 +21,7 @@ import { cardForTheWeek, markCardSent, daysSinceLastCard, safeToSend, credits } 
 import { findDailyStat } from '../adapters/watershed.mjs';
 import { whatMoved, intakePromise } from '../engines/loops.mjs';
 import { carrying, placeAttention, looksLikeAGroup } from '../engines/attention.mjs';
-import { GATES as QUEST_GATES } from '../engines/quest.mjs';
+import { GATES as QUEST_GATES, STAGES as QUEST_STAGES } from '../engines/quest.mjs';
 import { AI_FORBIDDEN } from '../engines/stewardship.mjs';
 import { vitals } from '../engines/vitals.mjs';
 import { brief as landSeatBrief } from '../engines/landseat.mjs';
@@ -138,9 +138,40 @@ const q = await runTool('open_quest', { title: 'Raise the creek path', category:
 check('opening a quest creates its gates unsatisfied',
   (await runTool('quest_gates', { quest_id: q.id })).every((g) => !g.satisfied));
 
+// Walk the loop to get here, rather than teleporting.
+//
+// These assertions are about DEPTH — the gates, the maintenance owner, the
+// baseline — and they used to reach `prototype` from `signal` in one call,
+// because nothing enforced stage order. That hole is closed, and closing it
+// broke five tests that had been quietly depending on it. Stepping through is
+// what a chapter actually does, so the tests do it too.
+const walkTo = async (stage) => {
+  for (;;) {
+    const at = one('SELECT stage FROM quests WHERE id=?', q.id)?.stage;
+    const i = QUEST_STAGES.indexOf(at);
+    if (at === stage || i < 0 || i + 1 >= QUEST_STAGES.length) return at;
+    const r = await runTool('advance_quest', { quest_id: q.id, to_stage: QUEST_STAGES[i + 1] });
+    if (r?.error) return at;
+  }
+};
+check('a quest walks the loop one stage at a time',
+  (await walkTo('resource_plan')) === 'resource_plan');
+
 const blocked = await runTool('check_quest_advance', { quest_id: q.id, to_stage: 'prototype' });
 check('a quest with open gates cannot reach build',
   blocked.ok === false && blocked.blocked.some((b) => b.includes('gate not satisfied')));
+
+// The order rule itself, both directions, and the sentence that has to name
+// where the quest may actually go.
+const back = await runTool('check_quest_advance', { quest_id: q.id, to_stage: 'signal' });
+check('a quest cannot be rewound to an earlier stage',
+  back.ok === false && back.blocked.some((b) => /does not go backwards/.test(b)));
+const leap = await runTool('check_quest_advance', { quest_id: q.id, to_stage: 'report_replicate' });
+check('a quest cannot skip stages, however complete it looks',
+  leap.ok === false && leap.blocked.some((b) => /one at a time/.test(b)));
+check('and a refusal to move names the stage that is actually next',
+  back.next_stage === 'prototype' && leap.next_stage === 'prototype',
+  `${back.next_stage} / ${leap.next_stage}`);
 
 check('a gate does not close on a checkbox',
   refused(await runTool('satisfy_quest_gate',
@@ -188,8 +219,19 @@ await runTool('update_quest', {
 const advanced = await runTool('advance_quest', { quest_id: q.id, to_stage: 'prototype' });
 check('a fully gated, fully defined quest advances', advanced.stage === 'prototype');
 
+// The walk is checked, not discarded. And the assertion below reads `blocked`
+// rather than matching the word "baseline" against the whole serialised result
+// — because "baseline" is ALSO a stage name (STAGES[2]), and this result now
+// carries `from`, `to` and `next_stage`. The day some edit walks this quest
+// past that stage, a substring match would go green while asserting nothing.
+const toTeach = await runTool('advance_quest', { quest_id: q.id, to_stage: 'teach_tell' });
+check('the walk to teach_tell actually happened', toTeach.stage === 'teach_tell',
+  JSON.stringify(toTeach.error ?? toTeach.stage));
+const noBaseline = await runTool('advance_quest', { quest_id: q.id, to_stage: 'test' });
 check('a quest cannot be tested without a baseline to measure against',
-  refused(await runTool('advance_quest', { quest_id: q.id, to_stage: 'test' }), 'baseline'));
+  noBaseline.error === 'blocked'
+    && noBaseline.blocked.some((b) => /indicator with a baseline/.test(b)),
+  JSON.stringify(noBaseline.blocked));
 
 // ── Stage 11: Measure ─────────────────────────────────────────────────────
 check('an indicator without a decision trigger is refused',
@@ -1553,7 +1595,19 @@ check('the intake promise states itself in words a person can read',
   });
   check('a gate that genuinely does not apply can be passed', !done.error, JSON.stringify(done.error));
 
+  // Walk it to the stage before build, so the question asked is about GATES.
+  // Left as a teleport from `signal`, both checks below pass for the wrong
+  // reason: the stage-order rule refuses first and returns before any gate is
+  // ever consulted, so "no permits_insurance in blocked" becomes true because
+  // nothing was checked. That is this project's own "defence in depth hides a
+  // broken half", arriving as a test that is green and asserts nothing.
+  for (const st of ['listening', 'baseline', 'council_review', 'research', 'co_design', 'resource_plan']) {
+    await runTool('advance_quest', { quest_id: oq.id, to_stage: st });
+  }
   const adv = await runTool('check_quest_advance', { quest_id: oq.id, to_stage: 'prototype' });
+  check('the overridden-gate check is asking about gates, not about stage order',
+    adv.from === 'resource_plan' && !adv.blocked.some((b) => /backwards|one at a time/.test(b)),
+    `from=${adv.from} blocked=${JSON.stringify(adv.blocked)}`);
   check('an overridden gate stops blocking',
     !adv.blocked.some((b) => /permits_insurance/.test(b)), JSON.stringify(adv.blocked));
   // The property that keeps this from being the gate switched off with extra
@@ -2553,29 +2607,55 @@ check('whatever the card resolved appears in the text somebody pastes',
   const { SOURCES } = await import('../adapters/registry.mjs');
   const truth = { tools: TOOLS.length, sources: SOURCES.length };
 
-  const files = [
-    'README.md',
-    ...readdirSync('docs').filter((f) => f.endsWith('.md')).map((f) => join('docs', f)),
-    // This file is the checker and quotes the wrong numbers above by way of
-    // explanation, so it is the one place a stale count is the point.
-    ...readdirSync('scripts').filter((f) => f.endsWith('.mjs') && f !== 'test.mjs').map((f) => join('scripts', f)),
-  ];
+  // Where this looks is the second half of the guard, and the half that was
+  // wrong for longer. It read README, docs/ and scripts/ only — so
+  // `server/routes/claude.mjs` explained the CLI bridge in terms of "77 tools"
+  // twice, in a comment somebody reads while working out why the bridge exists,
+  // and no check could see it. A count is a count wherever it is typed.
+  //
+  // Walked, not listed. A hardcoded list of directories has the same property
+  // as the hardcoded list of adjectives this guard used to carry: it needs a new
+  // entry forever, and the entry nobody adds is the one that goes unchecked. The
+  // EXCLUSIONS are listed instead, because those are few, stable, and each has a
+  // reason — vendored code, build output, regenerable data, and this file, which
+  // quotes stale counts above by way of explanation and is the one place a wrong
+  // number is the point.
+  const SKIP_DIR = new Set(['node_modules', '.git', 'dist', 'dossiers', 'upstream', 'backups', 'worktrees']);
+  const files = [];
+  const walk = (dir) => {
+    let entries;
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = dir === '.' ? e.name : join(dir, e.name);
+      if (e.isDirectory()) { if (!SKIP_DIR.has(e.name) && !e.name.startsWith('.')) walk(full); continue; }
+      if (full === join('scripts', 'test.mjs')) continue;
+      if (/\.(md|mjs|js|jsx|sql|json)$/.test(e.name)) files.push(full);
+    }
+  };
+  walk('.');
 
   const drifted = [], unverifiable = [];
   for (const f of files) {
     let text;
     try { text = readFileSync(f, 'utf8'); } catch { continue; }
-    // An adjective between the number and the noun was enough to walk straight
-    // through the first version of this: "509 protocol tests" sat in STATUS.md
-    // for a day while the suite, which forbids stating a test count at all,
-    // stayed green. The filler words are listed rather than matched as \w+,
-    // because a general gap also swallows "12 of the tools", which is not a
-    // count claim and would be reported as drift every run.
-    const FILLER = '(?:(?:protocol|passing|failing|new|total|distinct|separate|live|upstream|open|data)\\s+){0,2}';
-    const countClaim = new RegExp(`\\b(\\d{2,4})\\s+${FILLER}(tools|sources|tests)\\b`, 'g');
+    // The gap between the number and the noun is matched, not enumerated.
+    //
+    // Version one required the number to sit directly beside the noun, and
+    // "509 protocol tests" walked through it. Version two listed the adjectives
+    // that were allowed in between — which is a denylist wearing an allowlist's
+    // clothes: "509 integration tests" and "12 of the 17 declared sources" both
+    // walked through THAT, and the second one was live in DATA_SOURCES.md.
+    //
+    // An allowlist of adjectives needs a new entry forever. A gap needs one
+    // exclusion: "N of the ... M sources" is a claim about a SUBSET and its
+    // first number is not the count, so a gap containing `of` is not a count
+    // claim. That is the only false positive this shape produces here, and it
+    // is excluded by meaning rather than by listing the words around it.
+    const countClaim = /\b(\d+)\s+((?:[A-Za-z-]+\s+){0,3})(tools|sources|tests)\b/g;
     for (const m of text.matchAll(countClaim)) {
-      if (m[2] === 'tests') unverifiable.push(`${f}: "${m[1]} tests"`);
-      else if (Number(m[1]) !== truth[m[2]]) drifted.push(`${f}: "${m[1]} ${m[2]}" is now ${truth[m[2]]}`);
+      if (/\bof\b/.test(m[2])) continue;
+      if (m[3] === 'tests') unverifiable.push(`${f}: "${m[1]} ${m[2]}${m[3]}"`);
+      else if (Number(m[1]) !== truth[m[3]]) drifted.push(`${f}: "${m[1]} ${m[2]}${m[3]}" is now ${truth[m[3]]}`);
     }
   }
   check('no document or script states a count that has drifted from the registry',
@@ -3242,6 +3322,31 @@ check('a card from a real chapter does not cry wolf about being an example',
   const names = new Set(TOOLS.map((t) => t.name));
   const stale = access.POLICY_NAMES.filter((n) => !names.has(n));
   check('the access policy names only tools that exist', stale.length === 0, stale.join(', '));
+
+  // The same assertion, for EVERY hardcoded list of tool names rather than the
+  // one that happened to be written first. MATERIAL_TOOLS sat ten lines from
+  // this check for as long as it existed and was never covered by it: it named
+  // `set_baseline` and `publish_to_murmurations`, neither of which is a tool.
+  // The consequence was not cosmetic — MATERIAL_TOOLS is what decides whether
+  // an AI caller's write reaches the transparency register, so setting an
+  // indicator baseline, and PUBLISHING THIS CHAPTER TO THE FEDERATION, were
+  // both unlogged. That is ARCHITECTURE.md's "a log that depended on the logged
+  // party volunteering", wearing a different hat.
+  //
+  // Listed by name here rather than discovered, because a list this check
+  // cannot see is exactly the failure being fixed: adding a new one and not
+  // adding it here is the next occurrence.
+  const { MATERIAL_TOOLS } = await import('../ai/tools.mjs');
+  const { VERB_NAMES } = await import('../app/src/verbs.js');
+  const lists = {
+    'ai/access.mjs POLICY_NAMES': access.POLICY_NAMES,
+    'ai/tools.mjs MATERIAL_TOOLS': [...MATERIAL_TOOLS],
+    'app/src/verbs.js VERB': VERB_NAMES,
+  };
+  const ghosts = Object.entries(lists)
+    .flatMap(([where, list]) => list.filter((n) => !names.has(n)).map((n) => `${where}: ${n}`));
+  check('every hardcoded list of tool names names only tools that exist',
+    ghosts.length === 0, ghosts.join(' · '));
   check('a tool the policy does not mention is keyboard-only',
     access.requiredFor('a_tool_that_does_not_exist') === access.KEYBOARD);
 

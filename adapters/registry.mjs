@@ -293,6 +293,17 @@ export const SOURCES = [
     notes: 'GeoServer returns -9999 for no-data, which is a number and passes every check that is not looking for it. Unguarded it puts leaf-out in 1997.',
   },
   {
+    id: 'usda-plants', layer: 5, kind: 'api', coverage: 'us',
+    name: 'USDA PLANTS Database', project: 'USDA NRCS National Plant Data Team',
+    license: 'Public domain (US Government)',
+    attribution: 'USDA NRCS PLANTS Database',
+    url: 'https://plants.usda.gov/',
+    adapter: 'adapters/species.mjs', cadence: 'once per species', sensitivity: 'public',
+    probe: 'https://plantsservices.sc.egov.usda.gov/api/PlantSearch?searchText=Quercus%20fusiformis',
+    expect: 'ScientificName',
+    notes: 'Declared 2026-09-13, found by making the licence check case-insensitive — species.mjs asserted "(public domain)" inline while the source was declared nowhere. Note that nothing currently imports species.mjs, so plantProfile() is reachable and unused: this entry declares terms and a probe for an upstream the OS can call, not one it calls today.',
+  },
+  {
     id: 'usda-hardiness', layer: 4, kind: 'api', coverage: 'us',
     name: 'USDA Plant Hardiness Zone Map', project: 'USDA / Oregon State PRISM',
     license: 'Public domain',

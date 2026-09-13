@@ -1800,10 +1800,10 @@ export const MATERIAL_TOOLS = new Set([
   'add_signal', 'open_quest', 'update_quest', 'satisfy_quest_gate', 'advance_quest',
   'propose_decision', 'decide_council_item', 'clear_red_flag',
   'respond_to_intake', 'submit_intake',
-  'add_indicator', 'record_measurement', 'set_baseline',
+  'add_indicator', 'record_measurement', 'set_indicator_baseline',
   'publish_learning', 'approve_dataset', 'record_exchange',
   'add_place', 'add_gathering', 'begin_here',
-  'publish_to_murmurations', 'withdraw_consent', 'record_consent',
+  'publish_to_network', 'withdraw_consent', 'record_consent',
 ]);
 
 /**

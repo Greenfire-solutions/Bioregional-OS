@@ -39,7 +39,7 @@ export async function ecoregionPolygons({ west, south, east, north }, { level = 
     p.biome = p.NA_L1NAME;
     p.division = p.NA_L2NAME;
   }
-  fc.bros = { level, source: 'EPA Ecoregions Level III & IV (public domain)', cached: !!cached, stale: !!stale };
+  fc.bros = { level, source: 'EPA Ecoregions Level III & IV', source_id: 'epa-ecoregions', cached: !!cached, stale: !!stale };
   return fc;
 }
 

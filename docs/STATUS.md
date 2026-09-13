@@ -125,6 +125,18 @@ and still a real constraint on what a chapter can rely on.
 
 Small things seen while building, deliberately left:
 
+- **A quest cannot go backwards, and nothing yet says who could send it back.**
+  `canAdvance` now refuses any move that is not to the immediately next stage,
+  in either direction, because until 2026-09-13 it enforced no order at all: a
+  quest at `council_review` could be rewound eleven stages to `signal` and then
+  teleported four forward, in silence. The depth checks — gates, maintenance
+  owner, baseline, something written down — all looked at the DESTINATION and
+  never at where the quest was. One step forward is the safe rule and it is the
+  one the tool description and the button already promised. But sending work
+  back is a real thing a council does, and the protocol question — who may do
+  it, and what is recorded when they do — has not been answered. Answer it
+  before building a way to do it.
+
 - **Settling in is a list, not a gate.** Nothing refuses while it is
   incomplete; the operator (`whats_next`) does not know about it, only the
   board does. If a chapter should be *unable* to open a project or schedule a

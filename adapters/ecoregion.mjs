@@ -33,7 +33,7 @@ export async function resolveEcoregion(lat, lng) {
     state: a.STATE_NAME,
     // The working bioregion label a chapter organizes under.
     bioregion_name: a.US_L3NAME,
-    source: 'EPA Ecoregions Level III & IV (public domain)',
+    source: 'EPA Ecoregions Level III & IV', source_id: 'epa-ecoregions',
     cached: !!cached, stale: !!stale,
   };
 }

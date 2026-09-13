@@ -36,7 +36,7 @@ import { claudeCodeAppendPrompt } from '../../ai/system.mjs';
 const GRANTED = [
   'mcp__bioregional-os__*',   // the commons, gated by the protocol itself
   // ToolSearch is required, not incidental: the commons tools arrive DEFERRED,
-  // so without it the CLI can see 77 tools and call none of them.
+  // so without it the CLI can see every commons tool and call none of them.
   //
   // It also cannot be used to get around the denial, which was worth checking
   // rather than assuming — the last thing I assumed about these flags was
@@ -81,7 +81,7 @@ const DENIED = [
  * remove tools somebody thought of.
  */
 const PERMITTED = [
-  /^mcp__bioregional-os__/,   // the 77 commons tools — the whole point
+  /^mcp__bioregional-os__/,   // the commons tools — the whole point
   /^ToolSearch$/,             // finds tool schemas; reaches nothing by itself
   /^TodoWrite$/,              // scratchpad, in-memory, touches nothing
   /^ExitPlanMode$/,
@@ -169,7 +169,7 @@ export async function claudeStream(req, res, body) {
     '--verbose',
     ...(placeAppend ? ['--append-system-prompt', placeAppend] : []),
     // Only THIS project's MCP server. Without these two flags the CLI loads the
-    // user's global MCP config as well — on this machine that was 501 tools
+    // user's global MCP config as well — on this machine that meant hundreds of tools
     // including Gmail, Slack, Google Drive and QuickBooks. An assistant panel in
     // a commons app would have been able to read its steward's email. No
     // denylist would have caught that; the allowlist check below did.

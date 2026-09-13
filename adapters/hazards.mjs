@@ -14,8 +14,9 @@
 //     means "could not reach NOAA" is worse than a blank one, because a person
 //     will believe it.
 //
-// Upstreams: NOAA NWS alerts (public domain, no key), FEMA National Flood
-// Hazard Layer (public domain), US Drought Monitor, NASA FIRMS (needs a key).
+// Upstreams: NOAA NWS alerts (no key), FEMA National Flood Hazard Layer,
+// US Drought Monitor, NASA FIRMS (needs a key). Terms for each are in
+// adapters/registry.mjs, which is the only place a licence is written down.
 import { getJSON, qs } from './http.mjs';
 import { markFetched } from './registry.mjs';
 
@@ -74,7 +75,7 @@ export async function activeAlerts(lat, lng) {
     id: f.properties?.id ?? f.id ?? null,
   }));
   return {
-    available: true, source: 'NOAA National Weather Service (public domain)', source_id: 'nws',
+    available: true, source: 'NOAA National Weather Service', source_id: 'nws',
     cached: !!cached, stale: !!stale,
     count: items.length, items,
     coverage_note: 'Official alerts exist only inside US National Weather Service coverage.',
@@ -104,7 +105,7 @@ export async function floodZone(lat, lng) {
   if (!a) {
     return {
       available: true, zone: null, in_special_flood_hazard_area: false,
-      source: 'FEMA National Flood Hazard Layer (public domain)', source_id: 'fema-nfhl',
+      source: 'FEMA National Flood Hazard Layer', source_id: 'fema-nfhl',
       cached: !!cached, stale: !!stale,
       caveat: 'No mapped zone here. That is not the same as no flood risk — much flooding ' +
               'happens outside the regulatory floodplain, and some areas are simply unmapped.',
@@ -118,7 +119,7 @@ export async function floodZone(lat, lng) {
     // floodplain, which is what insurance and most permitting actually turn on.
     in_special_flood_hazard_area: a.SFHA_TF === 'T',
     base_flood_elevation: a.STATIC_BFE != null && a.STATIC_BFE > -9999 ? a.STATIC_BFE : null,
-    source: 'FEMA National Flood Hazard Layer (public domain)', source_id: 'fema-nfhl',
+    source: 'FEMA National Flood Hazard Layer', source_id: 'fema-nfhl',
     cached: !!cached, stale: !!stale,
   };
 }
@@ -182,7 +183,7 @@ export async function droughtStatus(lat, lng) {
   const worst = droughtClass(latest);
   markFetched('usdm');
   return {
-    available: true, source: 'US Drought Monitor (public domain)', source_id: 'usdm',
+    available: true, source: 'US Drought Monitor', source_id: 'usdm',
     cached: !!cached, stale: !!stale,
     county: latest.county ?? null,
     county_fips: fips,
@@ -259,7 +260,7 @@ export async function activeFires(lat, lng, { radiusKm = 50, days = 1, env = pro
   const rows = Array.isArray(data) ? data : [];
   markFetched('nasa-firms');
   return {
-    available: true, source: 'NASA FIRMS VIIRS (public domain)', source_id: 'nasa-firms',
+    available: true, source: 'NASA FIRMS VIIRS', source_id: 'nasa-firms',
     cached: !!cached, stale: !!stale,
     radius_km: radiusKm, window_days: days,
     detections: rows.length,

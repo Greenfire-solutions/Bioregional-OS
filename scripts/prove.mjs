@@ -85,6 +85,7 @@ if (!/bros-prove/.test(openPath())) {
 }
 
 const { TOOLS, runTool } = await import('../ai/tools.mjs');
+const { STAGES } = await import('../engines/quest.mjs');
 const { api } = await import('../server/routes/api.mjs');
 
 const chapterId = one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id ?? null;
@@ -121,7 +122,19 @@ const ID = {
   reviewed_by: () => 'The prover',
   response: () => 'Acknowledged by the prover.',
   value: () => 1,
-  to_stage: () => 'listening',
+  // Resolved from the quest itself, not hardcoded.
+  //
+  // This was `'listening'`, and the seeded quest sits at `council_review` — so
+  // every prove run was rewinding it eleven stages and counting that as a
+  // successful advance. That was the stage-order hole, reachable through the
+  // tool layer, firing on every run and reported as a pass. With the hole
+  // closed a hardcoded stage is *always* refused, which is just as useless:
+  // the prover would stop exercising a successful advance at all.
+  to_stage: () => {
+    const q = one('SELECT stage FROM quests WHERE chapter_id=?', chapterId);
+    const i = STAGES.indexOf(q?.stage);
+    return i >= 0 && i + 1 < STAGES.length ? STAGES[i + 1] : STAGES[1];
+  },
   resolution: () => 'Resolved by the prover.',
   resolved_by: () => 'The prover',
   summary: () => 'Written by the prover.',

@@ -29,7 +29,7 @@ export async function resolveWatershed(lat, lng) {
     watershed_name: sub?.name ?? basin?.name ?? null,
     subbasin_huc: basin?.huc8 ?? null,
     subbasin_name: basin?.name ?? null,
-    source: 'USGS Watershed Boundary Dataset (public domain)',
+    source: 'USGS Watershed Boundary Dataset', source_id: 'usgs-wbd',
   };
 }
 

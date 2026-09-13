@@ -71,4 +71,11 @@ export function verb(tool) {
   return VERB[tool] ?? String(tool ?? '').replace(/_/g, ' ');
 }
 
+/**
+ * The tools this file has a label for. Exported so the suite can assert they
+ * all still exist — a row here for a renamed tool is a label nothing will ever
+ * show, and the fallback quietly prints the snake_case name instead.
+ */
+export const VERB_NAMES = Object.keys(VERB);
+
 export default VERB;

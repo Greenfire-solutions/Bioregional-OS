@@ -4,8 +4,10 @@
 called live from this machine on that date and its response inspected.*
 
 The protocol names twelve Living Commons Atlas layers. When this catalogue was
-researched the OS resolved **two** of them. It now resolves **six** — 1, 2, 3, 4,
-5 and 6 — and 7 through 12 still have a table row waiting and nothing in it.
+researched the OS resolved two of them. Most are now wired; the twelfth is the
+chapter's own work and is correctly empty. **This sentence is the kind that
+rots**, so it states no figure: `npm run doctor` and `adapters/registry.mjs` are
+where the coverage actually lives.
 
 *Updated 2026-09-12 after building `soil.mjs`, `life.mjs`, `hazards.mjs` and
 `registry.mjs`. Where research and the build disagreed, the build won and this
@@ -194,13 +196,15 @@ That is the difference between a commons that asserts a change and one that can
 **evidence** it. It is also what makes `decision_trigger` honest: a trigger set
 against a real baseline can actually fire.
 
-### The one thing to build that does not exist yet
+### The one thing to build that did not exist yet — now built
 
 **`adapters/registry.mjs` — one declarative table of every upstream source.**
+It exists; this section is kept because the argument for it is the argument for
+keeping it the only home, and because a section headed "does not exist yet"
+about a thing that does is exactly the rot this document warns about.
 
-The project already made this decision once, correctly, for tools. Make it again
-for data, before there are fifteen adapters and five places that each know a
-little about them:
+The project already made this decision once, correctly, for tools. It was made
+again for data, before every adapter knew a little about its own sources:
 
 ```
 { id, atlas_layer, name, licence, attribution, requires_key,
@@ -376,8 +380,8 @@ into the registry, not left to whichever adapter was written first.
   `watch_hazards` heartbeat task; `soil_at`, `life_here`, `hazards_at` and
   `upstream_sources` in the one tool registry, with protocol tests to match.
 
-Atlas coverage went from 2/12 to **6/12**, and 12 of the 17 declared sources
-answered live on the first run.
+Atlas coverage more than doubled, and most of the sources declared at the time
+answered live on the first run. Ask `npm run doctor` for where it stands now.
 
 ### Built 2026-09-12 — locality discovery
 

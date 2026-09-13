@@ -58,7 +58,7 @@ export async function waterQualityNear(lat, lng, { radiusKm = 5, sinceYears = 3,
   const rows = parseCsv(data, limit);
   if (!rows.length) {
     return {
-      available: true, source: 'Water Quality Portal (public domain)', source_id: 'water-quality-portal',
+      available: true, source: 'Water Quality Portal', source_id: 'water-quality-portal',
       cached: !!cached, stale: !!stale, radius_km: radiusKm,
       characteristics: [], total_results: 0,
       readable: `No water quality sampling within ${radiusKm} km in the last ${sinceYears} years.`,
@@ -70,7 +70,7 @@ export async function waterQualityNear(lat, lng, { radiusKm = 5, sinceYears = 3,
 
   return {
     available: true,
-    source: 'Water Quality Portal — USGS, EPA and tribal programmes (public domain)',
+    source: 'Water Quality Portal — USGS, EPA and tribal programmes',
     source_id: 'water-quality-portal',
     cached: !!cached, stale: !!stale,
     radius_km: radiusKm, since_years: sinceYears,
@@ -232,7 +232,7 @@ export async function flowlinesNear(lat, lng, { radiusKm = 5 } = {}) {
 
   return {
     available: true,
-    source: 'USGS NHDPlus High Resolution (public domain)', source_id: 'nhdplus-hr',
+    source: 'USGS NHDPlus High Resolution', source_id: 'nhdplus-hr',
     cached: !!cached, stale: !!stale,
     nearest_reach: reach(main),
     nearest_is_named: nearestIsNamed,

@@ -80,7 +80,7 @@ async function ssurgo(lat, lng) {
   markFetched('usda-ssurgo');
   return {
     available: true,
-    source: 'USDA SSURGO via Soil Data Access (public domain)',
+    source: 'USDA SSURGO via Soil Data Access',
     source_id: 'usda-ssurgo',
     cached: !!cached, stale: !!stale,
     map_unit: dominant.muname ?? null,
@@ -216,7 +216,7 @@ export async function resolveElevation(lat, lng) {
       return {
         available: true, metres: Math.round(v * 10) / 10, feet: Math.round(v * 3.28084),
         resolution_m: data?.resolution ?? null,
-        source: 'USGS 3DEP (public domain)', source_id: 'usgs-3dep',
+        source: 'USGS 3DEP', source_id: 'usgs-3dep',
         cached: !!cached, stale: !!stale,
       };
     }
@@ -284,7 +284,7 @@ export async function resolveLandCover(lat, lng, { year = 2021 } = {}) {
     code, class: NLCD_CLASSES[code] ?? `NLCD class ${code}`,
     group: COVER_GROUP(code),
     year,
-    source: `USGS NLCD ${year} (public domain)`, source_id: 'mrlc-nlcd',
+    source: `USGS NLCD ${year}`, source_id: 'mrlc-nlcd',
     cached: !!cached, stale: !!stale,
   };
 }

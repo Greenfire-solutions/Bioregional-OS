@@ -179,6 +179,58 @@ export function canAdvance(questId, toStage) {
   const idx = STAGES.indexOf(toStage);
   if (idx < 0) blocked.push(`unknown stage "${toStage}"`);
 
+  // ── The loop has an ORDER, and for a long time nothing enforced it ──────
+  //
+  // Everything below this checks the DEPTH of the destination: the gates, a
+  // maintenance owner, a baselined indicator, something written down. Not one
+  // of them looks at where the quest currently is. `q.stage` was read once, at
+  // the bottom, purely to report `from:`.
+  //
+  // So a quest sitting at `council_review` could be sent to `signal` — index 0,
+  // none of the depth checks fire, `blocked` comes back empty and the UPDATE
+  // runs. Proved on a throwaway commons rather than argued: it rewound eleven
+  // stages and then teleported four forward, in silence, twice.
+  //
+  // The tool's own description has always said "Move a quest to the NEXT
+  // stage", and the interface offers one button called "Advance a stage". Both
+  // read as though this were enforced, which is the condition this project
+  // calls worse than no gate at all — a control that an auditor comparing the
+  // manual to the code would tick off.
+  //
+  // One step forward, and nothing else. A quest that needs to go backwards is a
+  // protocol question — who may send work back, and what is recorded when they
+  // do — and inventing an answer here would be the same mistake in the other
+  // direction. It is written down in STATUS.md instead.
+  //
+  // Checked FIRST and returned alone, deliberately. Listing "gate not
+  // satisfied: land_access" for a stage the quest cannot legally reach is an
+  // answer that sends somebody off to close a gate that was never the problem.
+  const at = STAGES.indexOf(q.stage);
+  const next = at >= 0 && at + 1 < STAGES.length ? STAGES[at + 1] : null;
+  if (idx >= 0 && idx !== at + 1) {
+    // The last stage is an END, not a failed attempt to go backwards. Without
+    // this case a finished quest is told "a quest does not go backwards", which
+    // is both wrong and confusing: nothing went wrong, the work is done.
+    //
+    // Whether it can re-enter the loop is the open question — turning.mjs
+    // describes the season hinge as 12 → 6, and canAdvance now forbids exactly
+    // that. Recorded in STATUS.md; refusing plainly beats guessing at it here.
+    const finished = next === null;
+    blocked.push(finished
+      ? `this quest has finished the loop: it is at "${q.stage}", the last stage`
+      : idx <= at
+        ? `a quest does not go backwards: this one is at "${q.stage}"`
+        : `stages are taken one at a time: this one is at "${q.stage}"`);
+    return {
+      ok: false, blocked, overridden: check_notes, from: q.stage, to: toStage,
+      next_stage: next,
+      message: finished
+        ? `"${q.title ?? 'This quest'}" has already reached ${q.stage}, the end of the loop. There is no stage after it.`
+        : `This quest is at "${q.stage}". The only stage it can move to is "${next}".`,
+      rule: 'The loop is a sequence. A stage skipped is a question nobody asked.',
+    };
+  }
+
   // Build and everything after it require the gates closed.
   if (idx >= STAGES.indexOf('prototype')) {
     const open = gates(questId).filter((g) => g.required && !g.satisfied && !g.overridden_at);
@@ -201,7 +253,16 @@ export function canAdvance(questId, toStage) {
     const learn = one('SELECT COUNT(*) n FROM learn WHERE quest_id=?', questId)?.n ?? 0;
     if (!learn) blocked.push('nothing written down — knowledge cannot travel');
   }
-  return { ok: blocked.length === 0, blocked, overridden: check_notes, from: q.stage, to: toStage };
+  return {
+    ok: blocked.length === 0, blocked, overridden: check_notes,
+    from: q.stage, to: toStage, next_stage: next,
+    // The interface shows `message` and falls back to the bare error code, so a
+    // refusal with no message reaches a person as the single word "blocked" —
+    // every reason computed, none of them shown. The list IS the answer.
+    message: blocked.length
+      ? `Not yet. ${blocked.join('. ')}.`
+      : undefined,
+  };
 }
 
 export function advance(questId, toStage) {

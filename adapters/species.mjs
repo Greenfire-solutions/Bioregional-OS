@@ -82,7 +82,7 @@ export async function plantProfile(scientificName) {
       duration: hit.Duration ?? null,
       growth_habit: hit.GrowthHabit ?? null,
       native_status: hit.NativeStatus ?? null,
-      source: 'USDA PLANTS (public domain)',
+      source: 'USDA PLANTS Database', source_id: 'usda-plants',
     };
   } catch { return null; }
 }
