@@ -34,10 +34,34 @@ export async function api(req, res, url) {
   const clearance = clearanceFor(req);
   const out = await route(req, res, url, clearance);
   if (out === undefined || clearance === FULL) return out;
+
+  // The tool route has already withheld, and it had to.
+  //
+  // `runTool` withholds BEFORE it applies a tool's public view, because the
+  // view drops the `id` that withhold matches on — get that order wrong and the
+  // projection blinds the protection. It also takes a snapshot of what was
+  // protected BEFORE the handler ran, so a row the caller just created is not
+  // withheld from its own author.
+  //
+  // Withholding a second time here would throw both of those away: the refusal
+  // rule would fire on a receipt for something the caller just wrote, which is
+  // how `submit_intake` came to answer a neighbour bringing a need with "That
+  // is above what this connection may read."
+  //
+  // Protection belongs to whoever produced the answer. For tools that is
+  // runTool; for every other route it is this wrapper.
+  if (url.pathname.replace(/^\/api\/?/, '') === 'tool') return out;
   const deps = { hiddenIds: (levels) => new Set(
     all(`SELECT local_id FROM rids WHERE sensitivity IN (${levels.map(() => '?').join(',')})`, ...levels)
       .map((r) => r.local_id)) };
-  if (out && typeof out === 'object' && 'status' in out && 'body' in out) {
+  // An HTTP envelope is `{ status: <number>, body }`. Testing for the KEYS
+  // matched an intake row, which has `status: 'received'` and `body: 'the
+  // culvert is blocked'` — so a neighbour bringing a need through the join page
+  // had their need treated as a response envelope and got
+  // `Invalid status code: received` from Node. The main action of the one
+  // screen built for strangers has been broken; it took a stranger actually
+  // pressing the button to find it.
+  if (out && typeof out === 'object' && Number.isInteger(out.status) && 'body' in out) {
     return { ...out, body: withhold(out.body, clearance, deps) };
   }
   return withhold(out, clearance, deps);
@@ -51,7 +75,33 @@ async function route(req, res, url, clearance) {
   // ../clearance.mjs — `?clearance=sacred` used to be honoured, which defeated
   // the entire ladder.
 
-  if (req.method === 'POST' && p === 'ai') return aiStream(req, res);   // streams, handles its own response
+  // The assistant runs TOOLS, so the connection's clearance has to reach it.
+  //
+  // It did not. `aiStream` called `runTool` with no clearance at all, which
+  // means `clearance === null` — the local-caller path — so every gate in
+  // `mayRun` was skipped, and `anthropicTools()` publishes the whole registry.
+  // A device on the gathering wifi could ask the assistant to do council work,
+  // read restricted material, or open and close the wifi door. `aiStream` also
+  // returns undefined, so `withhold` never ran over its answers either.
+  //
+  // The sibling route proves the omission rather than excusing it: the Claude
+  // Code bridge next door has `fromThisMachine(req)` and this did not.
+  //
+  // Loopback-only, matching that sibling, rather than passing the clearance
+  // through: the assistant streams tool calls it chooses itself, so a refusal
+  // arrives mid-stream as text rather than as an answer a caller can act on,
+  // and "the steward's own panel, at the steward's own machine" is a sentence
+  // somebody can act on. If it is ever opened to devices, the clearance has to
+  // travel INTO runTool, not be checked out here.
+  if (req.method === 'POST' && p === 'ai') {
+    if (clearance !== FULL) {
+      return { status: 403, body: {
+        error: 'loopback_only',
+        message: 'The assistant runs at the computer the commons lives on, not over the wifi.',
+      } };
+    }
+    return aiStream(req, res);   // streams, handles its own response
+  }
   // Claude Code rather than the SDK: the steward's own subscription, no API key,
   // and loopback-only because it spawns a process and nothing here asks who you are.
   if (req.method === 'POST' && p === 'claude') return claudeStream(req, res, await readBody(req));

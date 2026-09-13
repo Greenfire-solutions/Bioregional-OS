@@ -60,6 +60,30 @@ const lower = (a, b) => (LADDER.indexOf(a) <= LADDER.indexOf(b) ? a : b);
  *
  * At the keyboard it returns the answer untouched, and quickly.
  */
+/**
+ * withhold(), with the one definition of where hidden ids come from.
+ *
+ * The route built these deps inline, which was fine while the route was the
+ * only caller. runTool has to withhold too — see the ordering note there — and
+ * a second inline copy of this query is how two callers come to disagree about
+ * what is hidden.
+ */
+export function protect(out, clearance, allRows, existingIds = null) {
+  if (clearance === FULL || clearance == null) return out;
+  return withhold(out, clearance, {
+    hiddenIds: (levels) => {
+      const hidden = new Set(
+        allRows(`SELECT local_id FROM rids WHERE sensitivity IN (${levels.map(() => '?').join(',')})`, ...levels)
+          .map((r) => r.local_id));
+      // When the caller passes a snapshot of what existed beforehand, anything
+      // minted during this call is not somebody else's record and is not
+      // withheld from its own author. See runTool.
+      if (!existingIds) return hidden;
+      return new Set([...hidden].filter((id) => existingIds.has(id)));
+    },
+  });
+}
+
 export function withhold(out, clearance, deps) {
   if (clearance === FULL || out === undefined || out === null || typeof out !== 'object') return out;
   const above = LADDER.slice(LADDER.indexOf(clearance) + 1);

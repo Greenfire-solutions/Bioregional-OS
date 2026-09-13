@@ -17,6 +17,7 @@ import { ecoregionPolygons } from '../adapters/layers.mjs';
 import * as operator from '../engines/operator.mjs';
 import * as ground from '../engines/ground.mjs';
 import * as share from '../server/share.mjs';
+import { protect } from '../server/clearance.mjs';
 import * as registry from '../adapters/registry.mjs';
 import * as firstrun from '../engines/firstrun.mjs';
 import * as loops from '../engines/loops.mjs';
@@ -885,11 +886,11 @@ export const TOOLS = [
       place_id: str('Look out from this place instead of the chapter default.'),
     }),
     handler: (i) => ground.groundToday(ch(i), { place_id: i.place_id ?? null }),
-    // What a stranger gets. Declared HERE, beside the tool, because the one
-    // registry is where a capability's rules live — a route deciding what to
-    // strip would be a second place that knows about audiences, and the next
-    // route would not know.
-    public_view: ground.forAStranger,
+    // What this answer looks like to a connection that is not the keyboard.
+    // Declared HERE, beside the tool, because the one registry is where a
+    // capability's rules live — a route deciding what to strip would be a
+    // second place that knows about audiences, and the next route would not.
+    view: ground.groundSeenBy,
   },
   {
     name: 'this_week_last_year',
@@ -1868,8 +1869,51 @@ export async function runTool(name, input = {}, { via = 'ui', clearance = null }
   // once, for every caller — so the answer a stranger gets cannot depend on
   // which route they arrived through, and a tool that declares no public_view
   // simply has nothing extra to offer them.
-  const project = (out) =>
-    (clearance === 'public' && typeof t.public_view === 'function' ? t.public_view(out) : out);
+  //
+  // WITHHOLD FIRST, THEN PROJECT. The order is the whole security property and
+  // getting it backwards was a real hole, not a theoretical one.
+  //
+  // `withhold()` removes protected objects by matching their `id`. The public
+  // projection DROPS `id` — deliberately, because an id is a handle for asking
+  // about a thing by id. Run the projection first and withhold has nothing left
+  // to match on, so it removes nothing and reports `withheld: 0`. Measured on a
+  // commons whose anchor place was marked sacred: a MEMBER got `place:
+  // undefined, withheld: 1`, and a STRANGER got the place named, with
+  // `withheld: 0`. Public was more permissive than members, and the protection
+  // was not merely absent — it was affirmatively reported as not having been
+  // needed.
+  //
+  // This is a new shape for the list in the warden's brief: not "defence in
+  // depth hid a broken half", but one half BLINDING the other. The two defences
+  // were each reviewed alone and each was correct alone.
+  //
+  // It lives here rather than in the route because the route is not the only
+  // caller, and because the next route would get the order wrong again. The
+  // route withholds too; a second pass finds nothing and costs one query.
+  // What is protected is decided BEFORE the handler runs.
+  //
+  // withhold() refuses outright any answer whose own id is protected — right
+  // for "show me this record", wrong for "here is the need I just brought".
+  // `submit_intake` files an intake whose RID is members-or-council, so a
+  // stranger bringing a need got back `That is above what this connection may
+  // read` about their own words.
+  //
+  // Taking the snapshot first draws the line exactly where it belongs: a row
+  // that did not exist when the call started cannot be somebody else's record.
+  // Anything that WAS protected a moment ago still is.
+  const hiddenBefore = clearance == null || clearance === 'sacred'
+    ? null
+    : new Set(all(`SELECT local_id FROM rids WHERE sensitivity IN ('restricted','sacred','council','members')`)
+      .map((r) => r.local_id));
+
+  const project = (out) => {
+    const held = protect(out, clearance, all, hiddenBefore);
+    // Declared per tool, applied at EVERY clearance below the keyboard, because
+    // the first rule such a view enforces is not about audiences at all: an
+    // answer whose subject was withheld still carries everything that points at
+    // it. See groundSeenBy().
+    return typeof t.view === 'function' ? t.view(held, clearance) : held;
+  };
   // Required fields are enforced here, not in each handler, so every caller —
   // MCP, the assistant, the REST API, the generated forms — gets the same answer.
   const missing = (t.input_schema?.required ?? []).filter((k) => {

@@ -115,8 +115,30 @@ export function startSharing({ anyway = false } = {}) {
 
   return new Promise((resolve) => {
     const s = createServer(handler);
-    s.on('error', (err) => { listener = null; resolve({ error: 'could_not_share', message: err.message }); });
-    s.listen(boundPort, '0.0.0.0', () => { listener = s; resolve(sharingStatus()); });
+    // The error handler covers the BIND only, and is removed the moment the
+    // socket is listening.
+    //
+    // Left attached, any later server-level error would set `listener = null`
+    // while the socket stayed bound: sharingStatus() would report `sharing:
+    // false`, the Devices screen would say "Only this computer can reach the
+    // OS", and stopSharing() would return `{ already: true }` WITHOUT closing
+    // anything. The door open and every surface saying it is shut is the worst
+    // shape this could fail in, and it is the opposite of what the refusal
+    // above is for.
+    const onBindError = (err) => {
+      listener = null;
+      resolve({ error: 'could_not_share', message: err.message });
+    };
+    s.once('error', onBindError);
+    s.listen(boundPort, '0.0.0.0', () => {
+      s.removeListener('error', onBindError);
+      // After binding, an error is a connection going wrong, not the door
+      // failing to open. Swallowed deliberately: an unhandled 'error' on a
+      // server takes the process down, and that would stop the commons.
+      s.on('error', () => {});
+      listener = s;
+      resolve(sharingStatus());
+    });
   });
 }
 

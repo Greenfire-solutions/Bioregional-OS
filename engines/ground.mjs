@@ -39,7 +39,12 @@ import { attributionFor, source as registrySource } from '../adapters/registry.m
  */
 export function anchorPlace(chapterId, placeId = null) {
   if (placeId) {
-    const p = one('SELECT * FROM places WHERE id=?', placeId);
+    // Scoped to the chapter. Unscoped, `place_id` was a way to look out from
+    // ANY place in the database — and `ground_today` takes both `chapter_id`
+    // and `place_id` in its schema and is now reachable at public, so a
+    // stranger could name another chapter's place and be answered about it.
+    // A caller that may not read a chapter may not stand in it either.
+    const p = one('SELECT * FROM places WHERE id=? AND chapter_id=?', placeId, chapterId);
     if (p?.lat != null) return p;
   }
   const located = one(
@@ -193,8 +198,46 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
  * MARKED sensitive, and today every RID is minted `public` by default, so a
  * projection that fails closed by construction is the one doing the work.
  */
+/**
+ * What this answer looks like to a given connection.
+ *
+ * Two rules, and the first applies at EVERY clearance rather than only to
+ * strangers, because it is not about audiences — it is about what is left in an
+ * answer once its subject has been removed.
+ */
+export function groundSeenBy(g, clearance) {
+  if (!g || typeof g !== 'object' || g.error) return g;
+  // Rule one: the subject was withheld, so the rest is locators. A member whose
+  // connection is not allowed the place is not allowed the gage that watches it
+  // either — withhold() removes the place object and leaves the gage, the
+  // weather station and the solar times sitting there, and those are a location.
+  if (!g.place) return noPublicPlace();
+  // Rule two: a stranger gets the day clock and nothing else.
+  return clearance === 'public' ? forAStranger(g) : g;
+}
+
+const noPublicPlace = () => ({
+  error: 'nothing_public_here',
+  message: 'This commons has not published anything about where it is.',
+});
+
 export function forAStranger(g) {
   if (!g || typeof g !== 'object' || g.error) return g;
+
+  // If the place was WITHHELD, there is no public day clock here at all.
+  //
+  // Everything else in this panel is a locator for that place. A USGS site
+  // number resolves to exact coordinates through a public API; a weather
+  // station is a named airfield; sunrise, sunset and solar noon together solve
+  // for latitude and longitude to within a few kilometres. Returning "the land"
+  // while omitting the place name would be the same disclosure with an extra
+  // step, and this project's rule for a sensitive record is that it is named
+  // and counted, never LOCATED.
+  //
+  // withhold() runs before this (see runTool) and removes the place object
+  // outright, so its absence here means protected, not missing.
+  if (!g.place) return noPublicPlace();
+
   return {
     generated_at: g.generated_at,
     place: g.place ? {

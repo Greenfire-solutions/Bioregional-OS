@@ -3693,6 +3693,70 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('settledIn writes nothing', one('SELECT COUNT(*) n FROM signals WHERE chapter_id=?', C).n === SETTLING_OBSERVATIONS * 2);
 }
 
+// ── Over a real socket ────────────────────────────────────────────────────
+//
+// Everything above calls `api()` in process, and so does `npm run prove` —
+// `new URL('http://localhost/api/...')` handed straight to the route. Neither
+// ever reaches `send()` in server/index.mjs, and that is where a live bug sat:
+// an intake row has `status: 'received'` and `body: '...'`, the response wrapper
+// tested for those KEYS, and `writeHead('received')` threw. A neighbour bringing
+// a need through the join page got HTTP 500 and the words "Invalid status code:
+// received", while the row was written — so they pressed again, and again.
+//
+// Every in-process assertion in this file was green over it. Some things are
+// only true down a socket, and the front door of this commons is one of them.
+{
+  const { spawn } = await import('node:child_process');
+  const { mkdtempSync, cpSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join: pathJoin } = await import('node:path');
+
+  const dir = mkdtempSync(pathJoin(tmpdir(), 'bros-socket-'));
+  const dbFile = pathJoin(dir, 'socket.db');
+  cpSync(process.env.BROS_DB, dbFile);
+  const port = 4200 + Math.floor(Math.random() * 300);
+
+  const child = spawn(process.execPath,
+    ['--disable-warning=ExperimentalWarning', 'server/index.mjs', '--no-heartbeat'],
+    { env: { ...process.env, BROS_DB: dbFile, PORT: String(port) }, stdio: 'ignore' });
+
+  const call = async (name, input) => {
+    const r = await fetch(`http://127.0.0.1:${port}/api/tool`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, input }),
+    });
+    return { status: r.status, body: await r.json().catch(() => null) };
+  };
+
+  let up = false;
+  for (let i = 0; i < 60 && !up; i++) {
+    try { await fetch(`http://127.0.0.1:${port}/api/status`); up = true; }
+    catch { await new Promise((r) => setTimeout(r, 250)); }
+  }
+
+  if (!up) {
+    skip('the OS answers over a real socket', 'the test server did not start');
+  } else {
+    // The one act the whole protocol is built around, down a real socket.
+    const brought = await call('submit_intake',
+      { kind: 'need', body: 'The culvert on Pecan Lane is blocked again', submitted_by: 'A neighbour' });
+    check('a neighbour can bring a need over a socket, and is told it worked',
+      brought.status === 200 && !brought.body?.error,
+      `HTTP ${brought.status} ${JSON.stringify(brought.body).slice(0, 90)}`);
+
+    // The answer travels back the same way, and hits the same collision.
+    const id = brought.body?.id;
+    const answered = id
+      ? await call('respond_to_intake', { intake_id: id, response: 'Booked for Saturday.' })
+      : { status: 0, body: null };
+    check('and the steward can answer it without being told the answer failed',
+      answered.status === 200 && !answered.body?.error,
+      `HTTP ${answered.status} ${JSON.stringify(answered.body).slice(0, 90)}`);
+  }
+
+  child.kill();
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

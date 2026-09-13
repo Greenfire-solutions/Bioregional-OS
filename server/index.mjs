@@ -12,6 +12,7 @@ import { join, extname, normalize } from 'node:path';
 import { execFile } from 'node:child_process';
 import { db, ROOT, openPath } from '../core/db.mjs';
 import { useHandler, startSharing, sharingStatus, heldAboveMembers, lanAddress } from './share.mjs';
+import { isLoopback } from './clearance.mjs';
 import { syncSources } from '../adapters/registry.mjs';
 import { api } from './routes/api.mjs';
 import * as heartbeat from '../engines/heartbeat.mjs';
@@ -96,13 +97,22 @@ const handle = async (req, res) => {
             qr = await QRCode.toDataURL(`http://${ip}:${PORT}`, { margin: 1, width: 240 });
           } catch { /* qrcode not installed — the link alone still works */ }
         }
+        // Answered BEFORE api(), so there is no clearanceFor() and no withhold()
+        // over it — which means everything here is public by construction and
+        // has to be chosen that way. Two things were not: the count of
+        // restricted and sacred records, added in the same commit whose own
+        // comment says "telling a stranger whether the wifi door is open is
+        // telling them about a door"; and an absolute path under /Users.
+        const atKeyboard = isLoopback(req.socket.remoteAddress);
         return send(res, 200, JSON.stringify({
           qr,
           local_url: `http://localhost:${PORT}`,
           lan_url: now.address,
           sharing: now.sharing,
-          held_above_members: now.held_above_members,
-          project_path: ROOT,
+          ...(atKeyboard ? {
+            held_above_members: now.held_above_members,
+            project_path: ROOT,
+          } : {}),
           hint: now.sharing
             ? 'Anyone on this wifi can open the wifi link. Stop sharing from Together → Devices.'
             : 'Only this computer can reach the OS right now. Turn sharing on from Together → Devices.',
@@ -110,7 +120,16 @@ const handle = async (req, res) => {
       }
       const out = await api(req, res, url);
       if (out === undefined) return;                   // route wrote its own response
-      send(res, out.status ?? 200, JSON.stringify(out.body ?? out, null, 2), 'application/json; charset=utf-8');
+      // An envelope is `{ status: <number>, body }`. `out.status ?? 200` treated
+      // any answer with a `status` field as one — and an intake row's status is
+      // the word "received", so `writeHead('received')` threw and a neighbour
+      // bringing a need through the join page got HTTP 500 while their words
+      // were written to the database. Same collision as in routes/api.mjs; it
+      // had to be fixed in both, and only a real socket showed the second one.
+      const envelope = out && typeof out === 'object'
+        && Number.isInteger(out.status) && 'body' in out;
+      send(res, envelope ? out.status : 200,
+        JSON.stringify(envelope ? out.body : out, null, 2), 'application/json; charset=utf-8');
     } catch (err) {
       send(res, 500, JSON.stringify({ error: err.message }), 'application/json; charset=utf-8');
     }

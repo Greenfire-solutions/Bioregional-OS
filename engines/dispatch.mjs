@@ -327,8 +327,14 @@ export function markCardSent(chapterId) {
 export function daysSinceLastCard(chapterId) {
   try {
     const MARK = markPath();
-    if (!existsSync(MARK)) return null;
-    const at = JSON.parse(readFileSync(MARK, 'utf8'))[chapterId];
+    // The path moved. A chapter that has been posting for months would
+    // otherwise read as never having posted — the same shape as the column that
+    // made every already-answered need look unanswered — and the operator would
+    // tell them "the group has never had a card from this commons". Read the
+    // old location when the new one has nothing to say about this chapter.
+    const legacy = join(dirname(dbPath()), 'last-card.json');
+    const read = (f) => (existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {});
+    const at = read(MARK)[chapterId] ?? read(legacy)[chapterId];
     if (!at) return null;
     return Math.floor((Date.now() - new Date(at).getTime()) / 86400000);
   } catch { return null; }
