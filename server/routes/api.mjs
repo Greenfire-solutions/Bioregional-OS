@@ -111,7 +111,15 @@ async function route(req, res, url, clearance) {
       return {
         ok: true,
         version: '1.0.0',
-        chapters: all('SELECT id,name,scale,represents,does_not_represent,lat,lng FROM chapters'),
+        // A chapter's COORDINATES are not part of saying hello.
+        //
+        // `forAStranger()` strips lat/lng from the day clock on the stated
+        // principle that a name is a fact about the land and a coordinate is a
+        // direction to it — and this route handed the same numbers to the same
+        // stranger, one call away, because it predates the principle. The join
+        // page needs the chapter's NAME, which is what it renders.
+        chapters: all('SELECT id,name,scale,represents,does_not_represent,lat,lng FROM chapters')
+          .map((c) => (clearance === FULL ? c : { ...c, lat: undefined, lng: undefined })),
         default_chapter: chapterId,
         counts: {
           places: n('places'), signals: n('signals'), quests: n('quests'),

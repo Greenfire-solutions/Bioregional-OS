@@ -33,14 +33,22 @@ export default function GroundForAnyone({ className = '' }) {
 
   if (!g) return null;
 
+  // `water.standing` is the sentence, and it was being thrown away for the
+  // number. "dry — as it usually is on this date", against 49 years of record,
+  // is the thing a person did not know; a bare "0 ft3/s" reads as a broken
+  // gage. The unit is written the way it is spoken, too — `headline()` does the
+  // same replacement and this panel did not, so the one screen built for
+  // strangers was the one printing ft3/s.
+  const water = g.water?.site_name
+    ? `${g.water.site_name}: ${g.water.standing
+        ?? (g.water.current != null ? `${g.water.current} ${g.water.unit ?? ''}`.trim() : null)}`
+    : null;
   const line = [
     g.place?.name,
     g.place?.ecoregion,
-    g.water?.site_name && g.water?.current != null
-      ? `${g.water.site_name}: ${g.water.current} ${g.water.unit ?? ''}`.trim()
-      : null,
+    water && water.replace(/ft3\/s/g, 'ft³/s'),
     g.sky?.daylight && `${g.sky.daylight} of daylight, ${g.sky.daylight_change}`,
-  ].filter(Boolean).join(' · ');
+  ].filter((x) => x && !/: (null|undefined)$/.test(x)).join(' · ');
 
   return (
     <section className={`rounded border border-[var(--line)] px-3.5 py-3 ${className}`}>

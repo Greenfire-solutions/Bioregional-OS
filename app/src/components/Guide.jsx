@@ -145,7 +145,7 @@ export default function Guide({ tab }) {
         <div className="border-t border-[var(--line-2)] pt-3">
           <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Still stuck</div>
           <p className="mt-1 text-xs text-[var(--ink-2)]">
-            In the terminal window, type <code className="rounded bg-[var(--line-2)] px-1">npm run help</code> for
+            At the computer the commons lives on, type <code className="rounded bg-[var(--line-2)] px-1">npm run help</code> for
             everything, or <code className="rounded bg-[var(--line-2)] px-1">npm run doctor -- --fix</code> if
             something is actually broken. You cannot break it by trying.
           </p>

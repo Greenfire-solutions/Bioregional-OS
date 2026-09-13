@@ -3693,6 +3693,27 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('settledIn writes nothing', one('SELECT COUNT(*) n FROM signals WHERE chapter_id=?', C).n === SETTLING_OBSERVATIONS * 2);
 }
 
+// ── A chapter's coordinates are not part of saying hello ──────────────────
+// `forAStranger()` strips lat/lng from the day clock on a stated principle — a
+// name is a fact about the land, a coordinate is a direction to it — and
+// /api/status handed the same numbers to the same stranger one call away,
+// because it predates the principle.
+{
+  const { api } = await import('../server/routes/api.mjs');
+  const res = { writeHead() {}, end() {}, write() {} };
+  const status = async (addr) => (await api(
+    { method: 'GET', socket: { remoteAddress: addr }, headers: {} },
+    res, new URL('http://localhost/api/status'))).chapters?.[0] ?? {};
+
+  const stranger = await status('192.168.1.44');
+  check('a stranger is told the chapter\'s name and not where to find it',
+    !!stranger.name && stranger.lat === undefined && stranger.lng === undefined,
+    JSON.stringify(stranger).slice(0, 100));
+  const keyboard = await status('127.0.0.1');
+  check('and at the keyboard nothing is hidden',
+    keyboard.lat != null && keyboard.lng != null);
+}
+
 // ── What a button on a list actually does ─────────────────────────────────
 //
 // There were two lists of "needs no form" and they had drifted: the board knew
