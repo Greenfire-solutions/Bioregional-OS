@@ -32,6 +32,7 @@ import { whoCouldHelp } from './matching.mjs';
 import { priorities } from './quest.mjs';
 import { myRegions, homeRegion, brief as regionBrief } from './library.mjs';
 import { mayRun } from '../ai/access.mjs';
+import { theRound, itemKey } from './round.mjs';
 import { settledIn } from './firstrun.mjs';
 
 export function board(chapterId, { actions = 5, projects = 8, clearance = null } = {}) {
@@ -89,10 +90,25 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
     title: s.title, detail: s.detail, why: s.why,
     urgency: 'gap', stage: 'Settling in', action: s.action, age_days: null,
   }));
-  // Inside the cap, not on top of it: five things is still five things.
-  const todo = [...settle, ...doable.slice(0, Math.max(0, actions - settle.length)).map((i) => ({
+  // ── This week's round, not the top five of a live ranking ───────────────
+  //
+  // The board used to take the top five every time it was asked, so closing a
+  // gate moved a digit and the next identical line stepped into the slot: the
+  // five lines were the same next week, and the week after. A round is picked
+  // once and held (engines/round.mjs), so clearing one EMPTIES a slot.
+  //
+  // Settling in still comes first and still sits inside the cap. It is not part
+  // of the round because it is not weekly work — it is the three things that
+  // make a commons about somewhere and someone, and until they exist there is
+  // nothing for a round to be about.
+  const week = settling.complete
+    ? (safely(() => theRound(chapterId, { size: actions })) ?? null)
+    : null;
+  const fromRound = (week?.remaining ?? doable).filter(runnable);
+  const todo = [...settle, ...fromRound.slice(0, Math.max(0, actions - settle.length)).map((i) => ({
     title: i.title, detail: i.detail ?? null, why: i.rule ?? null,
     urgency: i.kind, stage: i.stage, action: i.action, age_days: i.age_days ?? null,
+    key: itemKey(i),
   }))];
 
   // ── What is going on ────────────────────────────────────────────────────
@@ -170,7 +186,26 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
       sentence: land.sentence ?? null,
     },
     todo,
-    todo_total: doable.length + settle.length,
+    todo_total: fromRound.length + settle.length,
+    // The week, said in a sentence. `finished` is a state the software can be
+    // in — which is what makes this a round rather than a list — and it is
+    // deliberately NOT a score: nothing counts finished weeks or compares one
+    // to another. See the note on the rounds table.
+    round: week ? {
+      finished: week.finished && settle.length === 0,
+      sentence: settle.length ? null : week.sentence,
+      remaining: week.remaining_count,
+      done: week.done_count,
+      set_aside: week.set_aside.length,
+      opened_at: week.opened_at,
+      // Something blocking that arrived after the round was picked. Shown
+      // beside it, never folded into it, so an emergency on Tuesday is not
+      // hidden for six days and the five are still five.
+      arrived_since: (week.not_in_this_round ?? []).filter(runnable).slice(0, 2).map((i) => ({
+        title: i.title, stage: i.stage, action: i.action, key: itemKey(i),
+      })),
+      waiting: week.waiting_count,
+    } : null,
     // Held back because this connection may not run them, not hidden. Zero at
     // the keyboard. The interface says so in a line rather than leaving a
     // member to wonder why their board is shorter than the steward's.

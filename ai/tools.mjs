@@ -17,6 +17,7 @@ import { ecoregionPolygons } from '../adapters/layers.mjs';
 import * as operator from '../engines/operator.mjs';
 import * as ground from '../engines/ground.mjs';
 import * as share from '../server/share.mjs';
+import * as round from '../engines/round.mjs';
 import { protect } from '../server/clearance.mjs';
 import * as registry from '../adapters/registry.mjs';
 import * as firstrun from '../engines/firstrun.mjs';
@@ -1315,6 +1316,33 @@ export const TOOLS = [
     }, ['quest_id', 'gate', 'reason', 'overridden_by']),
     handler: (i) => quest.overrideGate(i.quest_id, i.gate,
       { reason: i.reason, overridden_by: i.overridden_by }),
+  },
+  {
+    name: 'the_round',
+    description:
+      "This week's round: the handful of things picked once and held, what is left of them, and "
+      + 'whether it is finished. An item leaves the round when the WORK is done — when it is no '
+      + 'longer in whats_next — never because somebody ticked it. Opens a round if none is open. '
+      + 'Ask this rather than whats_next when the question is "what am I doing this week".',
+    input_schema: S({
+      chapter_id: str(''),
+      size: num('How many things a round holds. Default 5.'),
+    }),
+    handler: (i) => round.theRound(ch(i), { size: i.size ?? 5 }),
+  },
+  {
+    name: 'set_aside',
+    description:
+      'Not this week. Takes the item out of this round with a reason that is kept. The work is '
+      + 'not done and does not disappear — it stays in whats_next and can be picked up in a later '
+      + 'round. A reason is required: "set aside" with no reason reads, a month later, exactly '
+      + 'like nobody having looked.',
+    input_schema: S({
+      chapter_id: str(''),
+      key: str('The item key, from the_round.'),
+      reason: str('Why it is not this week.'),
+    }),
+    handler: (i) => round.setAside(ch(i), i.key, i.reason),
   },
   {
     name: 'sharing_status',

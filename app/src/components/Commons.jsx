@@ -165,12 +165,39 @@ export default function Commons({ onGoTo, onChanged }) {
 
       {/* ── What can I do ───────────────────────────────────────────────── */}
       <section>
-        <Head Icon={Flag} label="What needs doing"
-              note={b.todo_total > b.todo.length
-                ? `${b.todo.length} of ${b.todo_total} — the rest are on Today`
-                : b.todo.length ? 'Each one cites the rule it comes from' : null}
-              onMore={b.todo_total > b.todo.length ? () => onGoTo?.('today') : null} />
-        {b.todo.length === 0 ? (
+        <Head Icon={Flag} label="This week"
+              note={b.round?.sentence
+                ?? (b.todo_total > b.todo.length
+                  ? `${b.todo.length} of ${b.todo_total} — the rest are on Today`
+                  : b.todo.length ? 'Each one cites the rule it comes from' : null)}
+              onMore={b.round?.waiting ? () => onGoTo?.('today') : null} />
+        {/*
+          The finished state. It exists because the week clock is specified as
+          "capable of being finished" and never was: the board recomputed the
+          top five every time it was asked, so closing a gate moved one digit
+          and the next identical line stepped into the slot.
+
+          Deliberately not a celebration, and deliberately not a count of weeks.
+          §3.4 refuses streaks on evidence, and "four weeks in a row" is a
+          streak with a calendar on it. It says the round is done and what is
+          still waiting, and that is all.
+        */}
+        {b.round?.finished ? (
+          <div className="rounded border border-[#CBDCCD] bg-[#F2F6F2] px-4 py-3">
+            <p className="text-sm font-medium">That is the round.</p>
+            <p className="mt-1 text-xs text-[var(--ink-2)]">
+              Nothing else is asked of you this week.
+              {b.round.set_aside > 0 && ` ${b.round.set_aside} set aside for later.`}
+              {b.round.waiting > 0 && ` ${b.round.waiting} more will wait until next week.`}
+            </p>
+            {b.round.waiting > 0 && (
+              <button onClick={() => onGoTo?.('today')}
+                className="mt-2 text-[11px] text-[var(--ink-2)] underline-offset-2 hover:text-[var(--ink)]">
+                see what is waiting
+              </button>
+            )}
+          </div>
+        ) : b.todo.length === 0 ? (
           <Empty Icon={CheckCircle2}>
             Nothing is blocked, slipped or missing. That is rare — worth publishing a report
             while it is true.
@@ -190,11 +217,49 @@ export default function Commons({ onGoTo, onChanged }) {
                   {t.detail && <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">{t.detail}</p>}
                   {t.why && <p className="mt-0.5 text-[10px] italic text-[var(--ink-3)]">{t.why}</p>}
                 </div>
-                <button onClick={() => act(t, i)} disabled={busy[i]}
-                  className="flex shrink-0 items-center gap-1.5 rounded bg-[var(--moss)] px-3 py-1.5
-                             text-[11px] font-medium text-white disabled:opacity-50">
-                  {busy[i] ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                           : <>{verb(t.action.tool)} <ArrowRight className="h-3 w-3" /></>}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <button onClick={() => act(t, i)} disabled={busy[i]}
+                    className="flex items-center gap-1.5 rounded bg-[var(--moss)] px-3 py-1.5
+                               text-[11px] font-medium text-white disabled:opacity-50">
+                    {busy[i] ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                             : <>{verb(t.action.tool)} <ArrowRight className="h-3 w-3" /></>}
+                  </button>
+                  {/*
+                    Deferring, which the spec asks for by name. Without it, one
+                    thing a steward cannot do this week holds the round open for
+                    ever and "finished" becomes unreachable — the original
+                    problem with an extra step. A button rather than underlined
+                    text, because no action here is drawn as a footnote.
+                  */}
+                  {t.key && b.round && (
+                    <button onClick={() => setForm({ tool: 'set_aside', prefill: { key: t.key } })}
+                      className="rounded border border-[var(--line)] px-2 py-1 text-[10px]
+                                 text-[var(--ink-2)] hover:border-[var(--ink-3)] hover:text-[var(--ink)]">
+                      {verb('set_aside')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/*
+          Something blocking that arrived after the round was picked. Shown
+          beside the round and never folded into it: an emergency on Tuesday
+          must not wait six days for a slot, and the five must stay five.
+        */}
+        {b.round?.arrived_since?.length > 0 && (
+          <div className="mt-3 rounded border border-[#E8DCB8] bg-[#FBF3DC] px-3 py-2">
+            <p className="text-[11px] font-medium">
+              Since this round was picked
+            </p>
+            {b.round.arrived_since.map((a2, n) => (
+              <div key={n} className="mt-1.5 flex items-start gap-2">
+                <p className="min-w-0 flex-1 text-[12px] leading-snug">{a2.title}</p>
+                <button onClick={() => act(a2, `new-${n}`)}
+                  className="shrink-0 rounded bg-[var(--clay)] px-2.5 py-1 text-[10px] font-medium text-white">
+                  {verb(a2.action.tool)}
                 </button>
               </div>
             ))}

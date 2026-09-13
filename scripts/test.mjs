@@ -3693,6 +3693,110 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('settledIn writes nothing', one('SELECT COUNT(*) n FROM signals WHERE chapter_id=?', C).n === SETTLING_OBSERVATIONS * 2);
 }
 
+// ── The round can be finished ─────────────────────────────────────────────
+//
+// §4 of DAILY_USE.md specifies the week clock as "capped, deferrable, and
+// capable of being FINISHED", with the reward written down as "the list
+// empties". It did not empty: the board recomputed the top five every time it
+// was asked, so closing a consent gate — an evening of door-knocking, evidence
+// written, a reviewer named — moved one digit while the next identical line
+// stepped into the slot. The five lines were the same the following week.
+//
+// A list that does not change teaches a steward that their work does not move
+// the screen, which is harder to come back from than a list that is merely long.
+{
+  const R = await import('../engines/round.mjs');
+  const { whatsNext } = await import('../engines/operator.mjs');
+  const C = 'test';
+
+  // Picked once and held. Two looks, the same round.
+  const first = R.theRound(C);
+  const second = R.theRound(C);
+  check('a round is picked once and is the same round when you look again',
+    first.round_id === second.round_id && first.remaining_count === second.remaining_count,
+    `${first.round_id} / ${second.round_id}`);
+  check('and it is capped', first.size <= 5, String(first.size));
+
+  // The key has to survive the work being done to it. "2 projects are waiting
+  // on gates — 17 between them" changes its title the moment a gate closes,
+  // which is exactly when the round must not lose track of it.
+  const gateItem = whatsNext(C).items.find((i) => i.action?.tool === 'satisfy_quest_gate');
+  if (gateItem) {
+    const before = R.itemKey(gateItem);
+    const moved = { ...gateItem, title: 'a completely different sentence',
+      action: { ...gateItem.action, input: { ...gateItem.action.input, gate: 'some_other_gate' } } };
+    check('an item keeps its identity when its title and its next gate change',
+      R.itemKey(moved) === before, `${before} vs ${R.itemKey(moved)}`);
+  }
+
+  // Deferring, which is the half that makes finishing honest: without it one
+  // thing a steward cannot do this week holds the round open for ever.
+  const key = first.remaining.length ? R.itemKey(first.remaining[0]) : null;
+  if (key) {
+    check('setting something aside without a reason is refused',
+      R.setAside(C, key, '   ')?.error === 'no_reason');
+    check('and so is setting aside something this round never asked for',
+      R.setAside(C, 'invented|key', 'because')?.error === 'not_in_round');
+    const after = R.setAside(C, key, 'The council meets on the 28th; nothing moves before then.');
+    check('setting something aside takes it out of the round',
+      after.remaining_count === first.remaining_count - 1,
+      `${first.remaining_count} -> ${after.remaining_count}`);
+    check('and keeps the reason, because "set aside" with no reason reads like nobody looked',
+      after.set_aside.some((a) => /council meets/.test(a.reason)));
+    // The work itself is untouched. Setting aside is about the WEEK, not about
+    // the commons, and a round that could quietly close work would be a way of
+    // marking things done without doing them.
+    check('the work is still there — a round holds a week, not the commons',
+      whatsNext(C).items.some((i) => R.itemKey(i) === key));
+  }
+
+  // Clearing them all reaches a state, and the state persists.
+  for (const item of [...R.theRound(C).remaining]) {
+    R.setAside(C, R.itemKey(item), 'Not this week.');
+  }
+  const done = R.theRound(C);
+  check('when the five are gone the round is finished, and says so',
+    done.finished === true && /That is the round/.test(done.sentence), done.sentence);
+  check('and asking again does not refill it',
+    R.theRound(C).remaining_count === 0);
+  // The thing that was broken: what did not fit is STATED, never used to top up.
+  check('what did not fit is counted, not poured back in',
+    typeof done.waiting_count === 'number' && done.remaining_count === 0);
+
+  // A new week is a new round.
+  dbRun(`UPDATE rounds SET opened_at = datetime('now','-8 days') WHERE chapter_id='test' AND closed_at IS NULL`);
+  const nextWeek = R.theRound(C);
+  check('a new week opens a new round rather than reviving last week\'s',
+    nextWeek.round_id !== done.round_id && nextWeek.remaining_count > 0,
+    `${done.round_id} -> ${nextWeek.round_id}`);
+
+  // ── And it must never become a streak ─────────────────────────────────
+  // §3.4 refuses streaks on evidence: they move retention and they bring
+  // anxiety, guilt, dependency and sharp churn when one breaks. A "rounds
+  // completed" counter is a streak with a calendar on it, and it is the
+  // obvious next feature for anybody who reads this table without the
+  // argument. These assert the absence.
+  // Comments stripped first. The argument for refusing streaks has to be
+  // written down beside the table, so a check that reads the prose would be
+  // tripped by the very paragraph explaining why the thing is absent — the
+  // same shape as the licence check, which skips comments for the same reason.
+  const executable = (f) => readFileSync(f, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split('\n').map((l) => (l.indexOf('//') >= 0 ? l.slice(0, l.indexOf('//')) : l)).join('\n');
+  const src = executable('engines/round.mjs') + executable('engines/board.mjs');
+  check('nothing counts how many rounds were finished',
+    !/COUNT\(\*\)[^;]*FROM rounds|rounds_completed|streak/i.test(src));
+  check('and nothing reads a closed round back',
+    !/closed_at IS NOT NULL/.test(src));
+  // A round stores KEYS, never the text of an item, so it cannot go stale and
+  // cannot disagree with the commons about what is true.
+  const stored = one(`SELECT picked FROM rounds WHERE chapter_id='test' ORDER BY rowid DESC LIMIT 1`);
+  check('a round holds keys, not a copy of what the commons said that day',
+    !/ cannot be built | brought a need /.test(stored?.picked ?? ''), stored?.picked?.slice(0, 80));
+
+  dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+}
+
 // ── A chapter's coordinates are not part of saying hello ──────────────────
 // `forAStranger()` strips lat/lng from the day clock on a stated principle — a
 // name is a fact about the land, a coordinate is a direction to it — and
@@ -3852,11 +3956,19 @@ check('a card from a real chapter does not cry wolf about being an example',
     typeof asMember.for_the_council === 'number');
   check('at the keyboard nothing is held back',
     board(C).for_the_council === 0);
-  // The slots REFILL rather than emptying — otherwise a member sees two things
-  // and three holes, which reads as a broken screen.
-  check('a member still gets a full board, not the leftovers',
-    (asMember.todo ?? []).length === (board(C).todo ?? []).length,
-    `${(asMember.todo ?? []).length} vs ${(board(C).todo ?? []).length}`);
+  // A member sees HER PART of the chapter's round, and is told the size of the
+  // rest. This assertion used to require a full board — the slots refilled from
+  // the live ranking — and that stopped being right when the round arrived: the
+  // five are the chapter's five, picked once, and if four of them are council
+  // work then four of them are council work. Refilling from elsewhere would
+  // give a member a different week from her steward's, which is a stranger
+  // thing than a short list. What must stay true is the original complaint:
+  // never a button that refuses, and never a silent absence.
+  check('a member is never given more than the round actually holds for her',
+    (asMember.todo ?? []).length <= (board(C).todo ?? []).length);
+  check('and is told the size of what she is not being shown',
+    asMember.for_the_council > 0 || (asMember.todo ?? []).length === (board(C).todo ?? []).length,
+    `${(asMember.todo ?? []).length} shown, ${asMember.for_the_council} held`);
 
   dbRun(`DELETE FROM intake WHERE id='inta-ana'`);
 }

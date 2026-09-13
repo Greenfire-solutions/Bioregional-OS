@@ -2,6 +2,7 @@
 // Everything here is demonstration material — it is labelled as such in the UI.
 // Run `npm run seed -- --reset` to start over.
 import { db, all, one, create, run, close } from './db.mjs';
+import { readFileSync } from 'node:fs';
 import {
   INITIAL_PLACES, INITIAL_HUBS, INITIAL_SIGNALS, INITIAL_QUESTS,
   INITIAL_DECISIONS, INITIAL_GATHERINGS, INITIAL_EXCHANGE,
@@ -20,13 +21,49 @@ const reset = process.argv.includes('--reset');
 db();
 
 if (reset) {
-  for (const t of ['quest_gates', 'measurements', 'indicators', 'exchange_events', 'agents',
-                   'gatherings', 'decisions', 'quests', 'signals', 'hubs', 'places',
-                   'intake', 'learn', 'media_consent', 'ai_log', 'atlas_layers',
-                   'federation_peers', 'rids', 'chapters']) {
-    run(`DELETE FROM ${t}`);
+  // Every table, read from the database rather than listed here.
+  //
+  // The list used to be written out by hand and had fallen seven tables behind
+  // the schema — including `people`, `devices` and `capabilities`. So
+  // `npm run seed -- --reset` printed "cleared existing data" while leaving
+  // every enrolled person, every device secret and every unredeemed invitation
+  // code in place. A reset that lies about what it cleared is the same class of
+  // problem as a backup that is not a backup.
+  //
+  // Foreign keys are ON in this database, so the order would matter. Rather
+  // than hand-maintaining a dependency order as well — a second list to fall
+  // behind — they are switched off for the duration of the delete, which is
+  // what a full wipe means anyway.
+  const tables = all(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`)
+    .map((r) => r.name);
+  // Two triggers refuse to delete a person or a device, and they are right:
+  // revocation is a status change, never a deletion, because a revoked person
+  // stays visible as the author of everything they filed.
+  //
+  // That reasoning does not reach here, and it is worth saying why rather than
+  // just switching them off. `--reset` is not a withdrawal being honoured — it
+  // is the whole database being thrown away, including every row those people
+  // authored. There is nothing left for them to remain the author OF. Honouring
+  // a person's withdrawal is `npm run erase`, which is a different act with a
+  // different gate.
+  //
+  // exec, not a prepared statement: node:sqlite will not run a PRAGMA or a DROP
+  // TRIGGER through prepare().run().
+  const d = db();
+  d.exec('PRAGMA foreign_keys=OFF');
+  d.exec('DROP TRIGGER IF EXISTS people_no_delete');
+  d.exec('DROP TRIGGER IF EXISTS devices_no_delete');
+  try {
+    for (const t of tables) run(`DELETE FROM ${t}`);
+  } finally {
+    // Put them back before anything else can touch this database, whatever
+    // happened above. schema.sql is CREATE ... IF NOT EXISTS throughout, so
+    // re-running it restores exactly the triggers that were dropped.
+    d.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+    d.exec('PRAGMA foreign_keys=ON');
   }
-  console.log('  cleared existing data');
+  console.log(`  cleared existing data (${tables.length} tables)`);
 }
 
 if (one('SELECT id FROM chapters WHERE id=?', CHAPTER)) {

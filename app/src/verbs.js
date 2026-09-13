@@ -59,6 +59,10 @@ const VERB = {
   revoke_device: 'Revoke',
   list_devices: 'See the devices',
 
+  // the week
+  the_round: 'See this week',
+  set_aside: 'Not this week',
+
   // what travels
   // A verb for the person, not for the machine: they are not "generating a
   // weekly card", they are writing to the group. The OS never sends it.

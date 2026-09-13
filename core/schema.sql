@@ -486,6 +486,37 @@ CREATE INDEX IF NOT EXISTS idx_events_quest    ON exchange_events(quest_id);
 -- (stage 6, reached through stage 12's "what should stop, continue, change or
 -- travel?"). Kept as rows rather than as files because the whole point is that
 -- the NEXT season can read the last one.
+-- ── The round ─────────────────────────────────────────────────────────────
+-- The week clock: "capped, deferrable, and capable of being finished"
+-- (docs/DAILY_USE.md §4), where the reward is stated as "the list empties".
+--
+-- It could not be finished, and the way it failed was worse than being long.
+-- The board took the top five by priority every time it was asked, so closing a
+-- gate — an evening of door-knocking, evidence written, a reviewer named — moved
+-- one digit and the next identical line stepped into the slot. The five lines
+-- were the same next week. A steward learns from that that their work does not
+-- move the screen, which is a harder thing to come back from than a long list.
+--
+-- So a round is PICKED ONCE and HELD. Clearing one empties a slot.
+--
+-- What is stored is only the KEYS of the five, never their text: the items are
+-- recomputed live every time, so a round cannot go stale, cannot disagree with
+-- the commons, and holds no copy of anything the protocol owns.
+--
+-- Deliberately NOT stored: whether a past round was finished. No counter, no
+-- comparison between weeks, nothing that could become a streak — §3.4 refuses
+-- those on evidence, and a "rounds completed" number is a streak with a
+-- calendar on it. `closed_at` exists so a week can end, not so weeks can be
+-- scored, and nothing reads a closed round back.
+CREATE TABLE IF NOT EXISTS rounds (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  opened_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  closed_at   TEXT,
+  picked      TEXT NOT NULL DEFAULT '[]',   -- JSON array of item keys
+  set_aside   TEXT NOT NULL DEFAULT '[]'    -- JSON array of {key, reason, at}
+);
+
 CREATE TABLE IF NOT EXISTS seasons (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,

@@ -64,6 +64,40 @@ A second person can write, without accounts. **Together → Devices** mints the
 code and shows it as a QR; the join page redeems it, typed or from the link's
 fragment; the token rides as a header on every call. Revocation keeps the row.
 
+### The round can be finished
+
+The week clock, specified in `docs/DAILY_USE.md` §4 as "capped, deferrable, and
+capable of being finished", with the reward written down as "the list empties".
+
+It did not empty. The board recomputed the top five every time it was asked, so
+closing a consent gate — an evening of door-knocking, evidence written, a
+reviewer named — moved one digit while the next identical line stepped into the
+slot. The five lines were the same the following week. That is worse than a long
+list: a list that does not change teaches a steward that their work does not
+move the screen.
+
+A round is picked once and held for seven days (`engines/round.mjs`, `rounds`
+table). Clearing one empties a slot. Three rules keep it honest:
+
+- **Nothing is marked done by a person.** An item leaves the round when it is
+  no longer in `whats_next` — when the work is done, not when somebody says so.
+  There is no checkbox and nothing to game.
+- **Deferrable, with a reason.** `set_aside` takes the item out of this week and
+  keeps why. Without it, one thing a steward cannot do holds the round open for
+  ever and "finished" is unreachable. The work itself is untouched.
+- **No counter survives the week.** Nothing counts finished rounds or compares
+  one week to another, and a test asserts it stays that way. "Rounds completed"
+  is a streak with a calendar on it, and §3.4 refuses streaks on evidence.
+
+Something blocking that arrives after the round is picked is shown beside it,
+named as not being part of it, so an emergency on Tuesday does not wait six days
+for a slot.
+
+The round stores only item KEYS, never their text, so it cannot go stale or
+disagree with the commons. A key is the stage, the tool and the ids the action
+names, with volatile inputs left out — `gate` above all, since closing the gate
+the action happens to offer must not make the item look like a different one.
+
 ### Setup cannot finish empty
 `settledIn()` in `engines/firstrun.mjs` names the three things a founded
 commons still lacks — a place with coordinates, a person, three human
@@ -125,15 +159,10 @@ and still a real constraint on what a chapter can rely on.
 
 Small things seen while building, deliberately left:
 
-- **The weekly round still cannot be finished.** Folding the gated projects into
-  one line freed three of the five board slots, so a person waiting and the
-  weekly card now appear on it — but closing real work still does not empty a
-  slot. An evening of door-knocking moved one digit and left the five lines
-  identical. The designed answer is to pick the five once a week and HOLD them,
-  stored the way the card mark is (a sidecar keyed to the database file), so
-  clearing one leaves a gap rather than promoting the next identical line, and
-  when they are gone the screen says that is the round. Finishing has to be a
-  state the software can be in, or it is not a round.
+- **A round is per chapter, not per person.** A member sees her part of the
+  chapter's five and is told the size of the rest. The alternative — refilling
+  her slots from work the round did not pick — would give her a different week
+  from her steward's, which is a stranger thing than a short list.
 - **Paper mode has no transcription path.** The field sheet prints eight ruled
   lines and a code, and there is nothing that accepts the code back. Fifteen
   people at a gathering produce 120 lines the steward re-enters one modal at a

@@ -86,13 +86,17 @@ const MEMBERS = [
   'vitals', 'neighbours', 'seasons', 'land_seat_brief', 'quest_score',
   'seasonal_priorities', 'map_features', 'commons_board', 'who_could_help',
   'list_discovered', 'card_for_the_week', 'community_here', 'culture_here',
-  'growing_year', 'water_here', 'whats_next', 'library_status', 'list_regions',
+  'growing_year', 'water_here', 'whats_next', 'the_round', 'library_status', 'list_regions',
   'region_brief', 'find_species', 'settling_in',
   // ordinary field work
   'add_place', 'locate_place', 'ingest_water_data', 'record_measurement', 'add_indicator',
   'propose_baseline', 'set_indicator_baseline', 'add_gathering', 'update_gathering',
   'record_exchange', 'publish_learning', 'mark_card_sent', 'add_hub', 'add_agent',
   'open_quest', 'update_quest',
+  // Setting something aside is housekeeping on the week, not a protocol gate —
+  // the work is untouched and stays in whats_next. A member doing the round is
+  // the point of there being a round.
+  'set_aside',
 ];
 
 // Sharing is a decision about a room, made at the machine the commons lives on.
