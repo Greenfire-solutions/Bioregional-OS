@@ -60,6 +60,9 @@ const VERB = {
   list_devices: 'See the devices',
 
   // what travels
+  // A verb for the person, not for the machine: they are not "generating a
+  // weekly card", they are writing to the group. The OS never sends it.
+  card_for_the_week: 'Write to the group',
   publish_learning: 'Write it up',
   open_season: 'Open the season',
   close_season: 'Close the season',

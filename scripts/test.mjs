@@ -2363,6 +2363,57 @@ check('the card mark is not a column on the commons',
 markCardSent('test');
 check('a card that was produced can be remembered', daysSinceLastCard('test') === 0);
 
+// ── And where that memory lives ─────────────────────────────────────────
+// It is a file, not a column, which is right — but it was a file at a FIXED
+// path, so it did not follow BROS_DB. `npm run prove` builds a throwaway
+// commons precisely so it can press every button safely, and `mark_card_sent`
+// wrote the real file on every run: the prover reported itself read-only while
+// changing live state, and the operator then saw a card sent today because a
+// test had pressed the button.
+{
+  const { dbPath } = await import('../core/db.mjs');
+  const { existsSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const here = `${dbPath()}-last-card.json`;
+  check('the card mark is written beside the commons that is open, not a fixed path',
+    existsSync(here), here);
+  // The property, stated the way it will be needed for the next file that lives
+  // outside the database — audio, photographs, anything with bytes. The
+  // directory is not enough: the suite opens a fresh database every run in a
+  // SHARED folder, so the mark has to be a sidecar of the file.
+  check('and so a throwaway commons cannot write the real one',
+    here.startsWith(dbPath()) && !here.includes(join('Bioregional-OS', 'data', 'commons.db')), here);
+}
+
+// ── A long silence is an item in the round, never a notification ────────
+// The card is the highest-leverage mechanism in the system — the group is
+// already in a chat and zero of 29 mutual aid groups studied adopted a
+// purpose-built tool — and `daysSinceLastCard()` was written to drive this,
+// documented as driving it, tested, and called by nothing at all.
+{
+  const { whatsNext } = await import('../engines/operator.mjs');
+  const cardItem = (chapter) => whatsNext(chapter).items
+    .find((i) => i.action?.tool === 'card_for_the_week') ?? null;
+
+  dbRun(`INSERT INTO chapters (id, name, scale, steward) VALUES ('quiet','Quiet','watershed','T')`);
+  check('a commons with nothing noticed is not nagged to post',
+    cardItem('quiet') === null);
+
+  dbRun(`INSERT INTO signals (id, chapter_id, title, category, created_at)
+         VALUES ('sig-quiet','quiet','The culvert flooded again','Ecological', date('now','-2 days'))`);
+  const item = cardItem('quiet');
+  check('a commons that has heard something, and never posted, is asked to',
+    item?.kind === 'gap' && /never had a card/.test(item.title), JSON.stringify(item?.title));
+  check('and it is a gap, not a slip — nothing here is overdue',
+    item?.kind === 'gap' && item?.stage === 'Teach & Tell');
+
+  markCardSent('quiet');
+  check('a commons that posted this week is left alone',
+    cardItem('quiet') === null);
+  dbRun(`DELETE FROM signals WHERE chapter_id='quiet'`);
+  dbRun(`DELETE FROM chapters WHERE id='quiet'`);
+}
+
 // ── Two guards that survived being deliberately broken ────────────────────
 // Found by mutation, not by reading: the suite passed with both of these
 // disabled. A guard nothing can prove is a guard nobody should trust.

@@ -8,6 +8,7 @@
 import { all, one } from '../core/db.mjs';
 import { carrying, placeAttention } from './attention.mjs';
 import { priorities, openGatesSql } from './quest.mjs';
+import { daysSinceLastCard } from './dispatch.mjs';
 
 // blocking  — other work cannot proceed until this moves
 // slipped   — a commitment already made has passed its date
@@ -33,6 +34,53 @@ export function whatsNext(chapterId) {
       rule: 'A person must be able to submit a need, receive a response, and appeal.',
       action: { tool: 'respond_to_intake', input: { intake_id: r.id } },
     });
+  }
+
+  // ── Stage 9: Teach & Tell — the group has not heard from the commons ────
+  //
+  // The card is the highest-leverage thing in this whole system and nothing
+  // ever asked for it.
+  //
+  // SOCIAL_LAYER.md §3.1: the group is already somewhere, it is fragile there,
+  // and members report feeling "really disconnected" from digital-only groups.
+  // COMMUNICATIONS.md §3: across 29 UK mutual aid groups and 32 organiser
+  // interviews, ZERO adopted any purpose-built tool. So the card — a weekly
+  // paste-ready text a human posts under their own name, in the chat they
+  // already use — is the mechanism, and `engines/dispatch.mjs` has built it
+  // since it was written. `daysSinceLastCard()` was written to drive this,
+  // carries a comment saying "the operator turns a long silence into an item in
+  // the round", is covered by the suite, and was called by NOTHING.
+  //
+  // A `gap`, never a `slipped`, and never a notification. §3.2 found that an
+  // undifferentiated group chat gets muted and then the messages that mattered
+  // are missed too, so the rule is one card a week and not one more. Fourteen
+  // days rather than eight for the same reason: this should read as a nudge
+  // after a fortnight's silence, not a weekly chore with a red number on it.
+  //
+  // Deliberately NOT automated. A human posting at a moment they judge right is
+  // a different social object from a bot posting on a schedule, and the OS has
+  // no send capability at all — which §3.2 concludes is the right design rather
+  // than a limitation.
+  {
+    const since = daysSinceLastCard(chapterId);
+    const heard = one(
+      `SELECT COUNT(*) n FROM signals WHERE chapter_id=? AND created_at >= date('now','-14 days')`,
+      chapterId)?.n ?? 0;
+    // Nothing to say is a reason not to send, not a reason to nag. A card that
+    // summarises what everybody already saw is a notification tax (§3.2).
+    if (heard > 0 && (since === null || since >= 14)) {
+      add({
+        kind: 'gap', stage: 'Teach & Tell',
+        title: since === null
+          ? 'The group has never had a card from this commons'
+          : `Nobody has posted to the group in ${since} days`,
+        detail: `${heard} thing${heard === 1 ? '' : 's'} noticed in the last fortnight, and none of it has reached `
+          + 'the chat the group already uses. The card is text you paste under your own name.',
+        age_days: since ?? null,
+        rule: 'The commons meets the group where it already is. It never broadcasts.',
+        action: { tool: 'card_for_the_week', input: {} },
+      });
+    }
   }
 
   // ── Stage 4: Map — a discovered dataset nobody has read the terms of ────

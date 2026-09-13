@@ -27,7 +27,7 @@
 import { all, one } from '../core/db.mjs';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { ROOT } from '../core/db.mjs';
+import { dbPath } from '../core/db.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 import { groundToday } from './ground.mjs';
 import { whatMoved, intakePromise } from './loops.mjs';
@@ -37,7 +37,26 @@ import { isDemoChapter, DEMO_NOTICE } from '../core/seedData.js';
 
 // Not a schema column: when a card was last produced is a fact about this
 // computer, not about the commons, and it must never travel to another chapter.
-const MARK = join(ROOT, 'data', 'last-card.json');
+//
+// Resolved from the OPEN DATABASE, lazily, rather than fixed at ROOT/data —
+// and for exactly the reason dbPath() is lazy. A constant here meant the file
+// did not follow BROS_DB, so `npm run prove`, which builds a throwaway commons
+// precisely so it can press every button safely, wrote `mark_card_sent` into
+// the REAL file on every run. The prover then reported itself as read-only, and
+// the operator, which reads this to notice a long silence, saw a card sent
+// today because a test had pressed the button.
+//
+// This is the shape the scout flagged for media: state that lives outside the
+// database is not covered by anything that isolates, backs up or erases the
+// database. Every such file has to be told which commons it belongs to.
+//
+// Named as a SIDECAR OF THE DATABASE FILE, the way `-wal` and `-shm` already
+// are, rather than as `last-card.json` in the database's directory. The
+// directory is not unique: the suite opens `/tmp/bros-test-<now>.db`, a fresh
+// database every run in a shared folder, so a per-directory mark accumulated
+// across runs and a test that asserted "this commons has never posted" passed
+// once and then failed forever. The commons is the FILE.
+const markPath = () => `${dbPath()}-last-card.json`;
 
 /**
  * The weekly card.
@@ -289,6 +308,7 @@ function asText(card) {
 
 export function markCardSent(chapterId) {
   try {
+    const MARK = markPath();
     mkdirSync(dirname(MARK), { recursive: true });
     const all = existsSync(MARK) ? JSON.parse(readFileSync(MARK, 'utf8')) : {};
     all[chapterId] = new Date().toISOString();
@@ -306,6 +326,7 @@ export function markCardSent(chapterId) {
  */
 export function daysSinceLastCard(chapterId) {
   try {
+    const MARK = markPath();
     if (!existsSync(MARK)) return null;
     const at = JSON.parse(readFileSync(MARK, 'utf8'))[chapterId];
     if (!at) return null;

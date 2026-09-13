@@ -13,7 +13,11 @@ data/commons.db-wal
 data/commons.db-shm
 data/upstream/cache/
 # When a card was last produced is a fact about THIS computer, not about the
-# commons. It must never travel to another chapter in a clean copy.
+# commons. It must never travel to another chapter in a clean copy. Named as a
+# sidecar of the database file, like -wal and -shm, so it follows whichever
+# commons is open — the old fixed path let the test suite and the prover write
+# the real one.
+data/*-last-card.json
 data/last-card.json
 app/dist/
 app/node_modules/
