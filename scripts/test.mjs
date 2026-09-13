@@ -3707,7 +3707,69 @@ check('a card from a real chapter does not cry wolf about being an example',
 {
   const R = await import('../engines/round.mjs');
   const { whatsNext } = await import('../engines/operator.mjs');
+  const { board } = await import('../engines/board.mjs');
   const C = 'test';
+
+  // ── The keys have to be unique, on data that actually collides ────────
+  //
+  // The first version of these tests passed on a fixture with at most one item
+  // per key, which is the "test the mechanism, not the property" trap: seven
+  // operator items had an empty or volatile-only action input, so three overdue
+  // decisions all keyed as `Convene|council_agenda`. A round of five held four
+  // pieces of work, `done_count` never moved when one was cleared, a decision
+  // that went overdue LATER joined the held round, and one "not this week"
+  // removed the whole class with a reason written about a different item.
+  {
+    for (let i = 1; i <= 3; i++) {
+      dbRun(`INSERT INTO decisions (id, chapter_id, title, status, review_date)
+             VALUES (?, 'test', ?, 'decided', date('now','-30 days'))`,
+      `dec-collide-${i}`, `Decision ${i}`);
+    }
+    dbRun(`INSERT INTO gatherings (id, chapter_id, title, starts_at)
+           VALUES ('gat-collide-1','test','First gathering', date('now','+3 days'))`);
+    dbRun(`INSERT INTO gatherings (id, chapter_id, title, starts_at)
+           VALUES ('gat-collide-2','test','Second gathering', date('now','+4 days'))`);
+
+    const items = whatsNext(C).items.filter((i) => i.action);
+    const keys = items.map(R.itemKey);
+    const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
+    check('two different pieces of work never share one key',
+      dupes.length === 0, [...new Set(dupes)].join(' · '));
+
+    // And the consequence, stated as the consequence: clearing one thing
+    // empties exactly one slot.
+    dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+    const r0 = R.theRound(C);
+    const held = new Set(r0.remaining.map(R.itemKey));
+    check('a round of five holds five different things',
+      held.size === r0.remaining_count, `${held.size} distinct of ${r0.remaining_count}`);
+
+    // New work of a kind already in the round must NOT join it. That is the
+    // invariant the whole commit exists for: the round does not grow back.
+    dbRun(`INSERT INTO decisions (id, chapter_id, title, status, review_date)
+           VALUES ('dec-collide-late','test','A decision that slipped on Tuesday','decided', date('now','-1 days'))`);
+    const r1 = R.theRound(C);
+    check('work that arrives after the round was picked does not join it',
+      r1.remaining_count <= r0.remaining_count,
+      `${r0.remaining_count} -> ${r1.remaining_count}`);
+
+    dbRun(`DELETE FROM decisions WHERE id LIKE 'dec-collide%'`);
+    dbRun(`DELETE FROM gatherings WHERE id LIKE 'gat-collide%'`);
+    dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+  }
+
+  // The caller does not get to decide how big a chapter's week is.
+  {
+    dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+    const huge = R.theRound(C, { size: 500 });
+    check('a round cannot be opened at any size the caller likes',
+      huge.size <= 9, String(huge.size));
+    dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+    const tiny = R.theRound(C, { size: -1 });
+    check('and a nonsense size does not pick everything but the last thing',
+      tiny.size >= 1, String(tiny.size));
+    dbRun(`DELETE FROM rounds WHERE chapter_id='test'`);
+  }
 
   // Picked once and held. Two looks, the same round.
   const first = R.theRound(C);
@@ -3776,18 +3838,26 @@ check('a card from a real chapter does not cry wolf about being an example',
   // completed" counter is a streak with a calendar on it, and it is the
   // obvious next feature for anybody who reads this table without the
   // argument. These assert the absence.
-  // Comments stripped first. The argument for refusing streaks has to be
-  // written down beside the table, so a check that reads the prose would be
-  // tripped by the very paragraph explaining why the thing is absent — the
-  // same shape as the licence check, which skips comments for the same reason.
-  const executable = (f) => readFileSync(f, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n').map((l) => (l.indexOf('//') >= 0 ? l.slice(0, l.indexOf('//')) : l)).join('\n');
-  const src = executable('engines/round.mjs') + executable('engines/board.mjs');
-  check('nothing counts how many rounds were finished',
-    !/COUNT\(\*\)[^;]*FROM rounds|rounds_completed|streak/i.test(src));
-  check('and nothing reads a closed round back',
-    !/closed_at IS NOT NULL/.test(src));
+  // The PROPERTY, not a grep for the word.
+  //
+  // A search of two files for "streak" and "COUNT(*)" is weak twice over: a
+  // counter written in ai/tools.mjs or in the app walks straight past it, and so
+  // does `COUNT(1)`, or `all('SELECT * FROM rounds').length`. What actually has
+  // to be true is that NO VALUE REACHING A CALLER DEPENDS ON HOW MANY ROUNDS
+  // CAME BEFORE. So: take the answer, invent twenty finished weeks behind it,
+  // and require the answer to be identical field for field. That fails the
+  // moment anybody derives anything from history, however they spell the query.
+  const before = { round: JSON.stringify(R.theRound(C)), board: JSON.stringify(board(C).round) };
+  for (let i = 0; i < 20; i++) {
+    dbRun(`INSERT INTO rounds (id, chapter_id, opened_at, closed_at, picked)
+           VALUES (?, 'test', datetime('now', ?), datetime('now', ?), '[]')`,
+    `rnd-history-${i}`, `-${(i + 2) * 7} days`, `-${(i + 1) * 7} days`);
+  }
+  const after = { round: JSON.stringify(R.theRound(C)), board: JSON.stringify(board(C).round) };
+  check('a commons with twenty finished weeks behind it is told exactly what a new one is told',
+    before.round === after.round && before.board === after.board,
+    before.round === after.round ? 'the board differs' : 'the round differs');
+  dbRun(`DELETE FROM rounds WHERE id LIKE 'rnd-history-%'`);
   // A round stores KEYS, never the text of an item, so it cannot go stale and
   // cannot disagree with the commons about what is true.
   const stored = one(`SELECT picked FROM rounds WHERE chapter_id='test' ORDER BY rowid DESC LIMIT 1`);

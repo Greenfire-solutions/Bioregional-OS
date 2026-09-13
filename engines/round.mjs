@@ -41,6 +41,22 @@ import { parseStamp } from '../core/time.mjs';
 export const ROUND_DAYS = 7;
 
 /**
+ * How many things a round may hold.
+ *
+ * Clamped, and clamped at the point a round is OPENED, because `size` arrives
+ * from the caller: `the_round` takes it, `commons_board` passes `actions`, and
+ * `live.slice(0, size)` was unbounded. A device asking for `size: 50` would
+ * open the chapter's week at fifty for everybody, and `size: -1` would pick all
+ * but the last. The first caller of the week fixes the round for the week,
+ * which is exactly why this is not the caller's decision to make.
+ */
+const MAX_SIZE = 9;
+const clampSize = (n) => {
+  const v = Number.isFinite(Number(n)) ? Math.trunc(Number(n)) : 5;
+  return Math.min(MAX_SIZE, Math.max(1, v));
+};
+
+/**
  * A key that survives the work being done to it.
  *
  * Items are recomputed every call and carry no id, so holding five of them
@@ -57,6 +73,14 @@ const VOLATILE = new Set(['gate', 'title', 'days', 'actions', 'projects', 'reaso
 
 export function itemKey(item) {
   const a = item?.action ?? {};
+  // `about` wins when the operator states it, because an action's inputs are
+  // chosen to make a BUTTON useful and that is not the same job as identity.
+  // Seven items had an empty or volatile-only input — three overdue decisions
+  // all keyed as `Convene|council_agenda`, so a round of five held four pieces
+  // of work, clearing one of them counted as nothing done, a decision that went
+  // overdue later JOINED the held round, and one "not this week" removed the
+  // whole class with a reason written about a different item.
+  if (item?.about) return [item.stage ?? '?', a.tool ?? 'none', String(item.about)].join('|');
   const ids = Object.entries(a.input ?? {})
     .filter(([k, v]) => !VOLATILE.has(k) && v != null && v !== '')
     .map(([k, v]) => `${k}=${v}`)
@@ -68,12 +92,19 @@ const parseList = (s) => { try { const v = JSON.parse(s ?? '[]'); return Array.i
 
 /** The open round, if one is open and still this week. */
 function openRound(chapterId) {
+  // OLDEST wins, matching the migration that closes duplicates — they used to
+  // disagree, this taking the newest and that keeping the oldest. The unique
+  // index makes it moot today, and two rules for "which round is the round" is
+  // the kind of thing that stops being moot the moment somebody removes an
+  // index they cannot see the purpose of. The migration's reason is the better
+  // one: the oldest is the round whose five were shown to somebody.
+  //
   // Tiebreak on rowid: opened_at is a DATE, two rounds opened in the same
   // second sort arbitrarily without one, and this project has been bitten by
   // exactly that before.
   const r = one(
     `SELECT * FROM rounds WHERE chapter_id=? AND closed_at IS NULL
-      ORDER BY opened_at DESC, rowid DESC LIMIT 1`, chapterId);
+      ORDER BY opened_at ASC, rowid ASC LIMIT 1`, chapterId);
   if (!r) return null;
   const opened = parseStamp(r.opened_at);
   if (!opened) return r;                       // unreadable stamp: keep it rather than churn
@@ -100,9 +131,19 @@ export function theRound(chapterId, { size = 5 } = {}) {
 
   let r = openRound(chapterId);
   if (!r) {
-    const picked = live.slice(0, size).map(itemKey);
+    const picked = live.slice(0, clampSize(size)).map(itemKey);
     const id = newId('rnd');
     try {
+      // `run`, not `create`: a round gets no RID on purpose. A RID is how a
+      // record is referred to from outside this commons — cited, exported,
+      // withheld, withdrawn — and a round is none of those things. It is local
+      // bookkeeping about one week on one machine, it holds no content of its
+      // own, and minting an identifier for it would put a week's housekeeping
+      // into the same namespace as an observation somebody made.
+      //
+      // The defaulted columns are omitted rather than written as null, which is
+      // the rule `create()` exists to keep: an explicit NULL overrides a column
+      // DEFAULT and breaks NOT NULL.
       run(`INSERT INTO rounds (id, chapter_id, picked) VALUES (?,?,?)`,
         id, chapterId, JSON.stringify(picked));
       r = one('SELECT * FROM rounds WHERE id=?', id);

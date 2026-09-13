@@ -216,6 +216,9 @@ export function whatsNext(chapterId) {
       title: `${q.title} cannot be built — ${gates.length} gate${gates.length === 1 ? '' : 's'} open`,
       detail: gates.map((g) => g.gate.replace(/_/g, ' ')).join(', '),
       rule: 'A high project score never overrides a red flag, missing consent, or an absent maintenance owner.',
+      // See the note on the folded item below: ONE identity for gate work,
+      // whether it is one project or five.
+      about: 'open-gates',
       action: { tool: 'satisfy_quest_gate', input: { quest_id: q.id, gate: gates[0].gate } },
     });
   } else if (gated.length > 1) {
@@ -227,9 +230,24 @@ export function whatsNext(chapterId) {
       // project they care about is in here without opening anything.
       detail: gated.map(({ quest, gates }) => `${quest.title} (${gates.length})`).join(' · '),
       rule: 'A high project score never overrides a red flag, missing consent, or an absent maintenance owner.',
-      // The action goes to the project with the FEWEST gates left, which is the
-      // one closest to being buildable — not the first row the database
-      // returned, which is what the per-project lines effectively picked.
+      // ONE identity for gate work, and it does not move.
+      //
+      // The key was derived from the action, and the action points at whichever
+      // project has the fewest gates left — recomputed every call. So closing a
+      // single gate could change which project that is, the key would change,
+      // and a held round would count the item DONE with seventeen of eighteen
+      // gates still open: the slot emptied, and the same sentence reappeared
+      // below as newly arrived. The inverse was worse — somebody OPENING a
+      // project with fewer gates cleared a slot with nothing done at all.
+      //
+      // Keying on the set of gated projects has the same fault one step out: a
+      // project leaving the set changes the set. So the identity is the WORK,
+      // not its membership. One slot for gates, and it clears when no project
+      // anywhere is gated, which is the only moment the work is actually done.
+      about: 'open-gates',
+      // The action still goes to the project with the fewest gates left, which
+      // is the one closest to being buildable — that is a good default for the
+      // button, and it is no longer what identifies the item.
       action: (() => {
         const nearest = [...gated].sort((a, b) => a.gates.length - b.gates.length
           || String(a.quest.id).localeCompare(String(b.quest.id)))[0];
@@ -272,6 +290,7 @@ export function whatsNext(chapterId) {
       detail: `Due ${d.review_date}. A review date that passes unnoticed is the same as no review date.`,
       age_days: daysSince(d.review_date),
       rule: 'Monitoring must change decisions.',
+      about: d.id,
       action: { tool: 'council_agenda', input: {} },
     });
   }
@@ -342,6 +361,7 @@ export function whatsNext(chapterId) {
       title: `${g.title} has almost no care provision`,
       detail: 'Meals, transport, childcare, accessibility — fewer than two of four.',
       rule: 'Ecological work fails when people are exhausted, excluded, unpaid, unsafe or unsupported.',
+      about: g.id,
       action: { tool: 'add_gathering', input: { title: g.title } },
     });
   }
@@ -366,6 +386,7 @@ export function whatsNext(chapterId) {
                 'Somebody else has to offer to take one.',
         age_days: p.longest_held_days,
         rule: 'Exhaustion is a failure of the commons, not of the person carrying it.',
+        about: `overloaded:${p.name}`,
         action: { tool: 'carrying', input: {} },
       });
     }
@@ -380,6 +401,7 @@ export function whatsNext(chapterId) {
           ? 'Registered as an organisation. Ask which member would notice if the work stopped.'
           : 'That name reads like a group. If it is one person, ignore this.',
         rule: 'No project proceeds without a named maintenance owner and an end-of-life plan.',
+        about: `group-owner:${u.of}`,
         action: { tool: 'carrying', input: {} },
       });
     }
@@ -391,6 +413,7 @@ export function whatsNext(chapterId) {
         detail: 'Worth asking whether they still want it. Nothing is wrong.',
         age_days: l.days,
         rule: 'Exhaustion is a failure of the commons, not of the person carrying it.',
+        about: `held-long:${l.name}`,
         action: { tool: 'carrying', input: {} },
       });
     }
@@ -411,6 +434,7 @@ export function whatsNext(chapterId) {
           : 'Gage readings are not visits — only what a person recorded counts here.',
         age_days: n.days_since ?? n.added_days_ago,
         rule: 'Observation must lead somewhere, or it is surveillance of a place nobody is helping.',
+        about: `neglected:${n.id ?? n.name}`,
         action: { tool: 'place_attention', input: {} },
       });
     }

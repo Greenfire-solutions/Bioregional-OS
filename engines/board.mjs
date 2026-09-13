@@ -186,6 +186,10 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
       sentence: land.sentence ?? null,
     },
     todo,
+    // How much of THIS WEEK is left, once a round exists — not how much work the
+    // commons has, which is `round.waiting`. Before a commons has settled in
+    // there is no round, and this keeps its original meaning so the "5 of 45,
+    // the rest are on Today" note still has something true to say.
     todo_total: fromRound.length + settle.length,
     // The week, said in a sentence. `finished` is a state the software can be
     // in — which is what makes this a round rather than a list — and it is
