@@ -4221,7 +4221,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   const { storeMedia, submitProof, reviewProof, withdrawMedia, verifyStore, mediaDir } =
     await import('../engines/proof.mjs');
   const { mapFeatures, MAP_KINDS } = await import('../engines/mapboard.mjs');
-  const { readFileSync: rf, writeFileSync: wf } = await import('node:fs');
+  const { writeFileSync: wf } = await import('node:fs');
   const { join: j } = await import('node:path');
 
   const proj = await runTool('open_quest', {
@@ -4352,21 +4352,12 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('a finished task is not drawn on the map',
     !feats.some((f) => f.kind === 'task' && f.id === task.id));
 
-  // ── The two parity checks the comments already claimed ─────────────────
-  const { KIND, KIND_ORDER } = await import('../app/src/mapKinds.js');
-  const engineKinds = new Set(MAP_KINDS.map((k) => k.key));
-  const uiKinds = new Set(Object.keys(KIND));
-  check('every kind the map draws is in the key, and every key is drawn',
-    engineKinds.size === uiKinds.size && [...engineKinds].every((k) => uiKinds.has(k)),
-    `engine ${[...engineKinds]} / ui ${[...uiKinds]}`);
-  check('and the key lists all of them',
-    KIND_ORDER.length === uiKinds.size && KIND_ORDER.every((k) => uiKinds.has(k)));
-
-  const appSrc = rf(new URL('../app/src/App.jsx', import.meta.url), 'utf8');
-  const readme = rf(new URL('../README.md', import.meta.url), 'utf8');
-  const labels = [...appSrc.matchAll(/label: '([^']+)'/g)].map((m) => m[1]);
-  const unnamed = labels.filter((l) => !readme.includes(l));
-  check('every tab in the interface is named in the README', !unnamed.length, unnamed.join(', '));
+  // The map-kinds and README-tab parity checks are NOT repeated here. They
+  // already exist further up this file, they are better than the versions that
+  // were briefly written beside them, and the map-kinds one had been silently
+  // covering the `task` kind added in this section from the moment it was
+  // added. See the note in ARCHITECTURE.md about the search that reported them
+  // missing.
 
   // ── Who may do what ───────────────────────────────────────────────────
   const access = await import('../ai/access.mjs');

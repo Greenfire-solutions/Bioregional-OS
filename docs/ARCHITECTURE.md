@@ -33,6 +33,20 @@ beside it. Both are gitignored: git history does not honour a withdrawal, and a
 photograph of somebody committed once is in every clone forever.
 ```
 
+## A note on searching this repository before adding to it
+
+Two tests were added that already existed — a map-kinds parity check and a
+README tab-label check — because a `grep` for them came back empty and was
+believed. Both were in `scripts/test.mjs` the whole time, the pre-existing
+versions are stricter than the replacements, and the map-kinds one had already
+been covering the new code silently.
+
+The duplicates were removed, but the lesson is the one this project keeps
+re-learning in other forms: a search that finds nothing has two explanations,
+and "it is not there" is the less likely one. Confirm an absence by reading the
+file before writing code on the strength of it — especially before writing a
+commit message that says something is missing.
+
 ## The one-registry decision
 
 `ai/tools.mjs` defines every capability once: name, JSON Schema, and a handler

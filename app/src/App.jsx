@@ -58,7 +58,14 @@ const GROUPS = [
     // Between the project and the measurement, which is where it happens. A
     // project is a paragraph with gates on it until somebody writes down what
     // is actually being done on Saturday.
-    { id: 'work',    label: 'The work', icon: ListChecks, add: 'add_task',  addLabel: 'Add a task' },
+    // "Tasks", not "The work" — the GROUP is already called The work, so a
+    // sub-tab of the same name is invisible: clicking the group lands on Listen
+    // (the first leaf), nothing looks new, and the only clue is a second pill
+    // with the identical label. Reported as "I don't see any of it" by the
+    // first person to open it, which is exactly what that looks like from
+    // outside. The siblings are Listen, Signals, Quests, Measure — one noun
+    // each, and this is one of them.
+    { id: 'work',    label: 'Tasks',   icon: ListChecks, add: 'add_task',  addLabel: 'Add a task' },
     { id: 'measure', label: 'Measure', icon: Ruler, add: 'add_indicator', addLabel: 'Add an indicator' },
   ] },
   { id: 'together', label: 'Together', icon: Users, sub: [
@@ -91,6 +98,7 @@ export default function App() {
   const [hubs, setHubs] = useState([]);
   const [signals, setSignals] = useState([]);
   const [quests, setQuests] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [decisions, setDecisions] = useState([]);
   const [gatherings, setGatherings] = useState([]);
   const [exchange, setExchange] = useState(null);
@@ -119,6 +127,7 @@ export default function App() {
       safe('status', setStatus), safe('dashboard', setDash),
       safe('places', setPlaces), safe('hubs', setHubs),
       safe('signals', setSignals), safe('quests', setQuests),
+      safe('tasks', (t) => setTasks(Array.isArray(t) ? t : [])),
       safe('decisions', setDecisions), safe('gatherings', setGatherings),
       safe('exchange', setExchange), safe('learn', setLearn),
       safe('federation', setPeers), safe('doctrine', setDoctrine),
@@ -341,9 +350,9 @@ export default function App() {
                 {tab === 'devices' && <Devices />}
                 {tab === 'listen' && <Listen primary={primary('listen')} intake={intake} />}
                 {tab === 'signals' && <Signals primary={primary('signals')} signals={signals} onFocus={focusOn} />}
-                {tab === 'work' && <Work primary={primary('work')}
+                {tab === 'work' && <Work primary={primary('work')} onGoTo={setTab}
                                          onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
-                {tab === 'quests' && <Quests primary={primary('quests')} quests={quests} gates={gates} onLoadGates={loadGates}
+                {tab === 'quests' && <Quests primary={primary('quests')} quests={quests} tasks={tasks} gates={gates} onLoadGates={loadGates}
                                              onFocus={focusOn} onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
                 {tab === 'council' && <Council primary={primary('council')} decisions={decisions} due={dash?.due_for_review}
                                                onAct={(t, p) => setForm({ tool: t, prefill: p })} />}

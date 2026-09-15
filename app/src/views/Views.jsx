@@ -213,7 +213,7 @@ export function Signals({signals, onFocus, primary}) {
 }
 
 // ── Quests ────────────────────────────────────────────────────────────────
-export function Quests({quests, gates, onLoadGates, onFocus, onAct, primary}) {
+export function Quests({quests, tasks = [], gates, onLoadGates, onFocus, onAct, primary}) {
   return (
     <div className="space-y-4">
       <H action={primary} sub="A high score never overrides a red flag, missing consent, or a missing maintenance owner.">Quests</H>
@@ -239,6 +239,14 @@ export function Quests({quests, gates, onLoadGates, onFocus, onAct, primary}) {
                 </button>
               )}
             </div>
+            {/* ── The work inside this project ───────────────────────────
+                A project was a paragraph with nine gates on it, and what
+                anybody was actually going to DO lived on another screen the
+                first person to look never found. The gates are the protocol's
+                half; this is the Saturday half, and it belongs on the same
+                card. */}
+            <TasksOn quest={q} tasks={tasks.filter((t) => t.quest_id === q.id)} onAct={onAct} />
+
             <div className="mt-3 border-t border-[var(--line-2)] pt-2">
               {!g ? (
                 <Act onClick={() => onLoadGates(q.id)}>Check consent &amp; safety gates</Act>
@@ -272,6 +280,73 @@ export function Quests({quests, gates, onLoadGates, onFocus, onAct, primary}) {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * A project's tasks, on the project.
+ *
+ * Deliberately a SUMMARY plus a door, not a second copy of the Tasks screen.
+ * Two full task interfaces would be two places to fix a bug in — the same
+ * argument verbs.js and actions.js make about wording and behaviour. What a
+ * person needs here is to see that the work exists, who has it, and whether
+ * anything is missing its evidence.
+ *
+ * The empty state is the important one. A project with no tasks is the normal
+ * state of every project in a commons that has just upgraded, and a blank space
+ * there says the feature is missing rather than unused.
+ */
+function TasksOn({ quest, tasks, onAct }) {
+  const open = tasks.filter((t) => t.status !== 'done' && t.status !== 'abandoned');
+  const unclaimed = open.filter((t) => !t.assignees?.length).length;
+  const needEvidence = open.filter((t) => t.evidence === 'none').length;
+
+  return (
+    <div className="mt-3 border-t border-[var(--line-2)] pt-2">
+      <div className="mb-1.5 flex items-center gap-2">
+        <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+          The work {tasks.length ? `— ${open.length} open of ${tasks.length}` : ''}
+        </div>
+        <button onClick={() => onAct?.('add_task', { quest_id: quest.id })}
+          className="ml-auto flex items-center gap-1 rounded border border-[var(--line)] px-2 py-0.5
+                     text-[10px] text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]">
+          <Plus className="h-3 w-3" />Add a task
+        </button>
+      </div>
+
+      {!tasks.length ? (
+        <p className="text-[11px] leading-snug text-[var(--ink-3)]">
+          Nothing written down yet — what is somebody actually going to do?
+          Tasks carry their own point on the map, and the ones that change the land
+          do not close without a before-and-after.
+        </p>
+      ) : (
+        <>
+          <ul className="space-y-1">
+            {open.slice(0, 4).map((t) => (
+              <li key={t.id} className="flex items-baseline gap-2 text-[11px]">
+                <span className="truncate text-[var(--ink)]">{t.title}</span>
+                <span className="ml-auto shrink-0 text-[10px] text-[var(--ink-3)]">
+                  {t.assignees?.length
+                    ? t.assignees.map((a) => a.person_name).join(', ')
+                    : 'nobody yet'}
+                </span>
+              </li>
+            ))}
+            {open.length > 4 && (
+              <li className="text-[10px] text-[var(--ink-3)]">and {open.length - 4} more</li>
+            )}
+          </ul>
+          {(unclaimed || needEvidence) && (
+            <p className="mt-1.5 text-[10px] leading-snug text-[var(--ink-3)]">
+              {[unclaimed && `${unclaimed} nobody has picked up`,
+                needEvidence && `${needEvidence} with no before-and-after`]
+                .filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }

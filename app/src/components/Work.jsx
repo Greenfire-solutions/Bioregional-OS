@@ -17,7 +17,7 @@ import { verb } from '../verbs.js';
  * only section a person who has just walked in can act on, and putting the
  * in-hand work above it would make the screen open on other people's business.
  */
-export default function Work({ onAct, primary }) {
+export default function Work({ onAct, onGoTo, primary }) {
   const [board, setBoard] = useState(null);
   const [pending, setPending] = useState([]);
   const [busy, setBusy] = useState(true);
@@ -66,16 +66,34 @@ export default function Work({ onAct, primary }) {
       </div>
 
       {nothing && (
-        // An empty screen that explains itself, rather than a blank one that
-        // reads as broken. It names the thing that has to exist first — a
-        // project — because a task with no project to belong to is the one
-        // thing this screen cannot offer to create.
-        <div className="rounded border border-dashed border-[var(--line)] px-4 py-8 text-center">
+        // An empty screen with a paragraph on it is a dead end, and this is the
+        // screen somebody lands on the first time they come looking for a
+        // feature they have just been told exists. It has to be a door.
+        <div className="rounded border border-dashed border-[var(--line)] px-4 py-7 text-center">
           <p className="text-sm text-[var(--ink-2)]">Nothing written down to do yet.</p>
-          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-[var(--ink-3)]">
-            A task belongs to a project. Open a project first, then add the things somebody is
-            actually going to do — or press a piece of ground on the Atlas and put one there.
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-[var(--ink-3)]">
+            A task is one thing somebody is going to do, inside a project — with its own point on
+            the map, and a before-and-after if it changes the land.
           </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {primary && (
+              <button onClick={primary.onClick}
+                className="rounded bg-[var(--moss)] px-3 py-1.5 text-xs font-medium text-[var(--on-accent)]
+                           hover:brightness-110">
+                Write the first one down
+              </button>
+            )}
+            <button onClick={() => onGoTo?.('atlas')}
+              className="rounded border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink-2)]
+                         hover:border-[var(--moss)] hover:text-[var(--moss)]">
+              Or press a piece of ground on the Atlas
+            </button>
+            <button onClick={() => onGoTo?.('quests')}
+              className="rounded border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink-2)]
+                         hover:border-[var(--moss)] hover:text-[var(--moss)]">
+              See the projects
+            </button>
+          </div>
         </div>
       )}
 

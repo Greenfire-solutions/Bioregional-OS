@@ -183,7 +183,7 @@ with nothing to measure yet says so rather than reporting a zero.
 | **Listen** | The front door. Someone brings a need; the commons answers and can be appealed |
 | **Signals** | What the land and people are showing. Human observations start unverified; USGS water refreshes itself |
 | **Quests** | Projects and their consent/safety gates. A good idea never overrides a red flag |
-| **The work** | The tasks inside the projects — what somebody is actually doing on Saturday, who has picked it up, and the before-and-after photographs that say it happened. A task that changes something on the land does not close without a pair, and the person who did the work is never the person who checks it. Files live in `data/media` on this machine |
+| **Tasks** | The work inside the projects — what somebody is actually doing on Saturday, who has picked it up, and the before-and-after photographs that say it happened. A task that changes something on the land does not close without a pair, and the person who did the work is never the person who checks it. Files live in `data/media` on this machine |
 | **Measure** | Indicators, baselines and decision triggers. A reading that moves away from target says so |
 
 **Together**
