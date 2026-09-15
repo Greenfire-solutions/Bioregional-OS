@@ -30,6 +30,15 @@ export const KIND = {
     blockedColor: [176, 106, 84], size: 28, z: 6,
     what: 'A project. Red when something is in its way; the number is how many',
   },
+  task: {
+    label: 'Work to do', shape: 'chevron', color: [90, 124, 99],
+    // The one kind whose colour says "you could do this". An unclaimed task is
+    // the single most useful thing on this map to a person who has just walked
+    // up to it, so nobody-has-picked-this-up is what changes the colour —
+    // exactly as a project's colour changes for something being in its way.
+    blockedColor: [201, 150, 62], size: 22, z: 8,
+    what: 'One thing somebody is going to do. Gold when nobody has picked it up; the number is who has',
+  },
   need: {
     label: 'Needs brought', shape: 'triangle', color: [176, 106, 84],
     what: 'Somebody asked for something and is waiting; the number is days', size: 24, z: 7,
@@ -49,9 +58,30 @@ export const KIND = {
 };
 
 /** The order the key lists them: what a person made, before what a machine did. */
-export const KIND_ORDER = ['place', 'hub', 'project', 'need', 'gathering', 'observation', 'reading'];
+export const KIND_ORDER = ['place', 'hub', 'project', 'task', 'need', 'gathering', 'observation', 'reading'];
 
 const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+
+/**
+ * Is this the marker a person should look at first?
+ *
+ * One definition, because there were three: the markers layer, the panel and
+ * the globe scatterplot each tested `state === 'blocked'` on their own, which
+ * was correct for exactly as long as "blocked" was the only kind of attention
+ * this map could express. Adding tasks broke that silently and in the worst
+ * possible direction — an unclaimed task, the single most useful thing on the
+ * map to somebody who has just walked up to it, would have drawn in the calm
+ * colour on all three surfaces and nothing anywhere would have said so.
+ *
+ * What counts as attention differs by kind, and that is the point: a project
+ * has something in its way, a task has nobody carrying it. Same loudness,
+ * different sentence.
+ */
+export function needsAttention(f) {
+  if (!f) return false;
+  if (f.kind === 'task') return f.state === 'unclaimed';
+  return f.state === 'blocked';
+}
 
 /**
  * A marker, as an SVG data URI.
@@ -85,6 +115,7 @@ export function markerSVG(kind, { blocked = false, precise = true } = {}) {
     triangle: `<path d="M16 5 L28 27 L4 27 Z" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
     circle: `<circle cx="16" cy="16" r="10" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
     dot: `<circle cx="16" cy="16" r="7" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
+    chevron: `<path d="M16 5 L27 13 L22 27 L10 27 L5 13 Z" fill="${f}" stroke="${st}" stroke-width="${w}"${extra}/>`,
     tick: `<circle cx="16" cy="16" r="4" fill="${f}" stroke="${st}" stroke-width="${Math.max(1, w - 0.5)}"${extra}/>`,
   }[k.shape] ?? `<circle cx="16" cy="16" r="7" fill="${f}" stroke="${st}" stroke-width="${w}"/>`);
 

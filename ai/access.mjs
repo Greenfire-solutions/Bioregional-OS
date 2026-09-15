@@ -88,11 +88,22 @@ const MEMBERS = [
   'list_discovered', 'card_for_the_week', 'community_here', 'culture_here',
   'growing_year', 'water_here', 'whats_next', 'the_round', 'library_status', 'list_regions',
   'region_brief', 'find_species', 'settling_in',
+  // The work inside the projects. Reading it, writing it down, picking it up,
+  // putting it down, and filing the evidence — all of it ordinary field work by
+  // somebody holding a device a steward handed them in a room.
+  'list_tasks', 'task_board', 'pending_proofs', 'list_media',
   // ordinary field work
   'add_place', 'locate_place', 'ingest_water_data', 'record_measurement', 'add_indicator',
   'propose_baseline', 'set_indicator_baseline', 'add_gathering', 'update_gathering',
   'record_exchange', 'publish_learning', 'mark_card_sent', 'add_hub', 'add_agent',
   'open_quest', 'update_quest',
+  // Adding a task, taking one on, stepping back, finishing one, and filing a
+  // before-and-after. `complete_task` is here rather than in COUNCIL on
+  // purpose: it already refuses without evidence, so the control on closing
+  // work is the evidence, not a rank. Requiring a coordinator to close a task
+  // somebody finished in the mud is how a board fills with work that is done.
+  'add_task', 'claim_task', 'release_task', 'complete_task', 'set_task_status',
+  'submit_proof',
   // Setting something aside is housekeeping on the week, not a protocol gate —
   // the work is untouched and stays in whats_next. A member doing the round is
   // the point of there being a round.
@@ -110,7 +121,19 @@ const COUNCIL = [
   'advance_quest', 'respond_to_intake', 'list_intake', 'season_review', 'open_season',
   'close_season', 'register_atlas_layer', 'discover_peers', 'discover_local_data',
   'murmurations_profile', 'approve_dataset', 'decline_dataset',
+  // Checking somebody else's evidence is the act that turns a photograph into a
+  // record the commons stands behind, so it sits where the other acts of
+  // saying-this-is-so sit. The engine separately refuses a check signed by the
+  // person who submitted it, which is the rule that actually matters; this is
+  // about who is doing the checking, not about whether the rule is enforced.
+  'review_proof',
 ];
+
+// `withdraw_media` and `check_evidence` are unlisted, which means the keyboard.
+// Withdrawal destroys bytes on the steward's disk and is the counterpart of
+// withdraw_consent, which is at the keyboard for the same reason: it is the one
+// row a rights holder may later ask to see honoured. Re-hashing the whole store
+// reads every file this machine holds.
 
 const REQUIRED = new Map();
 /**

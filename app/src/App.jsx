@@ -15,6 +15,7 @@ import Vitals from './components/Vitals.jsx';
 import Season from './components/Season.jsx';
 import FirstRun from './components/FirstRun.jsx';
 import Card from './components/Card.jsx';
+import Work from './components/Work.jsx';
 import ToolForm from './components/ToolForm.jsx';
 import {
   MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
@@ -54,6 +55,10 @@ const GROUPS = [
     { id: 'listen',  label: 'Listen',  icon: Ear,   add: 'submit_intake', addLabel: 'Bring a need' },
     { id: 'signals', label: 'Signals', icon: Radio, add: 'add_signal',    addLabel: 'Record an observation' },
     { id: 'quests',  label: 'Quests',  icon: Flag,  add: 'open_quest',    addLabel: 'Open a project' },
+    // Between the project and the measurement, which is where it happens. A
+    // project is a paragraph with gates on it until somebody writes down what
+    // is actually being done on Saturday.
+    { id: 'work',    label: 'The work', icon: ListChecks, add: 'add_task',  addLabel: 'Add a task' },
     { id: 'measure', label: 'Measure', icon: Ruler, add: 'add_indicator', addLabel: 'Add an indicator' },
   ] },
   { id: 'together', label: 'Together', icon: Users, sub: [
@@ -286,6 +291,12 @@ export default function App() {
               <div className="relative min-w-0 flex-1">
                 <Map3D places={places} hubs={hubs} signals={signals} focus={focus} version={version}
                        selectedId={picked?.id ?? null}
+                       // Pressing a piece of ground opens the form for what
+                       // goes there, with the coordinate already in it. The
+                       // map was the one screen you could read and not write
+                       // to, which made "so what do I do about that?" a
+                       // question answered somewhere else entirely.
+                       onAddHere={(tool, at) => { setPicked(null); setRegion(null); setForm({ tool, prefill: at }); }}
                        onSelect={(s) => {
                          // An ecoregion has no single point to fly to — it is an
                          // area — so clicking one opens what is known about it
@@ -330,6 +341,8 @@ export default function App() {
                 {tab === 'devices' && <Devices />}
                 {tab === 'listen' && <Listen primary={primary('listen')} intake={intake} />}
                 {tab === 'signals' && <Signals primary={primary('signals')} signals={signals} onFocus={focusOn} />}
+                {tab === 'work' && <Work primary={primary('work')}
+                                         onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
                 {tab === 'quests' && <Quests primary={primary('quests')} quests={quests} gates={gates} onLoadGates={loadGates}
                                              onFocus={focusOn} onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
                 {tab === 'council' && <Council primary={primary('council')} decisions={decisions} due={dash?.due_for_review}

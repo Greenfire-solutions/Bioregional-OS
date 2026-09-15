@@ -2,6 +2,8 @@ import { all, one, create, run, latestMeasurement } from '../../core/db.mjs';
 import * as council from '../../engines/council.mjs';
 import * as bio from '../../engines/bioregional.mjs';
 import * as quest from '../../engines/quest.mjs';
+import * as tasks from '../../engines/tasks.mjs';
+import * as proof from '../../engines/proof.mjs';
 import * as exchange from '../../engines/exchange.mjs';
 import * as steward from '../../engines/stewardship.mjs';
 import * as koi from '../../adapters/koi.mjs';
@@ -16,6 +18,11 @@ import { DEMO_CHAPTER_ID } from '../../core/seedData.js';
 import { clearanceFor, withhold, FULL } from '../clearance.mjs';
 import { aiStream } from './ai.mjs';
 import { claudeStream, claudeAvailable } from './claude.mjs';
+import { uploadMedia, serveMedia } from './media.mjs';
+// Served rather than repeated in the interface. The file picker and the server
+// that enforces the list have to agree, and the way they stop agreeing is that
+// somebody types the extensions into a component.
+import { ACCEPT_ANY, ALLOWED, MAX_BYTES } from '../../core/media.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from '../../core/db.mjs';
@@ -106,6 +113,21 @@ async function route(req, res, url, clearance) {
   // and loopback-only because it spawns a process and nothing here asks who you are.
   if (req.method === 'POST' && p === 'claude') return claudeStream(req, res, await readBody(req));
 
+  // ── Files ──────────────────────────────────────────────────────────────
+  // Outside the switch because both carry bytes rather than JSON: the upload
+  // reads a raw body, and the read writes its own response and returns
+  // undefined so the withholding wrapper leaves the stream alone. The ladder
+  // still applies to both — see routes/media.mjs, which has to enforce it
+  // itself precisely because withhold() cannot see inside a file.
+  if (p === 'media') return uploadMedia(req, url, { chapterId, clearance });
+  // Hyphen, not `media/types`: the prefix test below would swallow that as a
+  // file id and answer 404 for a route that exists.
+  if (p === 'media-types') return { accept: ACCEPT_ANY, allowed: ALLOWED, max_bytes: MAX_BYTES };
+  if (p.startsWith('media/')) {
+    if (req.method !== 'GET') return { status: 405, body: { error: 'GET required' } };
+    return serveMedia(req, res, p.slice('media/'.length), clearance);
+  }
+
   switch (p) {
     case 'status':
       return {
@@ -179,6 +201,13 @@ async function route(req, res, url, clearance) {
               CASE WHEN ${atPlaceCentroidSql('s')} THEN 1 ELSE 0 END at_place_centroid
          FROM signals s WHERE s.chapter_id=? ORDER BY s.created_at DESC LIMIT 500`, chapterId);
     case 'quests':   return all('SELECT * FROM quests WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
+    // The work inside the projects, and what is waiting to be checked. Through
+    // the engine rather than a SELECT, so a task arrives with its people, its
+    // evidence and the one word for where that evidence stands — the same
+    // decoration the tools and the map get, rather than a third opinion.
+    case 'tasks':    return tasks.listTasks(chapterId, { quest_id: q.quest_id ?? null });
+    case 'task-board': return tasks.taskBoard(chapterId);
+    case 'proofs':   return proof.pendingProofs(chapterId);
     case 'decisions':return all('SELECT * FROM decisions WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
     case 'gatherings':return all('SELECT * FROM gatherings WHERE chapter_id=? ORDER BY starts_at', chapterId);
     case 'intake':   return all('SELECT * FROM intake WHERE chapter_id=? AND private=0 ORDER BY created_at DESC', chapterId);

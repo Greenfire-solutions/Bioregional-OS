@@ -643,3 +643,166 @@ CREATE TABLE IF NOT EXISTS capabilities (
   revoked_at  TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ============================================================
+-- Stage 8: Prototype — the work itself, and the evidence it happened
+-- ============================================================
+-- A quest is a PROJECT: a need, a desired condition, a smallest experiment.
+-- Nothing in the schema said what anybody was actually doing on a Saturday
+-- morning, so a project was a paragraph with gates on it and the work inside it
+-- lived on paper, in a group chat, or in one person's head.
+--
+-- A task is the unit somebody can pick up, do, and show they did.
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  quest_id    TEXT NOT NULL REFERENCES quests(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  description TEXT,
+  -- Which of the twelve stages this task serves. Not a second state machine:
+  -- the quest's stage is the protocol's, and this only says what the task is
+  -- FOR, so a baseline task and a build task are distinguishable in a list.
+  stage       TEXT
+              CHECK (stage IS NULL OR stage IN ('signal','listening','baseline','council_review',
+                     'research','co_design','resource_plan','prototype','teach_tell','test',
+                     'decide','report_replicate')),
+  status      TEXT NOT NULL DEFAULT 'todo'
+              CHECK (status IN ('todo','doing','blocked','done','abandoned')),
+  order_index INTEGER NOT NULL DEFAULT 0,
+  -- A task's OWN coordinate, which is the whole reason it is not just a line
+  -- in a project. "Clear the culvert at the second crossing" is somewhere, and
+  -- the map already knows how to say whether a point is a thing's own or
+  -- borrowed from the place it belongs to.
+  place_id    TEXT REFERENCES places(id) ON DELETE SET NULL,
+  lat REAL, lng REAL,
+  due_at      TEXT,
+  -- Whether finishing this task requires a before-and-after pair.
+  -- Default ON. A task that changes something on the land and leaves no
+  -- evidence it did is the thing this whole table exists to prevent — and the
+  -- cost of turning it off is one deliberate act by whoever wrote the task,
+  -- which is the same shape as every other gate in this protocol.
+  requires_before_after INTEGER NOT NULL DEFAULT 1,
+  created_by  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at TEXT,
+  completed_by TEXT
+);
+
+-- Who is doing it. More than one person, because ecological work is done by
+-- groups and a single assigned_to column turns a work party into one name.
+--
+-- Stepping back is a STATUS CHANGE, never a delete. The same rule the people
+-- and devices tables enforce with triggers: somebody who carried a task for
+-- three weeks and handed it on is part of that task's history, and removing
+-- the row makes the record say they were never there.
+CREATE TABLE IF NOT EXISTS task_assignees (
+  id          TEXT PRIMARY KEY,
+  task_id     TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  -- A person in the commons, when one is known, and a typed name when not.
+  -- Both, because attribution that REQUIRES an enrolled record is attribution
+  -- that does not happen on a Saturday — and a name is better than nothing at
+  -- all, which is what the free-text maintenance_owner columns already proved.
+  person_id   TEXT REFERENCES people(id) ON DELETE SET NULL,
+  person_name TEXT NOT NULL,
+  role        TEXT NOT NULL DEFAULT 'doing'
+              CHECK (role IN ('doing','leading','helping','teaching','learning')),
+  assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+  released_at TEXT,
+  released_reason TEXT
+);
+
+CREATE TRIGGER IF NOT EXISTS task_assignees_no_delete
+BEFORE DELETE ON task_assignees
+BEGIN
+  SELECT RAISE(ABORT, 'nobody is removed from a task — set released_at instead');
+END;
+
+-- ---------- The stored file, and what is actually known about it ----------
+-- Every photo, video or document the commons holds. One row per stored object.
+--
+-- `sha256` is the hash of the BYTES, and `hash_source` says which kind of hash
+-- it is, because two different things would otherwise be indistinguishable by
+-- eye, by API and in any export:
+--
+--   content     a real SHA-256 of what was written. What the commons claims.
+--   unreadable  the file could not be read back after writing. Evidence of
+--               nothing, and marked as such rather than left to look like proof.
+--
+-- In its own column rather than encoded into the hash: that value is printed
+-- verbatim wherever evidence is shown, so marking it in band would corrupt the
+-- thing being verified.
+CREATE TABLE IF NOT EXISTS media (
+  id           TEXT PRIMARY KEY,
+  chapter_id   TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  stored_name  TEXT NOT NULL UNIQUE,      -- <id><ext> under data/media
+  original_name TEXT,
+  content_type TEXT NOT NULL,
+  bytes        INTEGER NOT NULL DEFAULT 0,
+  sha256       TEXT,
+  hash_source  TEXT NOT NULL DEFAULT 'content'
+               CHECK (hash_source IN ('content','unreadable')),
+  -- Where the picture was taken, when the device offered it. A photograph of a
+  -- place is a coordinate whether or not anybody typed one.
+  lat REAL, lng REAL,
+  captured_at  TEXT,
+  caption      TEXT,
+  -- The media consent register, which already existed and had nothing pointing
+  -- at it. A photograph that shows identifiable people is the one kind of file
+  -- this protocol has an explicit position on, so the register is REACHED from
+  -- here rather than kept as a parallel list nobody joins.
+  shows_people INTEGER NOT NULL DEFAULT 0,
+  consent_id   TEXT REFERENCES media_consent(id) ON DELETE SET NULL,
+  uploaded_by  TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Withdrawal is a status change here too. The bytes go; the row stays, so a
+  -- proof that pointed at it says "withdrawn" rather than silently losing half
+  -- of a before-and-after pair.
+  withdrawn_at TEXT,
+  withdrawn_reason TEXT
+);
+
+CREATE TRIGGER IF NOT EXISTS media_no_delete
+BEFORE DELETE ON media
+BEGIN
+  SELECT RAISE(ABORT, 'media rows are never deleted — set withdrawn_at, which removes the file');
+END;
+
+-- ---------- The before-and-after pair ----------
+-- Evidence that a task changed something, in the one form a person can check
+-- without being there: the same ground, twice.
+--
+-- A pair, not two loose files. The whole claim is comparative — this is what it
+-- was, this is what it is — and two independent uploads with a shared tag lets
+-- one arrive without the other and still read as evidence.
+CREATE TABLE IF NOT EXISTS proofs (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  quest_id    TEXT REFERENCES quests(id) ON DELETE SET NULL,
+  task_id     TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  before_media_id TEXT REFERENCES media(id) ON DELETE SET NULL,
+  after_media_id  TEXT REFERENCES media(id) ON DELETE SET NULL,
+  note        TEXT,
+  status      TEXT NOT NULL DEFAULT 'pending'
+              CHECK (status IN ('pending','verified','rejected')),
+  submitted_by TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Checked by a person who was not the person claiming it. Enforced in the
+  -- engine, recorded here.
+  reviewed_by TEXT,
+  reviewed_at TEXT,
+  review_note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_quest   ON tasks(quest_id, order_index);
+CREATE INDEX IF NOT EXISTS idx_tasks_chapter ON tasks(chapter_id, status);
+CREATE INDEX IF NOT EXISTS idx_proofs_task   ON proofs(task_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_assignees_task ON task_assignees(task_id);
+
+-- One ACTIVE claim per person per task, enforced by the database rather than by
+-- a read-then-write in each route that can add one. Claiming is self-service
+-- and therefore racy: two people pressing Claim in the same second both read
+-- "not yet claimed" and both insert. Partial, on released_at, so somebody who
+-- stepped back in the spring can pick the same task up again in the autumn.
+CREATE UNIQUE INDEX IF NOT EXISTS task_assignees_one_active
+  ON task_assignees(task_id, person_name) WHERE released_at IS NULL;

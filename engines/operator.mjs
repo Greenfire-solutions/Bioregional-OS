@@ -205,6 +205,62 @@ export function whatsNext(chapterId) {
     }
   }
 
+  // ── Stage 8: work that was done and nobody has looked at ───────────────
+  // `waiting`, in the same sense the intake items use it: a PERSON is waiting
+  // on this commons. Somebody went out, did the work, photographed it before
+  // and after, and filed it — and the last step is one other person spending a
+  // minute looking. Unsurfaced, that minute never happens, and the lesson a
+  // commons learns is that filing evidence leads nowhere.
+  //
+  // Folded into one line, like the gates, because five unchecked proofs are one
+  // sitting rather than five errands.
+  const unchecked = all(
+    `SELECT p.id, p.submitted_by, p.created_at, t.title task_title
+       FROM proofs p JOIN tasks t ON t.id = p.task_id
+      WHERE p.chapter_id=? AND p.status='pending' ORDER BY p.created_at`, chapterId);
+  if (unchecked.length) {
+    const oldest = daysSince(unchecked[0].created_at);
+    add({
+      kind: 'waiting', stage: 'Prototype',
+      title: unchecked.length === 1
+        ? `${unchecked[0].submitted_by} filed a before-and-after nobody has looked at`
+        : `${unchecked.length} before-and-afters are waiting to be checked`,
+      detail: unchecked.slice(0, 4).map((p) => p.task_title).join(' · ')
+        + (unchecked.length > 4 ? ` · and ${unchecked.length - 4} more` : ''),
+      age_days: oldest,
+      rule: 'The person who did the work is never the person who checks it.',
+      // One identity for checking work, whether there is one or five, so
+      // clearing them empties the slot rather than refilling it — the same
+      // reason the gate items carry one.
+      about: 'unchecked-evidence',
+      action: { tool: 'review_proof', input: { proof_id: unchecked[0].id } },
+    });
+  }
+
+  // Work written down that nobody has taken on. A `gap` rather than anything
+  // heavier: nothing is stuck behind it and nobody is waiting on an answer —
+  // but a task list that only the person who wrote it can see is a to-do list,
+  // not a commons.
+  const unclaimed = all(
+    `SELECT t.id, t.title FROM tasks t
+      WHERE t.chapter_id=? AND t.status NOT IN ('done','abandoned')
+        AND NOT EXISTS (SELECT 1 FROM task_assignees a
+                         WHERE a.task_id = t.id AND a.released_at IS NULL)
+      ORDER BY t.created_at`, chapterId);
+  if (unclaimed.length) {
+    add({
+      kind: 'gap', stage: 'Prototype',
+      title: unclaimed.length === 1
+        ? `"${truncate(unclaimed[0].title, 60)}" — nobody has picked this up`
+        : `${unclaimed.length} tasks nobody has picked up`,
+      detail: unclaimed.slice(0, 4).map((t) => t.title).join(' · ')
+        + (unclaimed.length > 4 ? ` · and ${unclaimed.length - 4} more` : ''),
+      rule: 'Work nobody has taken on is a list, not a commons.',
+      about: 'unclaimed-work',
+      action: { tool: 'claim_task', input: { task_id: unclaimed[0].id } },
+    });
+  }
+
   // One line for the gated projects, or the specific one when there is only
   // one. A single project keeps its own title and its own first gate, because
   // then the line IS the work; folding one thing into a summary of one thing

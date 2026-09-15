@@ -3,8 +3,8 @@ import DeckGL from '@deck.gl/react';
 import { MapView, _GlobeView as GlobeView, COORDINATE_SYSTEM } from '@deck.gl/core';
 import { GeoJsonLayer, SolidPolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
-import { Globe, Mountain, Layers, Loader2 } from 'lucide-react';
-import { KIND, KIND_ORDER, markerSVG } from '../mapKinds.js';
+import { Globe, Mountain, Layers, Loader2, Plus, X, Flag, ListChecks, Radio } from 'lucide-react';
+import { KIND, KIND_ORDER, markerSVG, needsAttention } from '../mapKinds.js';
 import MapMarkers from './MapMarkers.jsx';
 import { callTool } from '../api.js';
 
@@ -32,7 +32,8 @@ function hsl(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
-export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect, version = 0, selectedId = null }) {
+export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect,
+                                onAddHere, version = 0, selectedId = null }) {
   const [mode, setMode] = useState('terrain');          // terrain | globe
   const [level, setLevel] = useState('l3');             // ecoregion detail
   const [relief, setRelief] = useState(true);
@@ -62,6 +63,15 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   const [kindsOn, setKindsOn] = useState(
     () => new Set(KIND_ORDER.filter((k) => k !== 'reading')));
   const fetchRef = useRef(0);
+  // ── A point somebody has just pressed on the ground ─────────────────────
+  // The map could be read and not written to, which made it the one screen in
+  // the OS where the answer to "so what do I do about that?" was to go and find
+  // a form somewhere else and type a coordinate into it by hand. A person
+  // looking at a washed-out crossing is already pointing at where the work is.
+  //
+  // Held here rather than lifted to App, because it is about a gesture on this
+  // canvas and it is thrown away the moment anything is chosen.
+  const [dropped, setDropped] = useState(null);
 
   const home = places[0] ?? { lat: 30.26, lng: -97.79 };
   const [view, setView] = useState({
@@ -186,7 +196,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           getPosition: (d) => [d.lng, d.lat],
           getFillColor: (d) => {
             const k = KIND[d.kind] ?? KIND.observation;
-            return d.state === 'blocked' && k.blockedColor ? k.blockedColor : k.color;
+            return needsAttention(d) && k.blockedColor ? k.blockedColor : k.color;
           },
           getLineColor: [8, 15, 13], lineWidthMinPixels: 1.5, stroked: true,
           parameters: { depthTest: false },
@@ -228,6 +238,22 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         // future prop spread can switch off without anybody noticing.
         controller={{ dragRotate: true, touchRotate: true, scrollZoom: true, doubleClickZoom: true }}
         layers={layers}
+        // A press on the GROUND, meaning no layer answered for it. An
+        // ecoregion click opens the region panel and a marker click opens the
+        // feature, and both of those arrive with `info.layer` set — so this
+        // fires only when somebody pressed a piece of land that has nothing on
+        // it yet, which is exactly when "put something here" is the right offer.
+        //
+        // Terrain only. A globe has no WebMercator projection to invert, and a
+        // coordinate quietly taken from the wrong one would file work in the
+        // wrong field.
+        onClick={(info) => {
+          if (mode !== 'terrain') return;
+          if (info?.layer || !Array.isArray(info?.coordinate)) return;
+          const [lng, lat] = info.coordinate;
+          if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+          setDropped({ lng, lat, x: info.x, y: info.y });
+        }}
         getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}
       >
         {mode === 'terrain' && (
@@ -279,6 +305,12 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         <div className="mb-1 px-1.5 text-[9px] uppercase tracking-[0.08em] text-[var(--ink-3)]">
           On the map
         </div>
+        {/* A gesture nobody is told about is a gesture nobody makes. One line,
+            in the panel a person already reads to work out what the shapes
+            mean. */}
+        <div className="mb-1 flex items-center gap-1 px-1.5 text-[9px] leading-snug text-[var(--ink-3)]">
+          <Plus className="h-2.5 w-2.5 shrink-0" /> press the ground to put something there
+        </div>
         <div className="flex flex-col gap-0.5">
           {KIND_ORDER.map((k) => {
             const n = features.filter((f) => f.kind === k).length;
@@ -325,6 +357,63 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           </div>
         )}
       </div>
+
+      {/* ── What to put here ──────────────────────────────────────────────
+          Three things, because three is what a person standing at a spot
+          actually has to say about it: this is a project, this is one job
+          inside a project, or this is something I saw. Anything else is a form
+          they can reach from the thing once it exists. */}
+      {dropped && (
+        <div className="absolute z-30 w-60 rounded-lg border border-[var(--line)] bg-[var(--paper)]
+                        p-2.5 shadow-xl"
+             style={{
+               // Kept inside the canvas at every edge. A panel that opens off
+               // the right-hand side of the map is a panel that reads as the
+               // click having done nothing.
+               left: Math.min(Math.max(8, dropped.x + 12), Math.max(8, box.width - 252)),
+               top: Math.min(Math.max(8, dropped.y + 12), Math.max(8, box.height - 176)),
+             }}>
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Put something here</div>
+              <div className="font-data text-[11px] tabular-nums text-[var(--ink-2)]">
+                {dropped.lat.toFixed(5)}, {dropped.lng.toFixed(5)}
+              </div>
+            </div>
+            <button onClick={() => setDropped(null)}
+                    className="shrink-0 rounded p-1 hover:bg-[var(--paper-2)]" title="Close">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="mt-2 flex flex-col gap-1">
+            {[
+              { tool: 'open_quest', icon: Flag, label: 'A project',
+                hint: 'Something that needs doing, with gates on it' },
+              { tool: 'add_task', icon: ListChecks, label: 'A task',
+                hint: 'One job inside a project somebody can pick up' },
+              { tool: 'add_signal', icon: Radio, label: 'Something I noticed',
+                hint: 'An observation, here, now' },
+            ].map(({ tool, icon: I, label, hint }) => (
+              <button key={tool}
+                onClick={() => {
+                  // The coordinate travels into the form already filled in.
+                  // Typing it by hand is the step this whole gesture removes,
+                  // and a number retyped from a screen is a number entered wrong.
+                  onAddHere?.(tool, { lat: Number(dropped.lat.toFixed(6)), lng: Number(dropped.lng.toFixed(6)) });
+                  setDropped(null);
+                }}
+                className="group flex items-start gap-2 rounded px-2 py-1.5 text-left
+                           hover:bg-[var(--paper-2)]">
+                <I className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--moss)]" />
+                <span className="min-w-0">
+                  <span className="block text-[12px] leading-tight text-[var(--ink)]">{label}</span>
+                  <span className="block text-[10px] leading-snug text-[var(--ink-3)]">{hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="absolute right-3 top-3 flex items-center gap-2 rounded border border-[var(--line)]

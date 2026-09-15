@@ -8,6 +8,8 @@ import { all, one, create, run, latestMeasurement } from '../core/db.mjs';
 import * as council from '../engines/council.mjs';
 import * as bio from '../engines/bioregional.mjs';
 import * as quest from '../engines/quest.mjs';
+import * as tasks from '../engines/tasks.mjs';
+import * as proof from '../engines/proof.mjs';
 import * as exchange from '../engines/exchange.mjs';
 import * as steward from '../engines/stewardship.mjs';
 import * as murmur from '../adapters/murmurations.mjs';
@@ -241,6 +243,13 @@ export const TOOLS = [
       'reach the build stage until each one is closed with evidence and a named reviewer.',
     input_schema: S({
       chapter_id: str(''), title: str('Project title'), place_id: str(''), signal_id: str(''),
+      // The quests table has carried lat/lng since the beginning and the tool
+      // never offered them, so a project could only ever be drawn at the centre
+      // of the place it was filed against — marked "borrowed", correctly, and
+      // with no way for anybody to give it the coordinate it actually had.
+      lat: num('Where this project is, if it is somewhere in particular.'),
+      lng: num(''),
+      location_name: str('What people call that spot.'),
       category: str(''), description: str(''), need_statement: str('The need and the place'),
       desired_condition: str('What measurable condition should change, by when, for whom'),
       smallest_experiment: str('The smallest useful and safe experiment'),
@@ -506,6 +515,175 @@ export const TOOLS = [
           ...fields.map((f) => i[f]), i.quest_id);
       return one('SELECT * FROM quests WHERE id=?', i.quest_id);
     },
+  },
+
+  // ---------- Stage 8: Prototype — the work, and the evidence it happened ----
+  // A quest is a project; a task is what somebody actually does on a Saturday.
+  // Before these, the work inside a project lived on paper, in a group chat, or
+  // in one person's head, and the commons could not tell work from the claim
+  // of work.
+  {
+    name: 'list_tasks',
+    description:
+      'The work inside the projects: who is carrying each task, where it is, and whether the ' +
+      'before-and-after evidence is missing, filed or checked. Pass quest_id for one project.',
+    input_schema: S({
+      chapter_id: str(''),
+      quest_id: str('One project; omit for every task in the chapter.'),
+      status: { type: 'string', enum: ['todo', 'doing', 'blocked', 'done', 'abandoned'] },
+      unclaimed: bool('Only tasks nobody has picked up.'),
+    }),
+    handler: (i) => tasks.listTasks(ch(i),
+      { quest_id: i.quest_id ?? null, status: i.status ?? null, unclaimed: !!i.unclaimed }),
+  },
+  {
+    name: 'add_task',
+    description:
+      'Write down one thing somebody is going to do, inside a project. Give it a coordinate when ' +
+      'the work is somewhere in particular — "the second crossing" is a place, and the map draws ' +
+      'a task at its own point rather than at the centre of the project it belongs to. ' +
+      'Tasks require a before-and-after photograph by default; pass requires_before_after false ' +
+      'only for work that changes nothing visible, such as a phone call or a permit filed.',
+    input_schema: S({
+      quest_id: str('The project this belongs to.'),
+      title: str('What somebody is actually going to do.'),
+      description: str(''),
+      stage: { type: 'string', enum: quest.STAGES,
+        description: 'Which of the twelve stages this task serves. Optional.' },
+      lat: num('Where the work is, if it is somewhere in particular.'),
+      lng: num(''),
+      place_id: str('A place in this chapter; defaults to the project\'s place.'),
+      due_at: str('YYYY-MM-DD, if there is a date it has to be done by.'),
+      requires_before_after: bool('Default true.'),
+      created_by: str('Who wrote this down.'),
+    }, ['quest_id', 'title']),
+    handler: (i) => tasks.addTask(i),
+  },
+  {
+    name: 'claim_task',
+    description:
+      'Take a task on. Self-service and open: a commons where work has to be handed out by a ' +
+      'coordinator stops when the coordinator is away. More than one person can be on a task, ' +
+      'because ecological work is done by groups.',
+    input_schema: S({
+      task_id: str(''),
+      person_name: str('The name to record. Not a login — there are no accounts here.'),
+      person_id: str('A person already in this commons, if there is one.'),
+      role: { type: 'string', enum: ['doing', 'leading', 'helping', 'teaching', 'learning'] },
+    }, ['task_id', 'person_name']),
+    handler: (i) => tasks.claimTask(i.task_id,
+      { person_name: i.person_name, person_id: i.person_id ?? null, role: i.role ?? 'doing' }),
+  },
+  {
+    name: 'release_task',
+    description:
+      'Step back from a task. The record of having carried it is KEPT — a task three people held ' +
+      'before it was finished is a fact about this commons, and removing the row would make the ' +
+      'record say they were never there.',
+    input_schema: S({
+      task_id: str(''), person_name: str(''), reason: str('Optional, and worth writing.'),
+    }, ['task_id', 'person_name']),
+    handler: (i) => tasks.releaseTask(i.task_id, { person_name: i.person_name, reason: i.reason ?? null }),
+  },
+  {
+    name: 'complete_task',
+    description:
+      'Finish a task. REFUSES while a task that requires a before-and-after has none: two ' +
+      'photographs of the same ground is the one form of evidence somebody who was not there can ' +
+      'check. It needs the pair FILED, not yet checked — waiting on a reviewer to close your own ' +
+      'finished work is how a board fills with things that are actually done.',
+    input_schema: S({
+      task_id: str(''), by: str('Who finished it.'), note: str('Anything worth recording about how it went.'),
+    }, ['task_id']),
+    handler: (i) => tasks.completeTask(i.task_id, { by: i.by ?? null, note: i.note ?? null }),
+  },
+  {
+    name: 'set_task_status',
+    description:
+      'Move a task to todo, doing, blocked or abandoned. Marking one blocked is a statement about ' +
+      'the world, not about staffing — it survives people joining and leaving.',
+    input_schema: S({
+      task_id: str(''),
+      status: { type: 'string', enum: ['todo', 'doing', 'blocked', 'done', 'abandoned'] },
+      note: str(''),
+    }, ['task_id', 'status']),
+    handler: (i) => tasks.setTaskStatus(i.task_id, i.status, { note: i.note ?? null }),
+  },
+  {
+    name: 'task_board',
+    description:
+      'The work of this commons at a glance: what nobody has picked up, what is in hand, and what ' +
+      'is waiting to be checked. Counts nothing anybody has completed — work is not a score.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => tasks.taskBoard(ch(i)),
+  },
+  {
+    name: 'submit_proof',
+    description:
+      'File a before-and-after pair against a task. Both files are uploaded first (POST the bytes ' +
+      'to /api/media with the name in an x-bros-filename header; each upload answers with an id). ' +
+      'A PAIR is insisted on: the claim being made is comparative — this is what it was, this is ' +
+      'what it is — and one photograph of a clear culvert proves only that a culvert is clear.',
+    input_schema: S({
+      task_id: str(''),
+      before_media_id: str('The id the before upload answered with.'),
+      after_media_id: str('The id the after upload answered with.'),
+      note: str('What was done, in a sentence.'),
+      submitted_by: str('Who did the work. REQUIRED — it is what makes it possible to say ' +
+        'somebody else checked it.'),
+    }, ['task_id', 'before_media_id', 'after_media_id', 'submitted_by']),
+    handler: (i) => proof.submitProof(i.task_id, {
+      before_media_id: i.before_media_id, after_media_id: i.after_media_id,
+      note: i.note ?? null, submitted_by: i.submitted_by ?? null,
+    }),
+  },
+  {
+    name: 'pending_proofs',
+    description: 'Evidence filed and waiting for somebody to look at it, oldest first.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => proof.pendingProofs(ch(i)),
+  },
+  {
+    name: 'review_proof',
+    description:
+      'Check somebody else\'s work and say so. REFUSES a check signed by the person who submitted ' +
+      'it: the entire purpose of a before-and-after is that a person who was not there can look at ' +
+      'it. Rejecting requires a reason, because the person who did the work has to know what to ' +
+      'do about it.',
+    input_schema: S({
+      proof_id: str(''),
+      decision: { type: 'string', enum: ['verified', 'rejected'] },
+      reviewed_by: str('The name of the person making the check.'),
+      note: str('Required when rejecting.'),
+    }, ['proof_id', 'decision', 'reviewed_by']),
+    handler: (i) => proof.reviewProof(i.proof_id,
+      { decision: i.decision, reviewed_by: i.reviewed_by, note: i.note ?? null }),
+  },
+  {
+    name: 'list_media',
+    description:
+      'Every file this commons holds, with its hash and whether that hash is real. Files live in ' +
+      'data/media on this machine — no bucket, no third party holding the evidence.',
+    input_schema: S({ chapter_id: str(''), limit: num('Default 100.') }),
+    handler: (i) => proof.listMedia(ch(i), { limit: i.limit ?? 100 }),
+  },
+  {
+    name: 'check_evidence',
+    description:
+      'Re-read every stored file and re-hash it. Says which are missing, which have changed since ' +
+      'they were filed, and which never had a real hash — three different problems that look ' +
+      'identical in the interface. A proof store nobody ever checks is a promise.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => proof.verifyStore(ch(i)),
+  },
+  {
+    name: 'withdraw_media',
+    description:
+      'Remove a file from this commons. The bytes are deleted; the ROW stays, so a proof that ' +
+      'pointed at it says "withdrawn" rather than quietly losing half of a pair and reading as ' +
+      'though the evidence was never there.',
+    input_schema: S({ media_id: str(''), reason: str('') }, ['media_id']),
+    handler: (i) => proof.withdrawMedia(i.media_id, { reason: i.reason ?? null }),
   },
   {
     name: 'decide_council_item',

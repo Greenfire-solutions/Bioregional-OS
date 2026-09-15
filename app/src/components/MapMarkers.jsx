@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { WebMercatorViewport } from '@deck.gl/core';
-import { KIND } from '../mapKinds.js';
+import { KIND, needsAttention } from '../mapKinds.js';
 
 /**
  * The commons, drawn over the map as real elements rather than pictures.
@@ -166,7 +166,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
       </svg>
       {laidOut.map((f) => {
         const k = KIND[f.kind] ?? KIND.observation;
-        const blocked = f.state === 'blocked';
+        const blocked = needsAttention(f);
         const c = blocked && k.blockedColor ? k.blockedColor : k.color;
         const rgb = `rgb(${c[0]},${c[1]},${c[2]})`;
         const isOn = hovered === f.id || selectedId === f.id;

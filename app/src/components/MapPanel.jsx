@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, MapPin, CircleAlert, ArrowRight } from 'lucide-react';
-import { KIND, markerSVG } from '../mapKinds.js';
+import { KIND, markerSVG, needsAttention } from '../mapKinds.js';
 import { verb } from '../verbs.js';
 
 /**
@@ -19,7 +19,12 @@ import { verb } from '../verbs.js';
 export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
   if (!feature) return null;
   const k = KIND[feature.kind] ?? KIND.observation;
-  const blocked = feature.state === 'blocked';
+  // Two different questions, and conflating them is how a task would have got
+  // a project's sentence. `attention` is about how it is DRAWN — one rule, in
+  // mapKinds.js, shared with the markers and the globe. `inTheWay` is about
+  // what this particular panel says next, and only a project has gates.
+  const attention = needsAttention(feature);
+  const blocked = feature.kind === 'project' && feature.state === 'blocked';
   // Decided by engines/mapboard.mjs, worded by ../verbs.js. This component
   // used to decide both, which made it a second home for "what to do about a
   // blocked project" and let its verbs drift from the ones on every other
@@ -30,7 +35,7 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
     <aside className="flex h-full w-[19rem] shrink-0 flex-col overflow-y-auto border-l
                       border-[var(--line)] bg-[var(--paper)]">
       <div className="flex items-start gap-2 border-b border-[var(--line)] px-4 py-3">
-        <img src={markerSVG(feature.kind, { blocked, precise: feature.precise !== false })}
+        <img src={markerSVG(feature.kind, { blocked: attention, precise: feature.precise !== false })}
              alt="" className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">{k.label}</div>
@@ -67,6 +72,36 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
             <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
             {feature.lat.toFixed(4)}, {feature.lng.toFixed(4)}
           </p>
+        )}
+
+        {/* What is actually true about this task, in the order somebody asks
+            it: has anyone got this, and is there evidence. Both are computed in
+            engines/mapboard.mjs from the same two facts the task list uses, so
+            the map and the list cannot disagree about a task's state. */}
+        {feature.kind === 'task' && (
+          <div className="space-y-1.5">
+            {feature.state === 'unclaimed' && (
+              <p className="rounded border border-[#E8D9B0] bg-[#FBF3DC] px-2.5 py-1.5 text-[11px]
+                            leading-snug text-[#8A6D1F]">
+                Nobody has picked this up. More than one person can be on it.
+              </p>
+            )}
+            {feature.evidence === 'none' && (
+              <p className="text-[11px] leading-snug text-[var(--ink-2)]">
+                No before-and-after yet. It will not close without one.
+              </p>
+            )}
+            {feature.evidence === 'submitted' && (
+              <p className="text-[11px] leading-snug text-[var(--ink-2)]">
+                Evidence filed, waiting for somebody who was not there to look at it.
+              </p>
+            )}
+            {feature.evidence === 'verified' && (
+              <p className="text-[11px] leading-snug text-[var(--moss)]">
+                Before-and-after checked by somebody else.
+              </p>
+            )}
+          </div>
         )}
 
         {feature.kind === 'gathering' && feature.care != null && (

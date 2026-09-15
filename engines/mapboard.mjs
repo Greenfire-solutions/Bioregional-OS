@@ -37,6 +37,7 @@ export const MAP_KINDS = Object.freeze([
   { key: 'place', label: 'Places' },
   { key: 'hub', label: 'Hubs' },
   { key: 'project', label: 'Projects' },
+  { key: 'task', label: 'Work to do' },
   { key: 'need', label: 'Needs brought' },
   { key: 'gathering', label: 'Gatherings' },
   { key: 'observation', label: 'What people noticed' },
@@ -62,6 +63,21 @@ function actionFor(f) {
         ? { tool: 'satisfy_quest_gate', input: { quest_id: f.id },
             note: 'Or pass it with a reason, if it genuinely does not apply.' }
         : { tool: 'update_quest', input: { quest_id: f.id } };
+    case 'task':
+      // Matched to what is actually true of THIS task, in the order a person
+      // meets them: nobody has it, or somebody has it and there is no evidence
+      // yet, or the evidence is in and it can be closed. A single "open the
+      // task" action here would be the table of contents this function exists
+      // to avoid.
+      if (f.state === 'unclaimed') {
+        return { tool: 'claim_task', input: { task_id: f.id },
+                 note: 'Nobody has picked this up. More than one person can.' };
+      }
+      if (f.evidence === 'none') {
+        return { tool: 'submit_proof', input: { task_id: f.id },
+                 note: 'The ground before and the same ground after. It will not close without both.' };
+      }
+      return { tool: 'complete_task', input: { task_id: f.id } };
     case 'need':
       return { tool: 'respond_to_intake', input: { intake_id: f.id },
                note: 'A person may submit a need, receive a response, and appeal.' };
@@ -151,6 +167,50 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
         badge: open || null,
         state: open ? 'blocked' : 'running',
         sub: `${String(q.stage).replace(/_/g, ' ')}${q.maintenance_owner ? ` · ${q.maintenance_owner}` : ''}`,
+      });
+    }
+  }
+
+  if (on('task')) {
+    // A task's fallback is its PROJECT's point before the place's, which is the
+    // one place this differs from everything else on the map: a project may sit
+    // at a coordinate its place does not have, and drawing its work somewhere
+    // less specific than the project itself would be a map getting vaguer the
+    // closer you look at it.
+    for (const t of all(
+      `SELECT t.id, t.title, t.status, t.lat, t.lng, t.place_id, t.requires_before_after,
+              t.due_at, q.title project_title, q.lat q_lat, q.lng q_lng, q.place_id q_place
+         FROM tasks t JOIN quests q ON q.id = t.quest_id
+        WHERE t.chapter_id=? AND t.status NOT IN ('done','abandoned')`, chapterId)) {
+      const at = has(t)
+        ? { lat: t.lat, lng: t.lng, precise: true, borrowed_from: null }
+        : has({ lat: t.q_lat, lng: t.q_lng })
+          ? { lat: t.q_lat, lng: t.q_lng, precise: false, borrowed_from: t.project_title }
+          : locate({ place_id: t.place_id ?? t.q_place });
+      if (!at) continue;
+      const carrying = all(
+        'SELECT person_name FROM task_assignees WHERE task_id=? AND released_at IS NULL', t.id)
+        .map((a) => a.person_name);
+      const proofs = all(
+        `SELECT status FROM proofs WHERE task_id=? AND status <> 'rejected'`, t.id);
+      // The same word the engine uses, computed from the same two facts. Kept
+      // to one vocabulary so the map, the list and the panel cannot each decide
+      // separately what "has evidence" means.
+      const evidence = !t.requires_before_after ? 'not_required'
+        : proofs.some((x) => x.status === 'verified') ? 'verified'
+        : proofs.length ? 'submitted' : 'none';
+      out.push({
+        kind: 'task', id: t.id, title: t.title, ...at,
+        // Who is carrying it. Blank when nobody is, because the marker is
+        // already drawn in the attention colour and a "0" beside it would be
+        // the same fact said twice.
+        badge: carrying.length || null,
+        state: carrying.length ? t.status : 'unclaimed',
+        evidence,
+        sub: [t.project_title,
+              carrying.length ? carrying.join(', ') : 'nobody yet',
+              evidence === 'none' ? 'needs before & after' : null,
+              t.due_at ? `by ${String(t.due_at).slice(0, 10)}` : null].filter(Boolean).join(' · '),
       });
     }
   }

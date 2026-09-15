@@ -11,6 +11,9 @@
 process.env.BROS_DB = process.env.BROS_DB || '/tmp/bros-test-' + Date.now() + '.db';
 
 import { rmSync, readFileSync } from 'node:fs';
+// Raw socket, so a traversal probe can be sent the way an attacker would send
+// it rather than the way fetch politely rewrites it first.
+import { connect as netConnect } from 'node:net';
 import { runTool } from '../ai/tools.mjs';
 import { one, all, run as dbRun, db, openPath, create } from '../core/db.mjs';
 import * as bioEngine from '../engines/bioregional.mjs';
@@ -4136,9 +4139,246 @@ check('a card from a real chapter does not cry wolf about being an example',
     check('and the steward can answer it without being told the answer failed',
       answered.status === 200 && !answered.body?.error,
       `HTTP ${answered.status} ${JSON.stringify(answered.body).slice(0, 90)}`);
+
+    // ── Bytes, over the same socket ──────────────────────────────────────
+    // The one pair of routes that does not carry JSON, and therefore the one
+    // pair the withholding wrapper cannot see inside. Everything here is about
+    // what the SERVER does with a file, which no engine test can reach.
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64');
+    const put = async (name, body) => {
+      const r = await fetch(`http://127.0.0.1:${port}/api/media`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-bros-filename': name },
+        body,
+      });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    };
+
+    const up1 = await put('field.png', png);
+    check('a photograph can be sent to the commons as a raw body with its name in a header',
+      up1.status === 200 && /^med_/.test(up1.body?.id ?? ''),
+      `HTTP ${up1.status} ${JSON.stringify(up1.body).slice(0, 90)}`);
+
+    const shown = up1.body?.id
+      ? await fetch(`http://127.0.0.1:${port}/api/media/${up1.body.id}`)
+      : null;
+    check('and comes back as the type it was stored as, never one a caller chose',
+      shown?.status === 200 && shown.headers.get('content-type') === 'image/png');
+    check('with sniffing switched off, so a stored file cannot become a script here',
+      shown?.headers.get('x-content-type-options') === 'nosniff');
+
+    const html = await put('payload.html', Buffer.from('<script>alert(1)</script>'));
+    check('a file this OS will not serve safely is refused at the door, with the list',
+      html.status === 415 && Array.isArray(html.body?.allowed));
+
+    // ── Traversal, sent the way it would actually be sent ────────────────
+    // `fetch` collapses `../` in a URL BEFORE the request leaves, so a probe
+    // written as `/api/media/../../package.json` never reaches this route at
+    // all — it arrives as `/package.json` and is answered by the static
+    // handler. A test written with fetch therefore proves nothing about the
+    // media store while appearing to, which is the worse half of the problem.
+    //
+    // An attacker is not using fetch. This writes the request line by hand.
+    const rawGet = (path) => new Promise((resolve) => {
+      const sock = netConnect(port, '127.0.0.1', () => {
+        sock.write(`GET ${path} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nConnection: close\r\n\r\n`);
+      });
+      let buf = '';
+      sock.setEncoding('utf8');
+      sock.on('data', (d) => { buf += d; });
+      sock.on('end', () => resolve(buf));
+      sock.on('error', () => resolve(''));
+    });
+
+    for (const probe of ['/api/media/..%2f..%2f.env', '/api/media/../../package.json',
+                         '/api/media/..%2F..%2Fcore%2Fschema.sql']) {
+      const raw = await rawGet(probe);
+      const status = Number(/^HTTP\/1\.\d (\d+)/.exec(raw)?.[1] ?? 0);
+      // Refused is the requirement; WHAT came back is the thing worth checking
+      // as well, because a 200 carrying the SPA shell is fine and a 200
+      // carrying a licence key is not.
+      const leaked = /PRAGMA|CREATE TABLE|"dependencies"|ANTHROPIC/.test(raw);
+      check(`a hand-written request cannot walk out of the media store (${probe.slice(11, 30)})`,
+        !leaked && (status === 400 || status === 404 || status === 200),
+        `HTTP ${status}${leaked ? ' — CONTENT LEAKED' : ''}`);
+    }
+
+    const gone = await fetch(`http://127.0.0.1:${port}/api/media/med_deadbeef`);
+    check('and a file that was never here is a plain 404', gone.status === 404);
   }
 
   child.kill();
+}
+
+
+// ── Stage 8: the work, and the evidence it happened ───────────────────────
+// Ported capability, protocol rules applied. Every check here is a REFUSAL the
+// commons has to make, plus the two parity checks whose comments elsewhere
+// claimed they already existed and did not.
+{
+  const { storeMedia, submitProof, reviewProof, withdrawMedia, verifyStore, mediaDir } =
+    await import('../engines/proof.mjs');
+  const { mapFeatures, MAP_KINDS } = await import('../engines/mapboard.mjs');
+  const { readFileSync: rf, writeFileSync: wf } = await import('node:fs');
+  const { join: j } = await import('node:path');
+
+  const proj = await runTool('open_quest', {
+    title: 'Clear the Pecan Lane culvert', lat: 30.27, lng: -97.75,
+    need_statement: 'It blocks every autumn and floods the path.',
+  });
+  check('a project can be opened with a coordinate of its own', proj?.lat === 30.27);
+
+  check('a task without a project is refused',
+    refused(await runTool('add_task', { title: 'Do something' }), 'quest_id'));
+
+  const task = await runTool('add_task', {
+    quest_id: proj.id, title: 'Clear the upstream grate', lat: 30.271, lng: -97.751,
+    created_by: 'R. Alvarez',
+  });
+  check('a task can be added to a project, at its own point', !!task.id && task.lat === 30.271);
+  check('a task requires a before-and-after unless somebody says otherwise',
+    task.requires_before_after === 1 || task.requires_before_after === true);
+
+  // THE refusal this whole capability exists for.
+  const early = await runTool('complete_task', { task_id: task.id, by: 'R. Alvarez' });
+  check('a task that changes the land does not close without a before-and-after',
+    refused(early, 'evidence_required'));
+  check('and the refusal hands over the way to fix it rather than just saying no',
+    early?.action?.tool === 'submit_proof');
+
+  // Claiming is self-service, open, and survives being done twice.
+  const claimed = await runTool('claim_task', { task_id: task.id, person_name: 'R. Alvarez' });
+  check('a task can be picked up by name, with no account anywhere', claimed?.claimed === true);
+  const again = await runTool('claim_task', { task_id: task.id, person_name: 'R. Alvarez' });
+  check('claiming the same task twice is not an error', again?.already === true && !again?.error);
+  await runTool('claim_task', { task_id: task.id, person_name: 'M. Okafor', role: 'helping' });
+  check('more than one person can be on a task',
+    (await runTool('list_tasks', { quest_id: proj.id }))[0].assignees.length === 2);
+
+  await runTool('release_task', { task_id: task.id, person_name: 'M. Okafor', reason: 'Away that week' });
+  const afterRelease = (await runTool('list_tasks', { quest_id: proj.id }))[0];
+  check('stepping back removes nobody from the record',
+    afterRelease.assignees.length === 1 && afterRelease.released.length === 1
+    && afterRelease.released[0].person_name === 'M. Okafor');
+  check('and a task_assignees row cannot be deleted at all', (() => {
+    try { dbRun('DELETE FROM task_assignees WHERE task_id=?', task.id); return false; }
+    catch { return true; }
+  })());
+
+  // ── The file store ────────────────────────────────────────────────────
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+
+  const bad = storeMedia('test', { filename: 'map.svg', buffer: png });
+  check('a file type this OS will not serve safely is refused', refused(bad, 'unsupported_type'));
+  check('and SVG is named as deliberate rather than left looking like an oversight',
+    /script/i.test(JSON.stringify(bad)));
+
+  const noConsent = storeMedia('test', {
+    filename: 'crew.jpg', buffer: png, shows_people: true,
+  });
+  check('a photograph of identifiable people with no consent record is refused',
+    refused(noConsent, 'consent_required'));
+
+  const before = storeMedia('test', { filename: 'before.png', buffer: png, uploaded_by: 'R. Alvarez' });
+  const after = storeMedia('test', { filename: 'after.png', buffer: png, uploaded_by: 'R. Alvarez' });
+  check('a photograph is stored with a real hash of the bytes written',
+    before.hash_source === 'content' && /^[0-9a-f]{64}$/.test(before.sha256));
+
+  // A refusal is only a refusal if its own schema can reach it. reviewProof
+  // compares the checker against `submitted_by`, so a proof filed with no name
+  // is one that rule can never fire on — and the person it exists to stop is
+  // exactly the person who would know to leave the field blank.
+  check('evidence filed with no name at all is refused, because the self-check rule needs one',
+    refused(submitProof(task.id,
+      { before_media_id: before.id, after_media_id: after.id }), 'name_required'));
+
+  check('a proof made of one photograph is refused — the claim is comparative',
+    refused(await runTool('submit_proof',
+      { task_id: task.id, before_media_id: before.id, after_media_id: '' }), 'required'));
+  check('the same photograph used twice is refused',
+    refused(submitProof(task.id,
+      { before_media_id: before.id, after_media_id: before.id }), 'same_file'));
+
+  const filed = await runTool('submit_proof', {
+    task_id: task.id, before_media_id: before.id, after_media_id: after.id,
+    note: 'Grate cleared, gravel bar pulled back.', submitted_by: 'R. Alvarez',
+  });
+  check('a before-and-after pair can be filed', !!filed.id && filed.status === 'pending');
+
+  check('the person who did the work cannot check their own',
+    refused(reviewProof(filed.id, { decision: 'verified', reviewed_by: 'R. Alvarez' }),
+      'cannot_check_own_work'));
+  check('rejecting without a reason is refused — the doer has to know what to fix',
+    refused(reviewProof(filed.id, { decision: 'rejected', reviewed_by: 'M. Okafor' }), 'reason'));
+
+  // Evidence filed, not yet checked: the task closes, because waiting on a
+  // reviewer to close your own finished work is how a board fills with lies.
+  const closed = await runTool('complete_task', { task_id: task.id, by: 'R. Alvarez' });
+  check('once the pair is filed the task closes, without waiting for a reviewer',
+    closed?.done === true && closed.task.status === 'done');
+
+  const checked = reviewProof(filed.id, { decision: 'verified', reviewed_by: 'M. Okafor' });
+  check('somebody who was not there can check it', checked.status === 'verified');
+
+  // ── The evidence is still there, and still what it says ────────────────
+  check('re-reading the store finds every file intact', verifyStore('test').ok === true);
+  wf(j(mediaDir(), before.stored_name), Buffer.concat([png, Buffer.from('tampered')]));
+  const drift = verifyStore('test');
+  check('a file changed on disk since it was filed is reported as changed',
+    drift.ok === false && drift.changed.includes(before.id));
+
+  const withdrawn = withdrawMedia(after.id, { reason: 'The landowner asked' });
+  check('withdrawing a file removes the bytes and keeps the row',
+    withdrawn.withdrawn === true && !!one('SELECT id FROM media WHERE id=?', after.id));
+  check('and the proof that named it says so rather than losing half a pair',
+    /still name it/.test(withdrawn.note ?? ''));
+  check('a media row cannot be deleted at all', (() => {
+    try { dbRun('DELETE FROM media WHERE id=?', before.id); return false; }
+    catch { return true; }
+  })());
+
+  // ── On the map ────────────────────────────────────────────────────────
+  const borrowed = await runTool('add_task', { quest_id: proj.id, title: 'Write up what was found' });
+  const feats = mapFeatures('test').features;
+  const drawnOwn = feats.find((f) => f.kind === 'task' && f.id === borrowed.id);
+  check('a task with no point of its own is drawn at its project and says so',
+    drawnOwn?.precise === false && drawnOwn?.borrowed_from === proj.title);
+  check('a task nobody has picked up is marked as the thing to look at',
+    drawnOwn?.state === 'unclaimed');
+  check('a finished task is not drawn on the map',
+    !feats.some((f) => f.kind === 'task' && f.id === task.id));
+
+  // ── The two parity checks the comments already claimed ─────────────────
+  const { KIND, KIND_ORDER } = await import('../app/src/mapKinds.js');
+  const engineKinds = new Set(MAP_KINDS.map((k) => k.key));
+  const uiKinds = new Set(Object.keys(KIND));
+  check('every kind the map draws is in the key, and every key is drawn',
+    engineKinds.size === uiKinds.size && [...engineKinds].every((k) => uiKinds.has(k)),
+    `engine ${[...engineKinds]} / ui ${[...uiKinds]}`);
+  check('and the key lists all of them',
+    KIND_ORDER.length === uiKinds.size && KIND_ORDER.every((k) => uiKinds.has(k)));
+
+  const appSrc = rf(new URL('../app/src/App.jsx', import.meta.url), 'utf8');
+  const readme = rf(new URL('../README.md', import.meta.url), 'utf8');
+  const labels = [...appSrc.matchAll(/label: '([^']+)'/g)].map((m) => m[1]);
+  const unnamed = labels.filter((l) => !readme.includes(l));
+  check('every tab in the interface is named in the README', !unnamed.length, unnamed.join(', '));
+
+  // ── Who may do what ───────────────────────────────────────────────────
+  const access = await import('../ai/access.mjs');
+  check('filing evidence is ordinary field work for an enrolled device',
+    access.mayRun('submit_proof', 'members'));
+  check('checking somebody else\'s evidence is council work',
+    !access.mayRun('review_proof', 'members') && access.mayRun('review_proof', 'council'));
+  check('a stranger on the wifi can do none of it',
+    !access.mayRun('add_task', 'public') && !access.mayRun('submit_proof', 'public')
+    && !access.mayRun('list_tasks', 'public'));
+  check('destroying evidence is done at the keyboard only',
+    !access.mayRun('withdraw_media', 'council'));
 }
 
 // ── Report ────────────────────────────────────────────────────────────────

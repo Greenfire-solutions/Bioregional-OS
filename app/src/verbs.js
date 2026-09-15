@@ -27,6 +27,21 @@ const VERB = {
   record_measurement: 'Record a reading',
   set_indicator_baseline: 'Set the baseline',
 
+  // the work inside a project
+  add_task: 'Add a task',
+  claim_task: 'I will do this',
+  release_task: 'Step back',
+  complete_task: 'Mark it done',
+  set_task_status: 'Change its state',
+  task_board: 'See the work',
+  // Not "Upload evidence". Two photographs of the same ground is what a person
+  // is actually about to go and take, and the button says that.
+  submit_proof: 'Add the before & after',
+  review_proof: 'Check this work',
+  pending_proofs: 'See what needs checking',
+  check_evidence: 'Check the evidence is still there',
+  withdraw_media: 'Withdraw this file',
+
   // listening and council
   submit_intake: 'Bring a need',
   respond_to_intake: 'Answer',

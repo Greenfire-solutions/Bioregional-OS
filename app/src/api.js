@@ -44,6 +44,37 @@ export async function callTool(name, input = {}) {
   return post('tool', { name, input });
 }
 
+/**
+ * Put a file into the commons and get back the id of the stored object.
+ *
+ * The bytes go up as the raw body with the name in a header — there is no
+ * multipart here, because a contract this small can be re-implemented from a
+ * phone with `fetch` and cannot rot the way a parsing library does.
+ *
+ * The device header travels, exactly as it does on every other call: this is
+ * a write to the steward's own disk, and a stranger on the gathering wifi does
+ * not get one.
+ */
+export async function uploadFile(file, meta = {}) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(meta)) {
+    if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+  }
+  const r = await fetch(`${base}/api/media${q.toString() ? `?${q}` : ''}`, {
+    method: 'POST',
+    headers: headers({
+      'content-type': file.type || 'application/octet-stream',
+      'x-bros-filename': file.name,
+    }),
+    body: file,
+  });
+  // A refusal here is a sentence worth showing — the type list, the size
+  // limit, the missing consent record — so the body is returned either way and
+  // the caller decides. Throwing would turn all three into "upload failed".
+  try { return await r.json(); }
+  catch { return { error: 'upload_failed', message: `The file did not go up (${r.status}).` }; }
+}
+
 /** Stream the assistant. onEvent(type, data) fires for text / tool / tool_result / done / error. */
 /**
  * The same stream shape as askAssistant, from a different engine.
