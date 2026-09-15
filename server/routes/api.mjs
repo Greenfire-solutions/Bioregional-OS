@@ -4,6 +4,7 @@ import * as bio from '../../engines/bioregional.mjs';
 import * as quest from '../../engines/quest.mjs';
 import * as tasks from '../../engines/tasks.mjs';
 import * as proof from '../../engines/proof.mjs';
+import * as ledger from '../../engines/ledger.mjs';
 import * as exchange from '../../engines/exchange.mjs';
 import * as steward from '../../engines/stewardship.mjs';
 import * as koi from '../../adapters/koi.mjs';
@@ -240,6 +241,15 @@ async function route(req, res, url, clearance) {
     case 'tasks':    return tasks.listTasks(chapterId, { quest_id: q.quest_id ?? null });
     case 'task-board': return tasks.taskBoard(chapterId);
     case 'proofs':   return proof.pendingProofs(chapterId);
+    // The economy, if this commons has made one. Through the engine, so every
+    // figure here is added up from the entries exactly as it is everywhere
+    // else — there is no balance column for a second answer to come from.
+    case 'ledger':   return {
+      currencies: ledger.currencies(chapterId),
+      pools: ledger.pools(chapterId),
+      entries: ledger.entries(chapterId, { limit: 40 }),
+      check: ledger.check(chapterId),
+    };
     case 'decisions':return all('SELECT * FROM decisions WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
     case 'gatherings':return all('SELECT * FROM gatherings WHERE chapter_id=? ORDER BY starts_at', chapterId);
     case 'intake':   return all('SELECT * FROM intake WHERE chapter_id=? AND private=0 ORDER BY created_at DESC', chapterId);

@@ -4532,6 +4532,200 @@ check('a card from a real chapter does not cry wolf about being an example',
     acc.listAccounts('test').some((a) => a.id === member.id && a.status === 'suspended'));
 }
 
+
+// ── The ledger a commons defines for itself ───────────────────────────────
+// What the unit is and who decides are theirs. The arithmetic is not, and
+// nearly every check here is of the arithmetic refusing to be bent.
+{
+  const led = await import('../engines/ledger.mjs');
+
+  const ana = await runTool('add_agent', { name: 'Ana', vf_agent_type: 'Person' });
+  const bo = await runTool('add_agent', { name: 'Bo', vf_agent_type: 'Person' });
+  const hall = await runTool('add_agent', { name: 'The Hall', vf_agent_type: 'Organization' });
+
+  // ── The government is the one already here ────────────────────────────
+  check('a currency cannot be created without a council decision',
+    refused(await runTool('define_currency',
+      { name: 'Hours', unit_of: 'an hour of work' }), 'decision'));
+
+  const proposed = await runTool('propose_decision', {
+    title: 'Adopt Hours as our unit', method: 'consent', reversible: true,
+    land_seat_report: 'Counting hours changes nothing on the ground by itself.',
+    land_seat_steward: 'R. Alvarez',
+  });
+  check('and not on a decision that has only been PROPOSED',
+    refused(led.defineCurrency('test',
+      { name: 'Hours', unit_of: 'an hour', decided_by: proposed.id }), 'not_decided_yet'));
+
+  await runTool('decide_council_item', { decision_id: proposed.id, review_date: '2027-06-01' });
+  const hours = await runTool('define_currency', {
+    name: 'Hours', unit_of: 'an hour of work given to the commons',
+    zero_sum: true, credit_limit: 20, decided_by: proposed.id,
+  });
+  check('with a decided one, a commons can say what it counts',
+    !!hours.id && hours.zero_sum === true);
+
+  // ── Zero-sum means what it says ───────────────────────────────────────
+  check('nobody can issue a zero-sum currency, whoever they are',
+    refused(led.issue('test',
+      { currency_id: hours.id, agent_id: ana.id, amount: 5 }), 'zero_sum'));
+
+  const t1 = await runTool('transfer_credit', {
+    currency_id: hours.id, from_agent_id: ana.id, to_agent_id: bo.id, amount: 3,
+    note: 'Three hours on the culvert',
+  });
+  check('a transfer moves units and writes two legs in one movement',
+    !!t1.group_id && t1.entries.length === 2);
+  check('and the two legs sum to exactly zero',
+    Math.abs(t1.entries.reduce((n, e) => n + e.amount, 0)) < 1e-9);
+  check('the sender goes negative, which is what mutual credit IS',
+    led.balance(hours.id, ana.id) === -3 && led.balance(hours.id, bo.id) === 3);
+  check('and the whole currency still sums to nothing',
+    led.check('test').currencies.find((c) => c.id === hours.id).ok === true);
+
+  check('a transfer past the limit the commons set is refused, by name and number',
+    refused(await runTool('transfer_credit',
+      { currency_id: hours.id, from_agent_id: ana.id, to_agent_id: bo.id, amount: 50 }),
+      'past_the_limit'));
+  check('and a transfer to yourself is not a transfer',
+    refused(await runTool('transfer_credit',
+      { currency_id: hours.id, from_agent_id: ana.id, to_agent_id: ana.id, amount: 1 }), 'same_holder'));
+
+  // ── Nothing is ever deleted or amended ────────────────────────────────
+  check('a ledger entry cannot be deleted', (() => {
+    try { dbRun('DELETE FROM ledger_entries WHERE group_id=?', t1.group_id); return false; }
+    catch { return true; }
+  })());
+  check('nor can its amount be edited', (() => {
+    try { dbRun('UPDATE ledger_entries SET amount=999 WHERE group_id=?', t1.group_id); return false; }
+    catch { return true; }
+  })());
+
+  check('reversing needs a reason, because both entries stay forever',
+    refused(await runTool('reverse_entry', { group_id: t1.group_id }), 'reason'));
+  const undone = await runTool('reverse_entry',
+    { group_id: t1.group_id, reason: 'Logged against the wrong project' });
+  check('a reversal is written as its opposite, not as an edit',
+    undone.entries.length === 2 && undone.entries.every((e) => e.reverses));
+  check('and the balances come back to nothing',
+    led.balance(hours.id, ana.id) === 0 && led.balance(hours.id, bo.id) === 0);
+  check('the original movement is still there to be read',
+    all('SELECT id FROM ledger_entries WHERE group_id=?', t1.group_id).length === 2);
+  check('reversing the same movement twice is refused',
+    refused(await runTool('reverse_entry',
+      { group_id: t1.group_id, reason: 'again' }), 'already_reversed'));
+
+  // ── An issued currency, paid against checked evidence ─────────────────
+  const d2 = await runTool('propose_decision', {
+    title: 'Issue Seeds for checked work', method: 'consent', reversible: true,
+    land_seat_report: 'Seed stock is counted and the pool is real.',
+  });
+  await runTool('decide_council_item', { decision_id: d2.id, review_date: '2027-06-01' });
+  const seeds = await runTool('define_currency', {
+    name: 'Seeds', unit_of: 'one packet from the seed library',
+    zero_sum: false, issue_policy: 'on_verified_proof', per_verified_proof: 2,
+    decided_by: d2.id,
+  });
+  check('a commons can choose an issued currency instead', seeds.zero_sum === false);
+  check('a zero-sum currency that also pays per proof is a contradiction, and is refused',
+    refused(led.defineCurrency('test',
+      { name: 'Muddle', unit_of: 'x', zero_sum: true, per_verified_proof: 2, decided_by: d2.id }),
+      'contradiction'));
+
+  check('issuing for work needs the proof named',
+    refused(await runTool('issue_credit',
+      { currency_id: seeds.id, agent_id: ana.id, amount: 2 }), 'proof_required'));
+
+  // The proof filed earlier in this suite was checked by M. Okafor.
+  const checkedProof = one(`SELECT id FROM proofs WHERE status='verified' LIMIT 1`);
+  const paid = await runTool('issue_credit', {
+    currency_id: seeds.id, agent_id: ana.id, amount: 2, proof_id: checkedProof.id,
+  });
+  check('a checked before-and-after can be paid for', !!paid.group_id);
+  check('the units came from somewhere nameable, not from nowhere',
+    paid.entries.some((e) => e.counterparty === 'issuance' && e.amount === -2));
+  check('and the same proof is never paid twice',
+    refused(await runTool('issue_credit',
+      { currency_id: seeds.id, agent_id: bo.id, amount: 2, proof_id: checkedProof.id }), 'already_paid'));
+
+  // A proof nobody has looked at yet, made here rather than hoped for. The
+  // first version of this looked for one lying about in the fixture and
+  // SKIPPED when it found none — which is what happened, because the only
+  // proof in the suite had already been checked two hundred lines earlier. A
+  // test that quietly does not run is the thing this project keeps finding.
+  {
+    const pr = await import('../engines/proof.mjs');
+    const q2 = await runTool('open_quest', { title: 'Unchecked work' });
+    const t2 = await runTool('add_task', { quest_id: q2.id, title: 'Something done but unseen' });
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64');
+    const b2 = pr.storeMedia('test', { filename: 'b2.png', buffer: png });
+    const a2 = pr.storeMedia('test', { filename: 'a2.png', buffer: Buffer.concat([png, Buffer.from('2')]) });
+    const unchecked = await runTool('submit_proof', {
+      task_id: t2.id, before_media_id: b2.id, after_media_id: a2.id, submitted_by: 'Ana',
+    });
+    check('work nobody has checked yet does not pay',
+      refused(await runTool('issue_credit',
+        { currency_id: seeds.id, agent_id: ana.id, amount: 2, proof_id: unchecked.id }), 'not_verified'));
+  }
+
+  check('how much exists is added up, never stored',
+    led.currency(seeds.id).in_existence === 2);
+
+  // ── A pool: what the units are actually for ───────────────────────────
+  // Two layers refuse this, and they are tested separately on purpose. The
+  // tool's schema lists `decided_by` as required, so the registry stops it
+  // first and the form marks the field — and the ENGINE refuses too, with the
+  // sentence that explains why an economy is not a setting. Testing only
+  // through the tool would leave the engine's gate unproven for every other
+  // caller, which is how a rule comes to exist in one path and not the rest.
+  check('a pool cannot be opened without a decision — the tool refuses',
+    refused(await runTool('open_pool',
+      { currency_id: seeds.id, name: 'Seed library', holds: '60 kg garlic' })));
+  check('and the engine refuses it too, saying why',
+    refused(led.openPool('test',
+      { currency_id: seeds.id, name: 'Seed library', holds: '60 kg garlic' }), 'decision_required'));
+  const pool = await runTool('open_pool', {
+    currency_id: seeds.id, name: 'Seed library', holds: '60 kg seed garlic',
+    terms: 'One packet per Seed, while it lasts.', rate: 1, decided_by: d2.id,
+  });
+  check('with one, a commons can say what its units are good for', !!pool.id);
+
+  check('redeeming says what actually came out of the pool',
+    refused(led.redeem('test', { pool_id: pool.id, agent_id: ana.id, amount: 1 }), 'say_what_for'));
+  const got = await runTool('redeem_credit', {
+    pool_id: pool.id, agent_id: ana.id, amount: 1, got: '1 packet of garlic',
+  });
+  check('and then the units leave circulation rather than moving to somebody',
+    got.entries.some((e) => e.counterparty === 'pool' && e.amount === 1)
+    && led.balance(seeds.id, ana.id) === 1);
+
+  // ── Does it add up? ───────────────────────────────────────────────────
+  const audit = led.check('test');
+  check('the whole ledger balances, across both currencies',
+    audit.ok === true, JSON.stringify(audit.problems));
+  check('and it says so in a sentence a person can read', /balanced/.test(audit.sentence));
+
+  // ── Retiring is not deleting ──────────────────────────────────────────
+  const retired = await runTool('retire_currency',
+    { currency_id: hours.id, reason: 'We moved to Seeds', decided_by: proposed.id });
+  check('a retired currency keeps every entry it ever had',
+    !retired.error && all('SELECT id FROM ledger_entries WHERE currency_id=?', hours.id).length > 0);
+  check('and nothing new moves in it',
+    refused(await runTool('transfer_credit',
+      { currency_id: hours.id, from_agent_id: ana.id, to_agent_id: bo.id, amount: 1 }), 'retired'));
+
+  // ── Who may do what, on the one ladder ────────────────────────────────
+  const access = await import('../ai/access.mjs');
+  check('everybody in the commons can see what they hold and whether it adds up',
+    access.mayRun('balances', 'members') && access.mayRun('check_ledger', 'members'));
+  check('spending what you have is ordinary; making more is not',
+    access.mayRun('transfer_credit', 'members') && !access.mayRun('issue_credit', 'members'));
+  check('and setting the rules of an economy is not done over the wifi at all',
+    !access.mayRun('define_currency', 'council') && !access.mayRun('open_pool', 'council'));
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);

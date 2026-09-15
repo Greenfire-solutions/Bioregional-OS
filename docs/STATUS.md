@@ -58,6 +58,39 @@ observation there, coordinate already filled in. Unchecked evidence reaches the
 operator as `waiting` and unclaimed work as a `gap` — unsurfaced, the last
 minute of a job never happens.
 
+### An economy the commons defines for itself
+Not a currency — the tools to make one. A commons says what it counts and what
+ONE unit is in its own words, and chooses between two shapes: **zero-sum**,
+where nobody issues, every movement is a transfer, all balances always add to
+exactly nothing and going below zero means the group is extending you credit
+(mutual credit, which is what most local exchange systems that lasted actually
+are); or **issued**, where units come into existence by council decision or
+automatically for each before-and-after that has been checked.
+
+What is not theirs is the arithmetic. Entries are append-only and both deletion
+and amendment are refused by trigger; a correction is a reversal that leaves the
+mistake and its correction both visible; balances are DERIVED by summing entries
+and there is no balance column anywhere in the schema; every movement writes two
+legs summing to zero inside one transaction; and nobody passes the credit limit
+their own currency declares. `check_ledger` proves all of it and is at the top of
+the screen rather than behind a button, because a ledger nobody checks is a
+spreadsheet with a trigger on it.
+
+The government is the one already here. Defining a unit, opening a pool or
+retiring one refuses without a council decision that has actually been DECIDED —
+with its method, its Land Seat report and no open red flag. This invents no
+second way for a commons to make up its mind.
+
+Pools are the honest part: a named pool holding real things — money, seed, hours
+of a van — with terms in their own words, and redeeming takes units out of
+circulation and records what actually came out. A currency with no pool is not
+broken; it is a promise between people.
+
+Deliberately NOT merged with `exchange_events`. A contribution is a fact about
+what somebody did; a credit is a decision to create value for it. Conflating the
+two is how a record of work becomes a claim on the commons without anybody
+having agreed that it should.
+
 ### Who people are
 Two ways in, feeding ONE ladder. An enrolled device is still the right
 credential for a phone at a creek — a code handed over in a room, never typed

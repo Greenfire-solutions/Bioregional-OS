@@ -15,6 +15,7 @@ Bioregional-OS/
 │   ├── tasks.mjs          the work inside a project — who carries it, when it closes
 │   ├── proof.mjs          the file store, and the before-and-after pair
 │   ├── exchange.mjs       ValueFlows ledger, benefit flow
+│   ├── ledger.mjs         an economy the commons defines — append-only, derived balances
 │   └── stewardship.mjs    Data/AI engine, consent audit, AI limits
 ├── adapters/      interop with the open ecosystem (see INTEROP.md)
 ├── ai/            tools.mjs — ONE tool registry · system.mjs — the prompt

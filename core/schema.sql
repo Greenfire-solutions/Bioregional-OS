@@ -877,3 +877,168 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id, expires_at);
+
+-- ============================================================
+-- Stage 10: Exchange — a ledger a commons defines for itself
+-- ============================================================
+-- NOT a currency. A kit for making one.
+--
+-- Every community that has ever done this has meant something different by
+-- "credit": hours in a timebank, a mutual-credit ring where balances sum to
+-- zero, seeds against a seed library, meals, a fund with real money in it.
+-- Shipping one of those as THE model would have been shipping somebody else's
+-- economics as though it were arithmetic.
+--
+-- So the unit, the rules, who may issue and what it is redeemable for are all
+-- DECLARED by the commons. What is not negotiable is the arithmetic:
+--
+--   • entries are append-only, and deletion is refused by trigger
+--   • a correction is a REVERSAL that points at what it reverses
+--   • balances are DERIVED by summing entries, never stored anywhere
+--   • every movement is two legs that sum to zero, written together
+--   • a holder cannot pass the credit limit their currency declares
+--
+-- Those five are what makes a ledger a ledger, and Civil X's own schema records
+-- what it costs to get the last one wrong: a reward SKU that was nullable and a
+-- cashout that debited a hard-coded literal, so a worker kept a full balance in
+-- one unit AND took the cash out of another, which went negative to pay for it.
+-- Balances there were computed per SKU and nothing netted the two.
+--
+-- AND THE GOVERNMENT IS THE ONE ALREADY HERE. Defining a currency, changing its
+-- rules, opening a pool or setting a limit all require a council DECISION that
+-- has actually been decided — the `decisions` table, its seven methods, its
+-- Land Seat report and its red flags. This does not invent a second way for a
+-- commons to make up its mind. It refuses to move without the first one.
+
+CREATE TABLE IF NOT EXISTS currencies (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  -- What they call it. "Hours", "Seeds", "Barton Creek Credits", "Meals".
+  name        TEXT NOT NULL,
+  plural      TEXT,
+  symbol      TEXT,
+  -- What one unit MEANS, in the community's own words. Required, because a
+  -- unit nobody can define is a unit nobody can argue about the value of, and
+  -- that argument is the whole of what makes it work.
+  unit_of     TEXT NOT NULL,
+  -- ── The two knobs that actually change the arithmetic ──────────────────
+  -- zero_sum: nobody issues. Every movement is a transfer, so the sum of all
+  -- balances is always exactly zero and the "money" is the promise between
+  -- members. This is mutual credit, and it is the model most local exchange
+  -- systems that survived actually use.
+  --
+  -- Not zero_sum: somebody issues. Units come into existence when an issuer
+  -- creates them, and the total in existence is a number the commons can see
+  -- and argue about.
+  zero_sum    INTEGER NOT NULL DEFAULT 1,
+  -- How far below zero a holder may go. In a mutual-credit ring this is the
+  -- whole design — it is how much the group is willing to be owed by any one
+  -- member. NULL means no limit, which is a choice a commons may make and will
+  -- then be able to see the consequences of.
+  credit_limit REAL,
+  -- Who may bring units into existence, when zero_sum is off.
+  issue_policy TEXT NOT NULL DEFAULT 'council'
+              CHECK (issue_policy IN ('council','steward','on_verified_proof','anyone')),
+  -- For 'on_verified_proof': how many units a checked before-and-after is
+  -- worth. The one automatic issuance path, and it hangs off the evidence
+  -- chain rather than off somebody's say-so.
+  per_verified_proof REAL,
+  -- The decision that created this. REQUIRED and checked — see engines/ledger.
+  decided_by  TEXT REFERENCES decisions(id) ON DELETE SET NULL,
+  created_by  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  -- Retiring is a status change. The entries stay and still add up; what stops
+  -- is new movement.
+  retired_at  TEXT,
+  retired_reason TEXT,
+  UNIQUE (chapter_id, name)
+);
+
+-- ---------- The entries. Append-only, double-entry, derived balances --------
+-- Every movement writes TWO rows sharing a `group_id` whose amounts sum to
+-- zero. A single-row ledger is a list of assertions; two rows that must balance
+-- is a ledger.
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  currency_id TEXT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
+  -- The two legs of one movement.
+  group_id    TEXT NOT NULL,
+  -- Who holds it. An agent in the ValueFlows sense — a person, an organisation
+  -- or the commons itself — because `agents` is already the holder of record in
+  -- this schema and a second idea of "who" is how two answers to "how much do
+  -- they have" come about.
+  agent_id    TEXT REFERENCES agents(id) ON DELETE SET NULL,
+  -- The one non-agent holder: where issued units come FROM and redeemed units
+  -- go BACK TO. Keeping it as a named counterparty rather than a missing row is
+  -- what makes "how much has ever been issued" answerable by addition.
+  counterparty TEXT
+              CHECK (counterparty IS NULL OR counterparty IN ('issuance','pool','outside')),
+  -- Signed. Negative is out, positive is in. The pair sums to zero.
+  amount      REAL NOT NULL,
+  kind        TEXT NOT NULL
+              CHECK (kind IN ('issue','transfer','redeem','reversal')),
+  -- What it was for. All optional, all pointing at things this OS already has,
+  -- so a balance can always be traced back to work somebody did.
+  quest_id    TEXT REFERENCES quests(id) ON DELETE SET NULL,
+  task_id     TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+  proof_id    TEXT REFERENCES proofs(id) ON DELETE SET NULL,
+  exchange_event_id TEXT REFERENCES exchange_events(id) ON DELETE SET NULL,
+  pool_id     TEXT,
+  note        TEXT,
+  -- A reversal names what it reverses. Corrections are new rows, never edits.
+  reverses    TEXT REFERENCES ledger_entries(id) ON DELETE SET NULL,
+  decided_by  TEXT REFERENCES decisions(id) ON DELETE SET NULL,
+  created_by  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- The rule that makes it a ledger. Nothing is ever deleted or amended: a
+-- mistake is reversed, and both the mistake and the reversal stay visible. A
+-- ledger you can edit is a document.
+CREATE TRIGGER IF NOT EXISTS ledger_no_delete
+BEFORE DELETE ON ledger_entries
+BEGIN
+  SELECT RAISE(ABORT, 'ledger entries are never deleted — write a reversal');
+END;
+
+CREATE TRIGGER IF NOT EXISTS ledger_no_amend
+BEFORE UPDATE OF amount, agent_id, currency_id, kind, group_id ON ledger_entries
+BEGIN
+  SELECT RAISE(ABORT, 'ledger entries are never amended — write a reversal');
+END;
+
+-- ---------- A pool: what the credits are actually good for ----------------
+-- Optional, and the honest part of any local currency. A pool holds real
+-- things — money, seeds, tools, hours of a truck — that units can be redeemed
+-- against, and says on what terms.
+--
+-- A currency with no pool is not broken; it is a promise between people, which
+-- is what mutual credit is. A pool is for the commons that wants to say "and
+-- this is what backs it".
+CREATE TABLE IF NOT EXISTS pools (
+  id          TEXT PRIMARY KEY,
+  chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  currency_id TEXT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  -- What is in it, in the community's own words and units: "£420", "60 kg
+  -- seed garlic", "8 hours of the van". Free text ON PURPOSE — the moment this
+  -- becomes an enum it becomes a list of what somebody else thought a commons
+  -- could hold.
+  holds       TEXT NOT NULL,
+  -- What it takes to get something out, written by them and shown at the
+  -- moment of redeeming.
+  terms       TEXT,
+  -- How many units one lot of `holds` costs. NULL means the terms are in words
+  -- and a person decides, which is a legitimate answer.
+  rate        REAL,
+  decided_by  TEXT REFERENCES decisions(id) ON DELETE SET NULL,
+  created_by  TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  closed_at   TEXT,
+  closed_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_agent    ON ledger_entries(currency_id, agent_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_group    ON ledger_entries(group_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_chapter  ON ledger_entries(chapter_id, created_at DESC);

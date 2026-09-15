@@ -96,6 +96,10 @@ const MEMBERS = [
   // that is the list on the wall, not a secret — and `list_accounts` never
   // returns a hash or anything that could be used to sign in as somebody.
   'list_accounts',
+  // The ledger is READ by everybody who is in it. A commons whose members
+  // cannot see what they hold, what exists and whether it adds up has not made
+  // an economy, it has made an account somebody else keeps.
+  'list_currencies', 'balances', 'list_pools', 'ledger_entries', 'check_ledger',
   // ordinary field work
   'add_place', 'locate_place', 'ingest_water_data', 'record_measurement', 'add_indicator',
   'propose_baseline', 'set_indicator_baseline', 'add_gathering', 'update_gathering',
@@ -108,6 +112,10 @@ const MEMBERS = [
   // somebody finished in the mud is how a board fills with work that is done.
   'add_task', 'update_task', 'claim_task', 'release_task', 'complete_task', 'set_task_status',
   'submit_proof',
+  // Spending what you have. A transfer moves units between two holders and can
+  // never create any, and redeeming takes them out against a pool whose terms
+  // the commons already agreed — both are using the economy, not changing it.
+  'transfer_credit', 'redeem_credit',
   // Setting something aside is housekeeping on the week, not a protocol gate —
   // the work is untouched and stays in whats_next. A member doing the round is
   // the point of there being a round.
@@ -131,6 +139,14 @@ const COUNCIL = [
   // person who submitted it, which is the rule that actually matters; this is
   // about who is doing the checking, not about whether the rule is enforced.
   'review_proof',
+  // Issuing brings units into existence, which is the act everything else in
+  // this ledger is arranged to keep honest. Council, and when the currency's
+  // own policy says 'council' it ALSO needs a decided decision naming it — the
+  // tier says who may ask, the policy says what they must show.
+  'issue_credit',
+  // Reversing does not destroy anything — both entries stay — but it is the
+  // act of saying the record was wrong, which is council work.
+  'reverse_entry',
   // Making somebody an account is a coordinator's act, sitting exactly where
   // inviting a device sits: both hand a person a way in, and both are decisions
   // about who is in this commons rather than about what is true of the land.
@@ -138,6 +154,15 @@ const COUNCIL = [
 ];
 
 // Deliberately unlisted, which means the keyboard:
+//
+//   define_currency         what this commons counts, and its rules
+//   open_pool               what the units are redeemable for
+//   retire_currency         stopping a unit
+//
+// Each of those three already refuses without a DECIDED council decision, so
+// the gate is the commons agreeing rather than the rank of whoever types it.
+// They sit at the keyboard as well because they set the rules of an economy,
+// and a device on a gathering wifi is not where that is done.
 //
 //   set_account_role        who may do what, including making another steward
 //   set_account_status      suspending somebody, and ending their sessions

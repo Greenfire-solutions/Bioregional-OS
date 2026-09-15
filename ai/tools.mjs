@@ -35,6 +35,7 @@ import * as board from '../engines/board.mjs';
 import * as mapboard from '../engines/mapboard.mjs';
 import * as enrol from '../engines/enrol.mjs';
 import * as accounts from '../engines/accounts.mjs';
+import * as ledger from '../engines/ledger.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 import * as access from './access.mjs';
@@ -612,6 +613,163 @@ export const TOOLS = [
     }, ['task_id']),
     handler: (i) => tasks.completeTask(i.task_id, { by: i.by ?? null, note: i.note ?? null }),
   },
+  // ---------- Stage 10: an economy a commons defines for itself ----------
+  // Not a currency — the tools to make one. What a unit is, what it is worth,
+  // who may make more and what it is redeemable for are all theirs. The
+  // arithmetic is not: entries are append-only, corrections are reversals,
+  // balances are always added up from the entries, and every movement is two
+  // legs summing to zero.
+  {
+    name: 'list_currencies',
+    description:
+      'What this commons counts, what one unit means in their own words, how much exists and how ' +
+      'much is out with people. Every figure is added up from the entries — there is no balance ' +
+      'stored anywhere, which is the one thing that keeps a ledger honest.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ledger.currencies(ch(i)),
+  },
+  {
+    name: 'define_currency',
+    description:
+      'Create the unit this commons counts in. NEEDS A DECIDED COUNCIL DECISION — an economy is ' +
+      'something a community agrees, not a setting somebody switches on. ' +
+      'zero_sum (the default) means nobody issues: every movement is a transfer, all balances ' +
+      'always add to nothing, and the unit is the promise between members — which is what most ' +
+      'local exchange systems that lasted actually are. Turn it off and units come into existence ' +
+      'when an issuer makes them, by the policy you name. `credit_limit` is how far below zero a ' +
+      'member may go, which in a mutual-credit ring is the whole design.',
+    input_schema: S({
+      chapter_id: str(''),
+      name: str('What you call it — Hours, Seeds, Meals, the name of your creek.'),
+      unit_of: str('What ONE unit is, in your words: "an hour of work", "a kilo of seed".'),
+      plural: str(''), symbol: str(''),
+      zero_sum: bool('Default true: nobody issues, balances always sum to zero.'),
+      credit_limit: num('How far below zero a member may go. Leave out for no limit.'),
+      issue_policy: { type: 'string', enum: ledger.ISSUE_POLICIES,
+        description: 'Who may make new units, when zero_sum is off.' },
+      per_verified_proof: num('For on_verified_proof: units per checked before-and-after.'),
+      decided_by: str('The council decision that agreed this. Required.'),
+      created_by: str(''),
+    }, ['name', 'unit_of', 'decided_by']),
+    handler: (i) => ledger.defineCurrency(ch(i), i),
+  },
+  {
+    name: 'balances',
+    description: 'Who holds what, added up from the entries. Never a stored number.',
+    input_schema: S({ chapter_id: str(''), currency_id: str('') }, ['currency_id']),
+    handler: (i) => ({
+      currency: ledger.currency(i.currency_id),
+      balances: ledger.balances(i.currency_id),
+    }),
+  },
+  {
+    name: 'issue_credit',
+    description:
+      'Bring units into existence and give them to somebody. Refused outright for a zero-sum ' +
+      'currency, because that is what zero-sum means. When the policy is on_verified_proof it ' +
+      'needs a proof that has actually been CHECKED — evidence pays once somebody who was not ' +
+      'there has looked at it — and the same proof is never paid twice.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), agent_id: str('Who receives them.'),
+      amount: num(''), note: str(''),
+      proof_id: str('The checked before-and-after this pays for.'),
+      task_id: str(''), quest_id: str(''),
+      decided_by: str('The decision behind it, when the policy is council.'),
+      created_by: str(''),
+    }, ['currency_id', 'agent_id', 'amount']),
+    handler: (i) => ledger.issue(ch(i), i),
+  },
+  {
+    name: 'transfer_credit',
+    description:
+      'Move units from one person or organisation to another — the only movement a zero-sum ' +
+      'currency has. Refused if it would take the sender past the credit limit this commons set.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''),
+      from_agent_id: str(''), to_agent_id: str(''), amount: num(''),
+      note: str('What it is for.'),
+      exchange_event_id: str('The contribution it settles, if there is one recorded.'),
+      created_by: str(''),
+    }, ['currency_id', 'from_agent_id', 'to_agent_id', 'amount']),
+    handler: (i) => ledger.transfer(ch(i), i),
+  },
+  {
+    name: 'open_pool',
+    description:
+      'Declare what the units are actually good for: a pool holding real things — money, seed, ' +
+      'hours of a van — that units can be redeemed against, and the terms in your own words. ' +
+      'NEEDS A DECIDED COUNCIL DECISION. A currency with no pool is not broken; it is a promise ' +
+      'between people, which is what mutual credit is.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), name: str(''),
+      holds: str('What is in it: "£420", "60 kg seed garlic", "8 hours of the van".'),
+      terms: str('What it takes to get something out.'),
+      rate: num('Units per lot, if there is a fixed one.'),
+      decided_by: str('Required.'), created_by: str(''),
+    }, ['currency_id', 'name', 'holds', 'decided_by']),
+    handler: (i) => ledger.openPool(ch(i), i),
+  },
+  {
+    name: 'list_pools',
+    description: 'The pools, what they hold, their terms and how much has been redeemed against each.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ledger.pools(ch(i)),
+  },
+  {
+    name: 'redeem_credit',
+    description:
+      'Spend units on what a pool holds. The units go back out of circulation rather than to ' +
+      'another person, which is what makes a pool a pool. Says what actually came out, because a ' +
+      'pool whose outgoings are not written down is a pool nobody can check.',
+    input_schema: S({
+      chapter_id: str(''), pool_id: str(''), agent_id: str(''), amount: num(''),
+      got: str('What came out: "2 kg garlic", "£15", "the van on Saturday".'),
+      note: str(''), created_by: str(''),
+    }, ['pool_id', 'agent_id', 'amount', 'got']),
+    handler: (i) => ledger.redeem(ch(i), i),
+  },
+  {
+    name: 'reverse_entry',
+    description:
+      'Undo a movement by writing its opposite. Nothing on this ledger is ever deleted or edited ' +
+      '— a mistake and its correction both stay visible, which is the difference between a record ' +
+      'and a story. Needs a reason, because that is the only thing that explains to a reader in a ' +
+      'year what they are looking at.',
+    input_schema: S({
+      chapter_id: str(''), group_id: str('The movement to undo.'), reason: str(''), created_by: str(''),
+    }, ['group_id', 'reason']),
+    handler: (i) => ledger.reverse(ch(i), i),
+  },
+  {
+    name: 'ledger_entries',
+    description: 'The entries themselves, newest first — the record everything else is added up from.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), agent_id: str(''), limit: num('Default 100.'),
+    }),
+    handler: (i) => ledger.entries(ch(i),
+      { currency_id: i.currency_id ?? null, agent_id: i.agent_id ?? null, limit: i.limit ?? 100 }),
+  },
+  {
+    name: 'check_ledger',
+    description:
+      'Does it add up? Every movement must sum to zero, a zero-sum currency\'s holdings must too, ' +
+      'and nobody should be past the limit their commons set. A ledger nobody ever checks is a ' +
+      'spreadsheet with a trigger on it.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ledger.check(ch(i)),
+  },
+  {
+    name: 'retire_currency',
+    description:
+      'Stop using a unit. Not a delete: every entry stands and the ledger still balances — a ' +
+      'commons that stops counting in something has not made the work that earned it stop having ' +
+      'happened. Needs a decision and a reason.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), reason: str(''), decided_by: str('Required.'),
+    }, ['currency_id', 'reason', 'decided_by']),
+    handler: (i) => ledger.retireCurrency(ch(i), i),
+  },
+
   // ---------- who people are ----------
   // Signing in itself is NOT here: it sets a cookie, and a tool cannot. See
   // server/routes/auth.mjs. Everything about MANAGING accounts is, because it

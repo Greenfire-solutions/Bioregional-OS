@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Compass, Map as MapIcon, Radio, Flag, Scale, Users, RefreshCw, RefreshCcw, BookOpen, Shield,
   Flame, PanelRightClose, PanelRightOpen, ListChecks, Ear, Ruler, Plus, Send, Activity, Home, KeyRound,
+  Coins,
 } from 'lucide-react';
 import Devices from './components/Devices.jsx';
 import Map3D from './components/Map3D.jsx';
@@ -17,6 +18,7 @@ import FirstRun from './components/FirstRun.jsx';
 import Card from './components/Card.jsx';
 import Work from './components/Work.jsx';
 import SignIn, { SignedInAs } from './components/SignIn.jsx';
+import Ledger from './components/Ledger.jsx';
 import ToolForm from './components/ToolForm.jsx';
 import {
   MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
@@ -73,6 +75,11 @@ const GROUPS = [
     { id: 'council',    label: 'Council',    icon: Scale,     add: 'propose_decision', addLabel: 'Propose to council' },
     { id: 'gatherings', label: 'Gatherings', icon: Users,     add: 'add_gathering',    addLabel: 'Schedule a gathering' },
     { id: 'exchange',   label: 'Exchange',   icon: RefreshCw, add: 'record_exchange',  addLabel: 'Log a contribution' },
+    // Beside Exchange, and deliberately NOT merged into it. A contribution is
+    // a fact about what somebody did; a credit is a decision to create value
+    // for it. Conflating the two is how a record of work becomes a claim on
+    // the commons without anybody having agreed that it should.
+    { id: 'ledger',     label: 'Ledger',     icon: Coins },
     { id: 'season',     label: 'The season', icon: RefreshCcw },
     { id: 'devices',    label: 'Devices',    icon: KeyRound },
   ] },
@@ -410,6 +417,8 @@ export default function App() {
                                                onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
                 {tab === 'gatherings' && <Gatherings primary={primary('gatherings')} gatherings={gatherings} />}
                 {tab === 'exchange' && <Exchange primary={primary('exchange')} exchange={exchange} />}
+                {tab === 'ledger' && <Ledger onGoTo={setTab}
+                                             onAct={(t, p) => setForm({ tool: t, prefill: p })} />}
                 {tab === 'learn' && <Learn primary={primary('learn')} learn={learn} doctrine={doctrine} />}
                 {tab === 'card' && <Card />}
                 {tab === 'federation' && <Federation primary={primary('federation')} peers={peers} onDiscover={discover} discovering={discovering} />}

@@ -64,6 +64,17 @@ const VERB = {
   add_gathering: 'Schedule a gathering',
   update_gathering: 'Add care',
   record_exchange: 'Log a contribution',
+
+  // the economy a commons defines for itself
+  define_currency: 'Define the unit',
+  issue_credit: 'Issue some',
+  transfer_credit: 'Pass some on',
+  redeem_credit: 'Spend it here',
+  open_pool: 'Open a pool',
+  reverse_entry: 'Reverse this',
+  check_ledger: 'Does it add up?',
+  retire_currency: 'Retire it',
+  balances: 'Who holds what',
   name_deputy: 'Name a deputy',
   carrying: 'See who is carrying it',
   who_could_help: 'See who could help',
