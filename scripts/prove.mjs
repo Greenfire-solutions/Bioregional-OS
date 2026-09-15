@@ -215,9 +215,19 @@ for (const t of TOOLS) {
 }
 
 // ── The REST surface ───────────────────────────────────────────────────────
-const ROUTES = [...new Set(
-  (await import('node:fs')).readFileSync(new URL('../server/routes/api.mjs', import.meta.url), 'utf8')
-    .match(/case '([a-z0-9/_-]+)':/g)?.map((m) => m.slice(6, -2)) ?? [])];
+const ROUTES = [...new Set([
+  ...((await import('node:fs')).readFileSync(new URL('../server/routes/api.mjs', import.meta.url), 'utf8')
+    .match(/case '([a-z0-9/_-]+)':/g)?.map((m) => m.slice(6, -2)) ?? []),
+  // Routes answered BEFORE the switch, and therefore invisible to the regex
+  // above. They are the ones that carry bytes rather than JSON — an upload
+  // reading a raw body, and a read that writes its own response — which is
+  // exactly why they could not be `case` labels.
+  //
+  // Named here rather than left out, because "presses every button" has to keep
+  // being true as the surface grows. A route the prover cannot see is a route
+  // whose crash this reports as a clean run.
+  'media', 'media-types', 'media/med_nonexistent',
+])];
 
 const routeRows = [];
 for (const p of ROUTES) {
@@ -226,8 +236,15 @@ for (const p of ROUTES) {
   const url = new URL(`http://localhost/api/${p}`);
   try {
     const out = await api(req, res, url);
-    routeRows.push([p, out === undefined ? 'streamed' : (out?.error ? 'refused' : 'ok'),
-                    out?.error ? String(out.error).slice(0, 60) : '']);
+    // An HTTP envelope is `{ status, body }`, and its refusal lives one level
+    // down. Testing only `out.error` reported every envelope refusal as a clean
+    // run — `layers/ecoregions` answers 400 without a bbox and this called it
+    // `ok`, which is the prover making the exact mistake it exists to catch.
+    const envelope = out && typeof out === 'object'
+      && Number.isInteger(out.status) && 'body' in out;
+    const err = envelope ? out.body?.error : out?.error;
+    routeRows.push([p, out === undefined ? 'streamed' : (err ? 'refused' : 'ok'),
+                    err ? String(err).slice(0, 60) : '']);
   } catch (e) {
     routeRows.push([p, 'threw', `${e.message}`.slice(0, 90)]);
   }

@@ -38,3 +38,21 @@ node_modules
 # Backups of the commons. Same reasoning as commons.db itself: this is the
 # community's data, not the software.
 data/backups/
+# The backup now carries the media beside it, so the folder it writes has to be
+# ignored by the same rule and for the same reason.
+data/*-media/
+
+# The evidence store: every photograph this commons holds.
+#
+# The most important line in this file, and the one most easily left out —
+# `data/commons.db` was ignored from the beginning and this folder did not exist
+# yet. Everything else here is either regenerable or merely private. This is
+# neither: it is photographs, some of them of people, taken under a consent
+# record that says who agreed to what and that they may withdraw it.
+#
+# Git history does not honour a withdrawal. A photograph committed once is in
+# every clone of this repository forever, and `withdraw_media` — which deletes
+# the bytes on the machine that holds them — cannot reach it. On a PUBLIC
+# repository, one `git add -A` by somebody who has just started using the OS
+# would publish their neighbours' faces and be unfixable.
+data/media/

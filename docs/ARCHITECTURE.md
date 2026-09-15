@@ -11,6 +11,8 @@ Bioregional-OS/
 │   ├── council.mjs        decisions, Land Seat, Minimum Viable Chapter Test
 │   ├── bioregional.mjs    locate, observe, seasonal dashboard
 │   ├── quest.mjs          the 12-step quest pathway, consent gates, care
+│   ├── tasks.mjs          the work inside a project — who carries it, when it closes
+│   ├── proof.mjs          the file store, and the before-and-after pair
 │   ├── exchange.mjs       ValueFlows ledger, benefit flow
 │   └── stewardship.mjs    Data/AI engine, consent audit, AI limits
 ├── adapters/      interop with the open ecosystem (see INTEROP.md)
@@ -20,7 +22,15 @@ Bioregional-OS/
 ├── app/           React + Vite + deck.gl 3D map
 ├── content/       Green Fire doctrine (media business excluded)
 ├── docs/          the manual and these guides
-└── data/commons.db   your entire commons, one file
+├── data/commons.db   the commons — everything except the photographs
+└── data/media/       the photographs, which are NOT in the database
+
+`commons.db` was "your entire commons, one file" until the OS started holding
+evidence. A before-and-after lives in `data/media` and the row naming it lives
+in the database, so the two travel together or not at all — `npm run backup`
+carries both, and `--verify` refuses a backup that names files which are not
+beside it. Both are gitignored: git history does not honour a withdrawal, and a
+photograph of somebody committed once is in every clone forever.
 ```
 
 ## The one-registry decision

@@ -34,6 +34,30 @@ All twelve protocol stages are enforced in code, and all four phases of
 group card, and the long rhythms (carrying, the turning, place attention, the
 neighbours, the seven numbers).
 
+### The work, and the evidence it happened
+A project is a paragraph with gates on it until somebody writes down what is
+actually being done on Saturday. `tasks` sit inside a quest, carry their own
+coordinate, and are picked up by name — no account, self-service, more than one
+person per task, and stepping back releases rather than deletes. A task that
+changes the land does not close without a before-and-after pair; the pair must
+be FILED, not yet checked, because making somebody wait on a reviewer to close
+their own finished work is how a board fills with things that are actually done.
+The person who did the work is never the person who checks it, which is why
+`submitted_by` is required — the rule cannot fire without a name.
+
+Files live in `data/media` on this machine. Nothing goes to a bucket. Each is
+hashed by reading back what was written, and `check_evidence` re-reads the whole
+store and tells "missing" from "changed" from "never had a real hash". A
+photograph of identifiable people needs a `media_consent` record, which is the
+first thing in this OS to actually point at that register. Withdrawing deletes
+the bytes and keeps the row, so a proof says "withdrawn" instead of losing half
+a pair.
+
+The Atlas is writable: press any ground and put a project, a task or an
+observation there, coordinate already filled in. Unchecked evidence reaches the
+operator as `waiting` and unclaimed work as a `gap` — unsurfaced, the last
+minute of a job never happens.
+
 ### The front door
 `The commons` is the landing view: where you are, what needs doing with the
 button that does each thing, the projects with what is actually in their way,
