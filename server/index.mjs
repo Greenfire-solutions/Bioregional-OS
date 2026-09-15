@@ -203,9 +203,26 @@ server.listen(PORT, HOST, async () => {
   if (OPEN) execFile('open', [`http://localhost:${PORT}`], () => {});
 });
 
-server.on('error', (err) => {
+server.on('error', async (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`\n  BioRegional OS is already running on port ${PORT}.`);
+    // Ask the one that IS running whether it is older than the code on disk.
+    // Without this, the whole message is "it is already running" — which is
+    // true, unhelpful, and exactly what somebody sees after an update when the
+    // new screens are on their screen and the new routes are not in that
+    // process. Best effort: if it cannot be asked, the old advice stands.
+    try {
+      const r = await fetch(`http://127.0.0.1:${PORT}/api/status`, { signal: AbortSignal.timeout(2000) });
+      const s = await r.json();
+      if (s?.stale) {
+        console.error(`\n  AND IT IS OUT OF DATE. It started ${new Date(s.started_at).toLocaleString()},`);
+        console.error(`  and the code was changed after that. What is running is the older version.`);
+        console.error(`\n  Stop it and start it again:`);
+        console.error(`     lsof -ti tcp:${PORT} | xargs kill`);
+        console.error(`     npm run os -- --open\n`);
+        process.exit(1);
+      }
+    } catch { /* could not ask it; the line below is still true */ }
     console.error(`  Open http://localhost:${PORT} — or run it on another port:  PORT=4190 npm run os\n`);
     process.exit(1);
   }

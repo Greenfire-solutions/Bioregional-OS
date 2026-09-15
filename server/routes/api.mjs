@@ -20,6 +20,7 @@ import { aiStream } from './ai.mjs';
 import { claudeStream, claudeAvailable } from './claude.mjs';
 import { uploadMedia, serveMedia } from './media.mjs';
 import { authRoute } from './auth.mjs';
+import { staleness } from '../stale.mjs';
 // Served rather than repeated in the interface. The file picker and the server
 // that enforces the list have to agree, and the way they stop agreeing is that
 // somebody types the extensions into a component.
@@ -184,6 +185,11 @@ async function route(req, res, url, clearance) {
         // Claude Code CLI are different ways in with different bills attached,
         // and the panel says which one it is about to use.
         claude_code: await claudeAvailable(),
+        // Whether this process is older than the code it is meant to be
+        // running. See server/stale.mjs — the failure it catches is a feature
+        // that appears on screen and 404s behind it, which is not a sentence
+        // anybody would guess at.
+        ...staleness(),
       };
 
     case 'dashboard':

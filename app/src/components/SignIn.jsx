@@ -149,9 +149,16 @@ function Field({ label, value, onChange, type = 'text', hint, ...rest }) {
  */
 export function SignedInAs({ me, onSignIn, onSignedOut }) {
   const [busy, setBusy] = useState(false);
-  if (!me) return null;
 
-  if (!me.account) {
+  // NOT `if (!me) return null`. That is what it said, and it meant the control
+  // vanished entirely whenever /api/me could not be reached — which is exactly
+  // what happens when the running server predates the route. The screen then
+  // shows no sign-in at all, and the person reasonably concludes the feature was
+  // never built, rather than that the process answering them is out of date.
+  //
+  // A missing answer is not a signed-out user; it is a missing answer. The way
+  // in stays on screen either way.
+  if (!me?.account) {
     return (
       <button onClick={onSignIn}
         className="flex items-center gap-1.5 rounded border border-[var(--line)] px-2 py-1

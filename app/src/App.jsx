@@ -287,6 +287,25 @@ export default function App() {
         )}
       </nav>
 
+      {/* ── The OS is older than its own code ───────────────────────────
+          The one failure a person cannot diagnose from the screen: the
+          interface is read from disk and updates immediately, the engine
+          behind it was loaded into memory at boot and did not. New screens,
+          old routes, 404s underneath. Said here in plain words with the fix,
+          because "restart it" is not a thing anybody thinks to try when the
+          thing in front of them plainly just changed. */}
+      {status?.stale && (
+        <div className="no-print flex flex-wrap items-center gap-x-3 gap-y-1 border-b
+                        border-[var(--clay)] bg-[#FBF1EE] px-4 py-2 text-[11px]">
+          <span className="font-medium text-[var(--clay)]">This OS needs restarting</span>
+          <span className="text-[var(--ink-2)]">
+            It was started {new Date(status.started_at).toLocaleString()}, and the code changed
+            after that. The screens updated; the engine behind them did not, so some things will
+            not work until it is stopped and started again.
+          </span>
+        </div>
+      )}
+
       {viewingExample && (
         <div className="no-print flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--line)]
                         bg-[var(--tone-warn-bg)] px-4 py-1.5 text-[11px]">
