@@ -32,6 +32,7 @@ const VERB = {
   claim_task: 'I will do this',
   release_task: 'Step back',
   complete_task: 'Mark it done',
+  update_task: 'Correct it',
   set_task_status: 'Change its state',
   task_board: 'See the work',
   // Not "Upload evidence". Two photographs of the same ground is what a person

@@ -3,7 +3,8 @@ import DeckGL from '@deck.gl/react';
 import { MapView, _GlobeView as GlobeView, COORDINATE_SYSTEM } from '@deck.gl/core';
 import { GeoJsonLayer, SolidPolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
-import { Globe, Mountain, Layers, Loader2, Plus, X, Flag, ListChecks, Radio } from 'lucide-react';
+import { Globe, Mountain, Layers, Loader2, Plus, X, Flag, ListChecks, Radio,
+         MapPin, Home, Crosshair } from 'lucide-react';
 import { KIND, KIND_ORDER, markerSVG, needsAttention } from '../mapKinds.js';
 import MapMarkers from './MapMarkers.jsx';
 import { callTool } from '../api.js';
@@ -33,7 +34,8 @@ function hsl(h, s, l) {
 }
 
 export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect,
-                                onAddHere, version = 0, selectedId = null }) {
+                                onAddHere, moving = null, onMoved, onCancelMove,
+                                version = 0, selectedId = null }) {
   const [mode, setMode] = useState('terrain');          // terrain | globe
   const [level, setLevel] = useState('l3');             // ecoregion detail
   const [relief, setRelief] = useState(true);
@@ -72,6 +74,34 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   // Held here rather than lifted to App, because it is about a gesture on this
   // canvas and it is thrown away the moment anything is chosen.
   const [dropped, setDropped] = useState(null);
+  // ── Placing mode ────────────────────────────────────────────────────────
+  // The first version of this listened for a click that hit NO layer, which is
+  // a condition that never happens. The ecoregion layer is `pickable` and
+  // `filled` and tiles the entire viewport, so every press on land is answered
+  // by it — `info.layer` is always set, the handler always returned early, and
+  // the gesture was dead from the moment it shipped. It could not be found
+  // because it did not exist.
+  //
+  // Two presses instead of a secret one: arm it, then place it. That works over
+  // the ecoregion layer without taking the region panel away — a single click
+  // still opens what is known about a region, which is the other thing this map
+  // is for — and, unlike a hidden gesture, it can be SEEN. The button is the
+  // documentation.
+  const [placing, setPlacing] = useState(false);
+  // Moving something re-uses the placing mechanism exactly: arm, then press.
+  // Nobody types a coordinate they can point at, and a "Move it" that opened a
+  // form with two number fields in it would be the thing this whole gesture
+  // exists to replace.
+  const armed = placing || !!moving;
+  useEffect(() => {
+    if (!armed) return;
+    const esc = (e) => {
+      if (e.key !== 'Escape') return;
+      setPlacing(false); setDropped(null); onCancelMove?.();
+    };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [armed, onCancelMove]);
 
   const home = places[0] ?? { lat: 30.26, lng: -97.79 };
   const [view, setView] = useState({
@@ -248,13 +278,20 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         // coordinate quietly taken from the wrong one would file work in the
         // wrong field.
         onClick={(info) => {
-          if (mode !== 'terrain') return;
-          if (info?.layer || !Array.isArray(info?.coordinate)) return;
+          // In placing mode the coordinate is taken WHATEVER answered for the
+          // press — the ecoregion polygon under the cursor is not a reason to
+          // refuse a point on it. Out of placing mode nothing here fires, and
+          // the layers keep their own clicks.
+          if (!armed || mode !== 'terrain') return;
+          if (!Array.isArray(info?.coordinate)) return;
           const [lng, lat] = info.coordinate;
           if (!Number.isFinite(lng) || !Number.isFinite(lat)) return;
+          const at = { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
+          if (moving) { onMoved?.(at); return; }
+          setPlacing(false);
           setDropped({ lng, lat, x: info.x, y: info.y });
         }}
-        getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}
+        getCursor={({ isHovering }) => (armed ? 'crosshair' : isHovering ? 'pointer' : 'grab')}
       >
         {mode === 'terrain' && (
           <Map reuseMaps mapStyle={BASEMAP} attributionControl={{ compact: true }} />
@@ -286,6 +323,15 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         <div className="flex overflow-hidden rounded border border-[var(--line)] bg-[var(--paper)] shadow-sm">
           <Btn active={relief} onClick={() => setRelief((v) => !v)} icon={Layers} label="Relief" />
         </div>
+        {/* The map was readable and not writable, and the gesture that was
+            meant to fix that could not be seen. A button can. */}
+        {mode === 'terrain' && (
+          <div className="flex overflow-hidden rounded border border-[var(--line)] bg-[var(--paper)] shadow-sm">
+            <Btn active={placing} onClick={() => { setPlacing((v) => !v); setDropped(null); }}
+                 icon={placing ? Crosshair : Plus}
+                 label={placing ? 'Press the map' : 'Put something here'} />
+          </div>
+        )}
       </div>
 
       {/* ── The key, which is also the switches ───────────────────────────
@@ -309,7 +355,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
             in the panel a person already reads to work out what the shapes
             mean. */}
         <div className="mb-1 flex items-center gap-1 px-1.5 text-[9px] leading-snug text-[var(--ink-3)]">
-          <Plus className="h-2.5 w-2.5 shrink-0" /> press the ground to put something there
+          <Plus className="h-2.5 w-2.5 shrink-0" /> "Put something here", then press the map
         </div>
         <div className="flex flex-col gap-0.5">
           {KIND_ORDER.map((k) => {
@@ -386,7 +432,17 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
             </button>
           </div>
           <div className="mt-2 flex flex-col gap-1">
+            {/* Everything the schema can actually hold a coordinate for, and
+                nothing it cannot. A gathering is missing on purpose: the
+                gatherings table has no lat/lng, so offering to place one here
+                would promise a precision the row cannot keep — the same
+                distinction the map already draws between its own point and a
+                borrowed one. */}
             {[
+              { tool: 'add_place', icon: MapPin, label: 'A place',
+                hint: 'Ground this chapter stewards' },
+              { tool: 'add_hub', icon: Home, label: 'A hub',
+                hint: 'Somewhere people can actually meet' },
               { tool: 'open_quest', icon: Flag, label: 'A project',
                 hint: 'Something that needs doing, with gates on it' },
               { tool: 'add_task', icon: ListChecks, label: 'A task',
@@ -412,6 +468,16 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {armed && !dropped && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full
+                        border border-[var(--gold)] bg-[var(--paper)] px-3 py-1.5 text-[11px]
+                        text-[var(--ink)] shadow-lg">
+          {moving
+            ? `Press where "${truncate(moving.feature?.title, 34)}" should be — Esc to cancel`
+            : 'Press the spot on the map where it goes — Esc to cancel'}
         </div>
       )}
 
@@ -442,6 +508,11 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       </div>
     </div>
   );
+}
+
+function truncate(s, n) {
+  const t = String(s ?? '').trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 }
 
 function Btn({ active, onClick, icon: Icon, label }) {

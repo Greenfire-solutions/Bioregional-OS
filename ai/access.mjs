@@ -102,7 +102,7 @@ const MEMBERS = [
   // purpose: it already refuses without evidence, so the control on closing
   // work is the evidence, not a rank. Requiring a coordinator to close a task
   // somebody finished in the mud is how a board fills with work that is done.
-  'add_task', 'claim_task', 'release_task', 'complete_task', 'set_task_status',
+  'add_task', 'update_task', 'claim_task', 'release_task', 'complete_task', 'set_task_status',
   'submit_proof',
   // Setting something aside is housekeeping on the week, not a protocol gate —
   // the work is untouched and stays in whats_next. A member doing the round is

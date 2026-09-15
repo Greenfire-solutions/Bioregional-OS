@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MapPin, CircleAlert, ArrowRight } from 'lucide-react';
+import { X, MapPin, CircleAlert, ArrowRight, Move, Pencil, Trash2, Plus, Users } from 'lucide-react';
 import { KIND, markerSVG, needsAttention } from '../mapKinds.js';
 import { verb } from '../verbs.js';
 
@@ -16,7 +16,7 @@ import { verb } from '../verbs.js';
  * thing — a blocked project offers the gate, a waiting need offers the answer —
  * rather than a generic "open" that lands somebody back in a list.
  */
-export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
+export default function MapPanel({ feature, onClose, onAct, onGoTo, onMove }) {
   if (!feature) return null;
   const k = KIND[feature.kind] ?? KIND.observation;
   // Two different questions, and conflating them is how a task would have got
@@ -112,6 +112,18 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
         )}
       </div>
 
+      {/* Who is carrying it, and the evidence itself. A panel about a piece of
+          work that shows neither is a label. The photographs are small here on
+          purpose — enough to see that a pair exists and roughly what it shows;
+          judging it properly happens on the Tasks screen, at a size somebody
+          can actually judge. */}
+      {feature.kind === 'task' && !!feature.badge && (
+        <div className="flex items-center gap-1.5 px-4 pb-2 text-[11px] text-[var(--ink-2)]">
+          <Users className="h-3 w-3 shrink-0 text-[var(--ink-3)]" />
+          {feature.sub?.split(' · ')[1] ?? `${feature.badge} carrying it`}
+        </div>
+      )}
+
       {act && (
         <div className="mt-auto border-t border-[var(--line)] p-3">
           <button onClick={() => (act.goTo ? onGoTo?.(act.goTo) : onAct?.(act.tool, act.input))}
@@ -122,11 +134,47 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo }) {
           {act.note && (
             <p className="mt-1.5 text-center text-[10px] leading-snug text-[var(--ink-3)]">{act.note}</p>
           )}
+
+          {/* Everything else you can do to this thing. Decided in
+              engines/mapboard.mjs alongside the primary action, so the panel
+              stays a renderer and never becomes a second opinion about what a
+              project allows. */}
+          {!!feature.more?.length && (
+            <div className="mt-2 flex flex-wrap gap-1.5 border-t border-[var(--line-2)] pt-2">
+              {feature.more.map((m, i) => (
+                <button key={`${m.tool}-${i}`}
+                  onClick={() => (m.move ? onMove?.(feature, m) : onAct?.(m.tool, m.input))}
+                  className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px]
+                              transition-colors ${
+                    m.label === 'Drop it'
+                      ? 'border-[var(--line)] text-[var(--ink-3)] hover:border-[var(--clay)] hover:text-[var(--clay)]'
+                      : 'border-[var(--line)] text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]'}`}>
+                  {ICON[m.label] ?? null}{m.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Said once, where somebody is about to look for a delete and not
+              find one. */}
+          {feature.kind === 'task' && (
+            <p className="mt-1.5 text-[9px] leading-snug text-[var(--ink-3)]">
+              Dropping keeps the record — a task carries who claimed it and every
+              before-and-after filed against it.
+            </p>
+          )}
         </div>
       )}
     </aside>
   );
 }
+
+/** A glyph for the few secondary actions that have an obvious one. */
+const ICON = {
+  'Add a task': <Plus className="h-3 w-3" />,
+  'Correct it': <Pencil className="h-3 w-3" />,
+  'Move it': <Move className="h-3 w-3" />,
+  'Drop it': <Trash2 className="h-3 w-3" />,
+};
 
 /** Where a "go and look" action lands, said as a destination. */
 const GO_TO = {

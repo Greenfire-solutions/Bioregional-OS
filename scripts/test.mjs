@@ -4317,7 +4317,13 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // Evidence filed, not yet checked: the task closes, because waiting on a
   // reviewer to close your own finished work is how a board fills with lies.
-  const closed = await runTool('complete_task', { task_id: task.id, by: 'R. Alvarez' });
+  // WITH a note, deliberately. Both lines in this engine that append to a
+  // description were written with `""` — a zero-length IDENTIFIER in SQLite,
+  // not an empty string — and threw `no such column: ""`. Nothing caught it,
+  // because no test and no end-to-end run had ever passed a note, so neither
+  // line had ever run. A branch nothing exercises is a branch nothing tests.
+  const closed = await runTool('complete_task',
+    { task_id: task.id, by: 'R. Alvarez', note: 'Took two hours and a mattock.' });
   check('once the pair is filed the task closes, without waiting for a reviewer',
     closed?.done === true && closed.task.status === 'done');
 
@@ -4340,6 +4346,23 @@ check('a card from a real chapter does not cry wolf about being an example',
     try { dbRun('DELETE FROM media WHERE id=?', before.id); return false; }
     catch { return true; }
   })());
+
+  // Editing, moving and dropping — the other half of a map you can use.
+  const borrowed_probe = await runTool('add_task', { quest_id: proj.id, title: 'Edit me' });
+  const edited = await runTool('update_task', { task_id: borrowed_probe.id, title: 'Renamed' });
+  check('a task can be corrected after it is written down', edited?.title === 'Renamed');
+  check('a task with no point refuses half a coordinate',
+    refused(await runTool('update_task', { task_id: borrowed_probe.id, lat: 31 }), 'half_a_coordinate'));
+  const movedTask = await runTool('update_task', { task_id: borrowed_probe.id, lat: 31, lng: -97.5 });
+  check('and can be moved by pointing at a new spot', movedTask?.lat === 31 && movedTask?.lng === -97.5);
+
+  check('dropping a task without a reason is refused',
+    refused(await runTool('set_task_status',
+      { task_id: borrowed_probe.id, status: 'abandoned' }), 'reason_required'));
+  const dropped = await runTool('set_task_status',
+    { task_id: borrowed_probe.id, status: 'abandoned', note: 'Written down twice' });
+  check('with one it is dropped, and the reason is kept on the record',
+    dropped?.task?.status === 'abandoned' && /Written down twice/.test(dropped.task.description ?? ''));
 
   // ── On the map ────────────────────────────────────────────────────────
   const borrowed = await runTool('add_task', { quest_id: proj.id, title: 'Write up what was found' });

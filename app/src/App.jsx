@@ -111,6 +111,10 @@ export default function App() {
   const [focus, setFocus] = useState(null);
   const [region, setRegion] = useState(null);
   const [picked, setPicked] = useState(null);
+  // A thing waiting to be put somewhere else: { feature, action }. Held here
+  // because the panel starts it and the map finishes it, and neither owns the
+  // other.
+  const [moving, setMoving] = useState(null);
   // Bumped by load(), so the map refetches what it draws after every action.
   const [version, setVersion] = useState(0);
   const [panel, setPanel] = useState(true);
@@ -306,6 +310,21 @@ export default function App() {
                        // to, which made "so what do I do about that?" a
                        // question answered somewhere else entirely.
                        onAddHere={(tool, at) => { setPicked(null); setRegion(null); setForm({ tool, prefill: at }); }}
+                       moving={moving}
+                       onCancelMove={() => setMoving(null)}
+                       onMoved={async (at) => {
+                         const m = moving;
+                         setMoving(null);
+                         if (!m) return;
+                         // Straight through the same tool a form would have
+                         // called, so the engine's rules — both halves of a
+                         // coordinate, or neither — apply to a press exactly as
+                         // they apply to typing.
+                         const out = await callTool(m.action.tool, { ...m.action.input, ...at });
+                         if (out?.error) { setForm({ tool: m.action.tool, prefill: { ...m.action.input, ...at } }); return; }
+                         setPicked(null);
+                         load();
+                       }}
                        onSelect={(s) => {
                          // An ecoregion has no single point to fly to — it is an
                          // area — so clicking one opens what is known about it
@@ -332,6 +351,7 @@ export default function App() {
               {picked && (
                 <MapPanel feature={picked} onClose={() => setPicked(null)}
                           onGoTo={(t) => { setPicked(null); setTab(t); }}
+                          onMove={(feature, action) => { setPicked(null); setMoving({ feature, action }); }}
                           onAct={(tool, input) => { setPicked(null); setForm({ tool, prefill: input }); }} />
               )}
               {tab === 'place' && (

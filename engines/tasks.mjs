@@ -246,9 +246,75 @@ export function completeTask(taskId, { by = null, note = null } = {}) {
 
   run(`UPDATE tasks SET status='done', completed_at=datetime('now'), completed_by=? WHERE id=?`,
     by ? String(by).trim() : null, taskId);
-  if (note) run('UPDATE tasks SET description = COALESCE(description || char(10), "") || ? WHERE id=?',
+  // Single quotes. In SQLite a DOUBLE-quoted token is an identifier, so `""`
+  // is a zero-length column name and the statement throws — `no such column:
+  // ""`. It shipped in both places that append to a description, and every test
+  // and every end-to-end run missed it for the same reason: not one of them
+  // passed a note, so neither line ever executed. The tests below now do.
+  if (note) run(`UPDATE tasks SET description = COALESCE(description || char(10), '') || ? WHERE id=?`,
     `Finished: ${String(note).trim()}`, taskId);
   return { done: true, task: getTask(taskId) };
+}
+
+/**
+ * Correct a task that was written down wrong.
+ *
+ * Every field a person could get wrong on the way in, and nothing else. Status
+ * is not here — moving a task between states is `setTaskStatus`, which has
+ * rules (finishing needs evidence, abandoning needs a reason) that an
+ * edit-any-field tool would quietly walk straight past. That is the shape of
+ * bug this project keeps finding: a second door into a guarded room.
+ */
+export function updateTask(taskId, input = {}) {
+  const t = one('SELECT * FROM tasks WHERE id=?', taskId);
+  if (!t) return { error: 'not_found', message: `No task ${taskId}.` };
+
+  const set = {};
+  if (input.title !== undefined) {
+    const title = String(input.title).trim();
+    if (!title) return { error: 'missing_required', message: 'A task needs a title.' };
+    set.title = title;
+  }
+  if (input.description !== undefined) set.description = input.description || null;
+  if (input.due_at !== undefined) set.due_at = input.due_at || null;
+  if (input.stage !== undefined) {
+    if (input.stage && !STAGES.includes(input.stage)) {
+      return { error: 'unknown_stage', message: `"${input.stage}" is not one of the twelve stages.`, stages: STAGES };
+    }
+    set.stage = input.stage || null;
+  }
+  // Both halves or neither, the same rule addTask applies. A task edited to
+  // have a latitude and no longitude is drawn at [null, 30] and rendered by
+  // calling .toFixed on null — and an EDIT is the likelier way to get there,
+  // because somebody correcting one number does not think of the other.
+  if (input.lat !== undefined || input.lng !== undefined) {
+    const lat = input.lat ?? t.lat;
+    const lng = input.lng ?? t.lng;
+    const both = lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+    if (!both && (lat != null || lng != null)) {
+      return {
+        error: 'half_a_coordinate',
+        message: 'A point needs both halves. Give a latitude and a longitude, or neither.',
+      };
+    }
+    set.lat = both ? Number(lat) : null;
+    set.lng = both ? Number(lng) : null;
+  }
+  if (input.requires_before_after !== undefined) {
+    // Turning the evidence requirement OFF on a task that already has evidence
+    // filed would leave a proof attached to a task that claims not to need one.
+    // Allowed, because the task may genuinely have been mis-written — but the
+    // proof stays and still has to be checked.
+    set.requires_before_after = input.requires_before_after === false ? 0 : 1;
+  }
+
+  const fields = Object.keys(set);
+  if (!fields.length) {
+    return { error: 'nothing_to_update', message: 'Nothing was changed. Pass a field to correct.' };
+  }
+  run(`UPDATE tasks SET ${fields.map((f) => `${f}=?`).join(',')} WHERE id=?`,
+    ...fields.map((f) => set[f]), taskId);
+  return getTask(taskId);
 }
 
 /** Reopen, abandon, block — the states that are not "finished". */
@@ -259,9 +325,36 @@ export function setTaskStatus(taskId, status, { note = null } = {}) {
   const t = one('SELECT * FROM tasks WHERE id=?', taskId);
   if (!t) return { error: 'not_found', message: `No task ${taskId}.` };
   if (status === 'done') return completeTask(taskId, { note });
+
+  // ── Abandoning is this system's version of deleting ────────────────────
+  // There is no delete. A task row carries who claimed it, who released it and
+  // every before-and-after filed against it, and `ON DELETE CASCADE` would take
+  // the evidence with it — destroying the proof of work somebody actually did,
+  // to tidy a list. The same reasoning the people, devices and media tables
+  // enforce with triggers.
+  //
+  // What abandoning does is what a person wants from a delete: the task leaves
+  // the map, the board and every count, because both read `status NOT IN
+  // ('done','abandoned')`. What it does not do is make it untrue that the task
+  // was there.
+  //
+  // The reason is required for the same purpose an override's reason is: so the
+  // commons can argue with the person rather than with the software.
+  if (status === 'abandoned' && !String(note ?? '').trim()) {
+    return {
+      error: 'reason_required',
+      message: 'Dropping a task needs a reason — a sentence is enough. It is kept, because a task ' +
+               'somebody wrote down and the commons then decided against is worth more than a gap.',
+      note: 'Nothing is deleted here. The task leaves the map and the board; the record stays.',
+    };
+  }
   // Reopening clears the completion, so a task cannot read as both open and
   // finished-by-somebody-on-a-date.
   run(`UPDATE tasks SET status=?, completed_at=NULL, completed_by=NULL WHERE id=?`, status, taskId);
+  if (note) {
+    run(`UPDATE tasks SET description = COALESCE(description || char(10), '') || ? WHERE id=?`,
+      `${status === 'abandoned' ? 'Dropped' : 'Changed'}: ${String(note).trim()}`, taskId);
+  }
   return { task: getTask(taskId) };
 }
 

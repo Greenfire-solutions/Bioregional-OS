@@ -504,11 +504,25 @@ export const TOOLS = [
       quest_id: str(''), need_statement: str(''), desired_condition: str(''),
       smallest_experiment: str(''), ecological_fit: str(''), budget_note: str(''),
       maintenance_owner: str(''), end_of_life_plan: str(''),
+      title: str('Correct the title.'),
+      description: str(''),
+      location_name: str('What people call the spot.'),
+      lat: num('Move it. Both halves or neither.'), lng: num(''),
       status: { type: 'string', enum: ['Open','Active','Paused','Complete','Stopped'] },
     }, ['quest_id']),
     handler: (i) => {
+      // lat and lng move together or not at all — the same rule the tasks
+      // engine applies, and for the same reason: a row with one half of a
+      // coordinate is drawn at [null, 30] and rendered by calling .toFixed on
+      // null. An EDIT is the likelier way to get there than a create, because
+      // somebody correcting one number does not think of the other.
+      if ((i.lat === undefined) !== (i.lng === undefined)) {
+        return { error: 'half_a_coordinate',
+                 message: 'A point needs both halves. Give a latitude and a longitude, or neither.' };
+      }
       const fields = ['need_statement','desired_condition','smallest_experiment','ecological_fit',
-                      'budget_note','maintenance_owner','end_of_life_plan','status']
+                      'budget_note','maintenance_owner','end_of_life_plan','status',
+                      'title','description','location_name','lat','lng']
         .filter((f) => i[f] !== undefined);
       if (!fields.length) return { error: 'nothing_to_update' };
       run(`UPDATE quests SET ${fields.map((f) => `${f}=?`).join(',')} WHERE id=?`,
@@ -598,10 +612,29 @@ export const TOOLS = [
     handler: (i) => tasks.completeTask(i.task_id, { by: i.by ?? null, note: i.note ?? null }),
   },
   {
+    name: 'update_task',
+    description:
+      'Correct a task that was written down wrong — its title, what it says, when it is due, the ' +
+      'stage it serves, where it is, or whether it needs a before-and-after. Moving it between ' +
+      'states is set_task_status, which has rules this deliberately cannot walk past.',
+    input_schema: S({
+      task_id: str(''), title: str(''), description: str(''),
+      due_at: str('YYYY-MM-DD'),
+      stage: { type: 'string', enum: quest.STAGES },
+      lat: num('Both halves or neither.'), lng: num(''),
+      requires_before_after: bool(''),
+    }, ['task_id']),
+    handler: (i) => tasks.updateTask(i.task_id, i),
+  },
+  {
     name: 'set_task_status',
     description:
       'Move a task to todo, doing, blocked or abandoned. Marking one blocked is a statement about ' +
-      'the world, not about staffing — it survives people joining and leaving.',
+      'the world, not about staffing — it survives people joining and leaving. ' +
+      'ABANDONING IS HOW A TASK IS REMOVED: there is no delete, because a task row carries who ' +
+      'claimed it and every before-and-after filed against it, and deleting would take the ' +
+      'evidence with it. An abandoned task leaves the map, the board and every count; it needs a ' +
+      'reason in `note`, and the record is kept.',
     input_schema: S({
       task_id: str(''),
       status: { type: 'string', enum: ['todo', 'doing', 'blocked', 'done', 'abandoned'] },

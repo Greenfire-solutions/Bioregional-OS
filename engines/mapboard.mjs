@@ -99,6 +99,54 @@ function actionFor(f) {
   }
 }
 
+/**
+ * Everything ELSE you can do to a thing on the map.
+ *
+ * `actionFor` picks the one action that matches what is wrong with a feature,
+ * which is right for a primary button and leaves a map on which nothing can be
+ * corrected, moved or dropped. Those are not "what is wrong with it" — they are
+ * what a person does with a thing they are looking at, and every map anybody
+ * has ever used offers them.
+ *
+ * Here rather than in the panel, for the same reason `actionFor` is here: the
+ * panel deciding what can be done to a project is a second home for that
+ * question, and the two drift.
+ *
+ * `move: true` marks an action the interface carries out by arming the map and
+ * waiting for a press, rather than by opening a form — nobody types a
+ * coordinate they can point at. Only kinds whose coordinate has nothing derived
+ * from it are movable: a place's ecoregion, watershed and soil are all resolved
+ * FROM its point, so moving one silently invalidates four Atlas layers, and
+ * that needs `locate_place` to run again rather than a drag.
+ */
+function moreFor(f) {
+  switch (f.kind) {
+    case 'project':
+      return [
+        { tool: 'add_task', input: { quest_id: f.id }, label: 'Add a task' },
+        { tool: 'update_quest', input: { quest_id: f.id }, label: 'Correct it' },
+        { tool: 'update_quest', input: { quest_id: f.id }, label: 'Move it', move: true },
+        { tool: 'advance_quest', input: { quest_id: f.id }, label: 'Advance a stage' },
+      ];
+    case 'task':
+      return [
+        ...(f.state === 'unclaimed' ? [] : [{ tool: 'claim_task', input: { task_id: f.id }, label: 'Join this' }]),
+        { tool: 'update_task', input: { task_id: f.id }, label: 'Correct it' },
+        { tool: 'update_task', input: { task_id: f.id }, label: 'Move it', move: true },
+        // Not "Delete". There is none, and a button that says so would be
+        // promising something the engine refuses — it needs a reason and it
+        // keeps the row. "Drop it" is what actually happens.
+        { tool: 'set_task_status', input: { task_id: f.id, status: 'abandoned' }, label: 'Drop it' },
+      ];
+    case 'place':
+      return [{ tool: 'locate_place', input: { place_id: f.id }, label: 'Resolve it again' }];
+    case 'observation':
+      return [{ tool: 'add_task', input: {}, label: 'Make it a task' }];
+    default:
+      return [];
+  }
+}
+
 export function mapFeatures(chapterId, { kinds = null } = {}) {
   if (!chapterId) return { error: 'no_chapter', features: [], kinds: MAP_KINDS };
   const want = kinds ? new Set(kinds) : null;
@@ -286,7 +334,7 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
     }
   }
 
-  for (const f of out) f.action = actionFor(f);
+  for (const f of out) { f.action = actionFor(f); f.more = moreFor(f); }
 
   const counts = {};
   for (const f of out) counts[f.kind] = (counts[f.kind] ?? 0) + 1;
