@@ -227,6 +227,9 @@ const ROUTES = [...new Set([
   // being true as the surface grows. A route the prover cannot see is a route
   // whose crash this reports as a clean run.
   'media', 'media-types', 'media/med_nonexistent',
+  // Signing in, for the same reason: these set and clear a cookie, which a
+  // `case` returning JSON cannot do.
+  'me', 'sign-in', 'sign-out',
 ])];
 
 const routeRows = [];

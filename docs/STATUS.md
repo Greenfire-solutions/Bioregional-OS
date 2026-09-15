@@ -58,6 +58,35 @@ observation there, coordinate already filled in. Unchecked evidence reaches the
 operator as `waiting` and unclaimed work as a `gap` — unsurfaced, the last
 minute of a job never happens.
 
+### Who people are
+Two ways in, feeding ONE ladder. An enrolled device is still the right
+credential for a phone at a creek — a code handed over in a room, never typed
+across a network. Accounts are for the people who sit down at a screen, because
+device enrolment could not tell two coordinators apart: every override, every
+closed gate and every answered need was attributed to a free-text name somebody
+typed.
+
+An account's role — steward, coordinator, member — IS a clearance. It feeds the
+same ladder `mayRun` already reads, so there is no second permission system and
+no route that consults one and not the other. Signing in NARROWS and never
+widens: at the keyboard, signing in as a member lowers that connection to what a
+member may do, and over the wifi the network ceiling still caps a steward at
+`council`. Passwords are scrypt with the parameters stored beside the hash, from
+node's own crypto — no dependency. Session tokens are HMAC'd with the same
+per-commons salt the device tokens use, so a token lifted from one commons means
+nothing in another.
+
+It is not a wall. The commons can be looked at without signing in; what signing
+in changes is that the work has a name on it. Account creation is not open
+registration — a commons is people who know each other, so making one sits with
+coordinators and the keyboard, exactly where inviting a device sits. Acting ON
+somebody else's account (role, status, password, ending their sessions) is the
+keyboard only: a coordinator's device on a gathering wifi must not be able to
+lock the steward out of their own commons.
+
+Over plain HTTP the sign-in screen says so, in those words, because the
+alternative is a password box implying a protection this transport cannot give.
+
 ### The front door
 `The commons` is the landing view: where you are, what needs doing with the
 button that does each thing, the projects with what is actually in their way,

@@ -806,3 +806,74 @@ CREATE INDEX IF NOT EXISTS idx_assignees_task ON task_assignees(task_id);
 -- stepped back in the spring can pick the same task up again in the autumn.
 CREATE UNIQUE INDEX IF NOT EXISTS task_assignees_one_active
   ON task_assignees(task_id, person_name) WHERE released_at IS NULL;
+
+-- ---------- Accounts: a name and a password, feeding the ONE ladder --------
+-- This schema said "No accounts. No passwords. No sign-in." and meant it: the
+-- evidence behind that is in the `people` comment above and it still holds for
+-- the field. A device handed over in a room is the right credential for a
+-- phone at a creek.
+--
+-- What it did not cover is the other half of a commons — the handful of people
+-- who sit down at a screen and do council work, who are not all the same
+-- person, and who between them had exactly one identity: "whoever is at the
+-- keyboard". Every override, every closed gate and every answered need was
+-- recorded against a free-text name somebody typed, which is attribution that
+-- cannot be wrong because it never claimed to be right.
+--
+-- So: accounts, and ONE rule about them. An account's role feeds the same
+-- clearance ladder an enrolled device feeds. There is no second set of
+-- permissions, no `requireRole` beside `mayRun`, and no route that consults one
+-- and not the other. Two authorization systems is how a door gets closed in one
+-- of them.
+CREATE TABLE IF NOT EXISTS accounts (
+  id            TEXT PRIMARY KEY,
+  chapter_id    TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
+  -- The person this account IS. An account is a way to sign in; a person is who
+  -- they are, and the work is attributed to the person so that somebody who
+  -- leaves and comes back is not two people.
+  person_id     TEXT REFERENCES people(id) ON DELETE SET NULL,
+  username      TEXT NOT NULL,
+  display_name  TEXT NOT NULL,
+  -- scrypt, from node's own crypto. No dependency, and the parameters are
+  -- stored WITH the hash so they can be raised later without invalidating
+  -- every existing password.
+  password_hash TEXT NOT NULL,
+  role          TEXT NOT NULL DEFAULT 'member'
+                CHECK (role IN ('steward','coordinator','member')),
+  status        TEXT NOT NULL DEFAULT 'active'
+                CHECK (status IN ('active','suspended','left')),
+  created_by    TEXT,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen     TEXT,
+  -- Forced at next sign-in, for an account somebody else set a password on.
+  must_change   INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (chapter_id, username)
+);
+
+-- Same rule as people and devices: an account is never deleted. It is the
+-- author of everything it did, and removing the row would make the record say
+-- that work had no author.
+CREATE TRIGGER IF NOT EXISTS accounts_no_delete
+BEFORE DELETE ON accounts
+BEGIN
+  SELECT RAISE(ABORT, 'accounts are never deleted — set status to suspended or left');
+END;
+
+-- A signed-in browser. The token itself is never stored, only its HMAC, for
+-- the same reason the device secrets are not: copying commons.db must not hand
+-- its reader the ability to walk in as somebody.
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash  TEXT PRIMARY KEY,
+  account_id  TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at  TEXT NOT NULL,
+  last_seen   TEXT,
+  revoked_at  TEXT,
+  -- Where it was signed in from, in the crudest possible terms: was this the
+  -- machine the commons lives on, or something on the network? Recorded
+  -- because "somebody signed in over the wifi" is the sentence a steward may
+  -- one day need to read.
+  from_keyboard INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id, expires_at);

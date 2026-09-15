@@ -11,6 +11,7 @@ Bioregional-OS/
 │   ├── council.mjs        decisions, Land Seat, Minimum Viable Chapter Test
 │   ├── bioregional.mjs    locate, observe, seasonal dashboard
 │   ├── quest.mjs          the 12-step quest pathway, consent gates, care
+│   ├── accounts.mjs       signing in — roles that feed the ONE clearance ladder
 │   ├── tasks.mjs          the work inside a project — who carries it, when it closes
 │   ├── proof.mjs          the file store, and the before-and-after pair
 │   ├── exchange.mjs       ValueFlows ledger, benefit flow

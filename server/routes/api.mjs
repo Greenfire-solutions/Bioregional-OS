@@ -19,6 +19,7 @@ import { clearanceFor, withhold, FULL } from '../clearance.mjs';
 import { aiStream } from './ai.mjs';
 import { claudeStream, claudeAvailable } from './claude.mjs';
 import { uploadMedia, serveMedia } from './media.mjs';
+import { authRoute } from './auth.mjs';
 // Served rather than repeated in the interface. The file picker and the server
 // that enforces the list have to agree, and the way they stop agreeing is that
 // somebody types the extensions into a component.
@@ -57,7 +58,23 @@ export async function api(req, res, url) {
   //
   // Protection belongs to whoever produced the answer. For tools that is
   // runTool; for every other route it is this wrapper.
-  if (url.pathname.replace(/^\/api\/?/, '') === 'tool') return out;
+  const path = url.pathname.replace(/^\/api\/?/, '');
+  if (path === 'tool') return out;
+
+  // Telling somebody who they are is not disclosing a record to them.
+  //
+  // The same shape as the `submit_intake` bug above, arriving from the other
+  // direction. An account's RID is `council`, and the clearance for a request
+  // is worked out BEFORE the route runs — which for `sign-in` is before the
+  // sign-in has happened, so the caller is still `public` and `withhold()`
+  // removed the account from the very answer proving who they are. `/api/me`
+  // had it worse and permanently: a signed-in MEMBER is below `council`, so
+  // their own account was stripped out of every answer about themselves and the
+  // interface showed them as signed out while they were signed in.
+  //
+  // These three routes only ever describe the caller to themselves. Nothing
+  // else about the commons goes through them.
+  if (path === 'me' || path === 'sign-in' || path === 'sign-out') return out;
   const deps = { hiddenIds: (levels) => new Set(
     all(`SELECT local_id FROM rids WHERE sensitivity IN (${levels.map(() => '?').join(',')})`, ...levels)
       .map((r) => r.local_id)) };
@@ -112,6 +129,15 @@ async function route(req, res, url, clearance) {
   // Claude Code rather than the SDK: the steward's own subscription, no API key,
   // and loopback-only because it spawns a process and nothing here asks who you are.
   if (req.method === 'POST' && p === 'claude') return claudeStream(req, res, await readBody(req));
+
+  // ── Signing in ─────────────────────────────────────────────────────────
+  // Routes rather than tools, because these set and clear a cookie and a tool
+  // cannot. Answered before the switch and before anything reads the commons:
+  // whoever is asking has to be settled first.
+  if (p === 'me' || p === 'sign-in' || p === 'sign-out') {
+    const out = await authRoute(req, res, url, { chapterId, clearance });
+    if (out !== undefined) return out;
+  }
 
   // ── Files ──────────────────────────────────────────────────────────────
   // Outside the switch because both carry bytes rather than JSON: the upload

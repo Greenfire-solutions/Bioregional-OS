@@ -92,6 +92,10 @@ const MEMBERS = [
   // putting it down, and filing the evidence — all of it ordinary field work by
   // somebody holding a device a steward handed them in a room.
   'list_tasks', 'task_board', 'pending_proofs', 'list_media',
+  // Seeing who else is here. A member may know who the coordinators are —
+  // that is the list on the wall, not a secret — and `list_accounts` never
+  // returns a hash or anything that could be used to sign in as somebody.
+  'list_accounts',
   // ordinary field work
   'add_place', 'locate_place', 'ingest_water_data', 'record_measurement', 'add_indicator',
   'propose_baseline', 'set_indicator_baseline', 'add_gathering', 'update_gathering',
@@ -127,7 +131,23 @@ const COUNCIL = [
   // person who submitted it, which is the rule that actually matters; this is
   // about who is doing the checking, not about whether the rule is enforced.
   'review_proof',
+  // Making somebody an account is a coordinator's act, sitting exactly where
+  // inviting a device sits: both hand a person a way in, and both are decisions
+  // about who is in this commons rather than about what is true of the land.
+  'create_account',
 ];
+
+// Deliberately unlisted, which means the keyboard:
+//
+//   set_account_role        who may do what, including making another steward
+//   set_account_status      suspending somebody, and ending their sessions
+//   set_account_password    setting a password that is not yours
+//   sign_out_everywhere     ending every session an account has
+//
+// Each is an act ON another person's access rather than with it, and the line
+// this system can actually defend is the machine the commons lives on. A
+// coordinator's device on a gathering wifi must not be able to lock the steward
+// out of their own commons, which is what any of these would allow.
 
 // `withdraw_media` and `check_evidence` are unlisted, which means the keyboard.
 // Withdrawal destroys bytes on the steward's disk and is the counterpart of

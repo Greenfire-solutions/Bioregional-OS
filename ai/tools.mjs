@@ -34,6 +34,7 @@ import * as matching from '../engines/matching.mjs';
 import * as board from '../engines/board.mjs';
 import * as mapboard from '../engines/mapboard.mjs';
 import * as enrol from '../engines/enrol.mjs';
+import * as accounts from '../engines/accounts.mjs';
 import * as library from '../engines/library.mjs';
 import { compile as compileDossier } from '../adapters/dossier.mjs';
 import * as access from './access.mjs';
@@ -610,6 +611,82 @@ export const TOOLS = [
       task_id: str(''), by: str('Who finished it.'), note: str('Anything worth recording about how it went.'),
     }, ['task_id']),
     handler: (i) => tasks.completeTask(i.task_id, { by: i.by ?? null, note: i.note ?? null }),
+  },
+  // ---------- who people are ----------
+  // Signing in itself is NOT here: it sets a cookie, and a tool cannot. See
+  // server/routes/auth.mjs. Everything about MANAGING accounts is, because it
+  // is ordinary work on rows and belongs in the one registry with the rest.
+  {
+    name: 'list_accounts',
+    description:
+      'Who can sign in to this commons, their role and whether they are still active. Never a ' +
+      'password hash — those do not leave the engine, in any answer, to anybody.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => accounts.listAccounts(ch(i)),
+  },
+  {
+    name: 'create_account',
+    description:
+      'Give somebody a way to sign in. NOT open registration — a commons is people who know each ' +
+      'other, and somebody who can reach the port is not a member because they filled in a form. ' +
+      'Roles are steward, coordinator and member, and a role IS a clearance: it feeds the same ' +
+      'ladder an enrolled device feeds, so there is no second set of permissions anywhere.',
+    input_schema: S({
+      chapter_id: str(''),
+      username: str('2–40 characters: letters, numbers, dot, dash, underscore.'),
+      password: str('At least 10 characters. Four ordinary words beats anything with punctuation.'),
+      display_name: str('The name that appears on what they do.'),
+      role: { type: 'string', enum: accounts.ROLES },
+      person_id: str('The person in this commons they are, if they are already recorded.'),
+      created_by: str('Who is making it.'),
+      must_change: bool('Make them choose their own password at the first sign-in.'),
+    }, ['username', 'password']),
+    handler: (i) => accounts.createAccount(ch(i), i),
+  },
+  {
+    name: 'set_account_role',
+    description:
+      'Change what somebody may do. Refuses to demote the last steward — a commons with nobody ' +
+      'who can act for it is one laptop away from being nobody\'s.',
+    input_schema: S({
+      account_id: str(''), role: { type: 'string', enum: accounts.ROLES },
+    }, ['account_id', 'role']),
+    handler: (i) => accounts.setRole(i.account_id, i.role),
+  },
+  {
+    name: 'set_account_status',
+    description:
+      'Suspend an account, restore one, or record that somebody has left. There is no delete: an ' +
+      'account is the author of everything it did, and a row that vanished would take that record ' +
+      'with it. Suspending ends every session it has open.',
+    input_schema: S({
+      account_id: str(''),
+      status: { type: 'string', enum: ['active', 'suspended', 'left'] },
+      reason: str(''),
+    }, ['account_id', 'status']),
+    handler: (i) => accounts.setStatus(i.account_id, i.status, { reason: i.reason ?? null }),
+  },
+  {
+    name: 'set_account_password',
+    description:
+      'Set a password. Changing your OWN needs the current one. A steward setting somebody else\'s ' +
+      'does not — that is helping a person who is locked out — and it forces them to choose their ' +
+      'own at the next sign-in, so nobody keeps a password that is not theirs. Either way every ' +
+      'other session for that account ends.',
+    input_schema: S({
+      account_id: str(''), password: str('The new one.'),
+      current: str('The existing password, when somebody is changing their own.'),
+      by_steward: bool('A steward setting somebody else\'s.'),
+    }, ['account_id', 'password']),
+    handler: (i) => accounts.setPassword(i.account_id,
+      { current: i.current ?? null, password: i.password, by_steward: !!i.by_steward }),
+  },
+  {
+    name: 'sign_out_everywhere',
+    description:
+      'End every session an account has open. What a steward does after a laptop goes missing.',
+    input_schema: S({ account_id: str('') }, ['account_id']),
+    handler: (i) => accounts.signOutEverywhere(i.account_id),
   },
   {
     name: 'update_task',

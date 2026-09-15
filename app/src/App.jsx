@@ -16,6 +16,7 @@ import Season from './components/Season.jsx';
 import FirstRun from './components/FirstRun.jsx';
 import Card from './components/Card.jsx';
 import Work from './components/Work.jsx';
+import SignIn, { SignedInAs } from './components/SignIn.jsx';
 import ToolForm from './components/ToolForm.jsx';
 import {
   MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
@@ -121,6 +122,11 @@ export default function App() {
   const [discovering, setDiscovering] = useState(false);
   const [form, setForm] = useState(null);
   const [firstRun, setFirstRun] = useState(false);
+  // Who this browser is, asked of the server rather than assumed. It also
+  // carries whether the connection is private, which the browser cannot work
+  // out for itself.
+  const [me, setMe] = useState(null);
+  const [showSignIn, setShowSignIn] = useState(false);
   const [dismissedIntro, setDismissedIntro] = useState(() => {
     try { return localStorage.getItem('bros.firstrun.dismissed') === '1'; } catch { return false; }
   });
@@ -136,6 +142,7 @@ export default function App() {
       safe('exchange', setExchange), safe('learn', setLearn),
       safe('federation', setPeers), safe('doctrine', setDoctrine),
       safe('intake', setIntake),
+      safe('me', setMe),
       callTool('list_indicators', {}).then((r) => Array.isArray(r) && setIndicators(r)).catch(() => {}),
     ]);
       // Every reload is a new version, so anything keyed on it refetches —
@@ -207,7 +214,9 @@ export default function App() {
             BioRegional OS
           </div>
           <div className="truncate text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
-            {status?.chapters?.[0]?.name ?? 'no chapter'} · {enrolledAs ? `${enrolledAs.label} · ${enrolledAs.role}` : 'local-first'}
+            {status?.chapters?.[0]?.name ?? 'no chapter'} ·{' '}
+            {me?.account ? `signed in as ${me.account.username}`
+              : enrolledAs ? `${enrolledAs.label} · ${enrolledAs.role}` : 'local-first'}
           </div>
         </div>
         <div className="ml-auto flex items-center gap-4">
@@ -218,6 +227,8 @@ export default function App() {
               <Reading n={status.tools} of="tools" />
             </div>
           )}
+          <SignedInAs me={me} onSignIn={() => setShowSignIn(true)}
+                      onSignedOut={() => { setMe(null); load(); }} />
           <button onClick={() => setPanel((p) => !p)}
             className="rounded border border-[var(--line)] p-1.5 text-[var(--ink-2)] transition-colors hover:border-[var(--moss)] hover:text-[var(--moss)]"
             title={panel ? 'Hide assistant' : 'Show assistant'}>
@@ -400,6 +411,12 @@ export default function App() {
         <ToolForm tool={form.tool} prefill={form.prefill ?? {}}
                   onClose={() => setForm(null)}
                   onDone={() => setTimeout(() => { setForm(null); load(); }, 1400)} />
+      )}
+
+      {showSignIn && (
+        <SignIn me={me}
+                onDone={() => { setShowSignIn(false); load(); }}
+                onDismiss={() => setShowSignIn(false)} />
       )}
 
       {firstRun && (

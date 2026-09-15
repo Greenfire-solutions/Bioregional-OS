@@ -22,6 +22,23 @@
 // stranger gets what a stranger gets.
 
 import { deviceFor, touchDevice, ROLE_CLEARANCE } from '../engines/enrol.mjs';
+import { accountForSession, touchSession, ACCOUNT_CLEARANCE } from '../engines/accounts.mjs';
+
+/** The cookie a signed-in browser carries. */
+export const SESSION_COOKIE = 'bros_session';
+
+/** Cookies, parsed once. No dependency for a header this shape. */
+export function cookies(req) {
+  const raw = req?.headers?.cookie;
+  if (!raw) return {};
+  const out = {};
+  for (const part of String(raw).split(';')) {
+    const i = part.indexOf('=');
+    if (i < 1) continue;
+    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return out;
+}
 
 /** Everything, for the person at the keyboard. */
 export const FULL = 'sacred';
@@ -154,7 +171,39 @@ export function isLoopback(address) {
  * lets a stranger claim to be the steward by typing a header name.
  */
 export function clearanceFor(req) {
-  if (isLoopback(req?.socket?.remoteAddress)) return FULL;
+  const atKeyboard = isLoopback(req?.socket?.remoteAddress);
+
+  // ── A signed-in account, feeding the SAME ladder ────────────────────────
+  // An account's role is a clearance, exactly as a device's role is. There is
+  // deliberately no second permission check anywhere: `mayRun` reads this one
+  // value, so a tool cannot be reachable through sign-in and closed to devices,
+  // or the reverse.
+  //
+  // SIGNING IN NARROWS, IT NEVER WIDENS. At the keyboard the clearance is
+  // already everything — being sat at the machine the commons lives on is the
+  // credential this system can actually defend. So signing in there as a member
+  // LOWERS what this connection may do, to what that member may do, which is
+  // the honest reading of somebody saying who they are. It cannot raise a
+  // stranger on the wifi above what their role allows either, because the
+  // network ceiling still applies below.
+  //
+  // The direction matters: a mistake here fails by giving somebody LESS than
+  // they should have, which they will report, rather than more, which nobody
+  // notices.
+  const sessionToken = cookies(req)[SESSION_COOKIE];
+  if (sessionToken) {
+    const account = accountForSession(sessionToken);
+    if (account) {
+      touchSession(sessionToken);
+      const earned = ACCOUNT_CLEARANCE[account.role] ?? STRANGER;
+      return atKeyboard ? earned : lower(earned, NETWORK_CEILING);
+    }
+    // A cookie that does not resolve is an expired or revoked session, not a
+    // claim to anything. It falls through to whatever the connection itself
+    // has earned, which at the keyboard is still everything.
+  }
+
+  if (atKeyboard) return FULL;
 
   // An enrolled device, and the distinction from the bug at the top of this
   // file matters. `?clearance=sacred` was a CLAIM — anybody could type it. A
@@ -171,6 +220,12 @@ export function clearanceFor(req) {
   if (!device) return STRANGER;
   touchDevice(device.id);
   return lower(ROLE_CLEARANCE[device.role] ?? STRANGER, NETWORK_CEILING);
+}
+
+/** The signed-in account behind a request, for attributing what it writes. */
+export function accountOf(req) {
+  const token = cookies(req)?.[SESSION_COOKIE];
+  return token ? accountForSession(token) : null;
 }
 
 /** The device behind a request, for attributing what it writes. */

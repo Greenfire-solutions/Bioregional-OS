@@ -4395,6 +4395,143 @@ check('a card from a real chapter does not cry wolf about being an example',
     !access.mayRun('withdraw_media', 'council'));
 }
 
+
+// ── Signing in ────────────────────────────────────────────────────────────
+// An account's role feeds the SAME ladder a device's role feeds. Most of what
+// is checked here is that there is no second way in and no way to widen.
+{
+  const acc = await import('../engines/accounts.mjs');
+  const { clearanceFor, SESSION_COOKIE } = await import('../server/clearance.mjs');
+
+  const req = (opts = {}) => ({
+    socket: { remoteAddress: opts.keyboard === false ? '192.168.1.50' : '127.0.0.1' },
+    headers: {
+      ...(opts.cookie ? { cookie: `${SESSION_COOKIE}=${opts.cookie}` } : {}),
+      ...(opts.device ? { 'x-bros-device': opts.device } : {}),
+    },
+  });
+
+  check('a password under ten characters is refused, with the reason',
+    refused(acc.createAccount('test', { username: 'ana', password: 'short' }), 'password_too_short'));
+  check('a username that is not a username is refused',
+    refused(acc.createAccount('test', { username: 'a n a!', password: 'four ordinary words' }), 'bad_username'));
+
+  const steward = acc.createAccount('test', {
+    username: 'Ana', password: 'correct horse battery staple',
+    display_name: 'Ana Restrepo', role: 'steward',
+  });
+  check('an account can be made, and answers with no hash in it',
+    steward.created === true && !JSON.stringify(steward).includes('scrypt'));
+  check('the username is folded to lower case, so Ana and ana are one person',
+    steward.username === 'ana');
+  check('and a second account cannot take the same name',
+    refused(acc.createAccount('test',
+      { username: 'ana', password: 'another long password' }), 'username_taken'));
+
+  const member = acc.createAccount('test', {
+    username: 'bo', password: 'a perfectly fine passphrase', display_name: 'Bo', role: 'member',
+  });
+
+  // The two failures are one refusal, because telling them apart enumerates
+  // who is in a commons — on a shared wifi, that is the list of people present.
+  const wrongUser = acc.signIn('test', { username: 'nobody', password: 'correct horse battery staple' });
+  const wrongPass = acc.signIn('test', { username: 'ana', password: 'not the password' });
+  check('a wrong username and a wrong password fail identically',
+    wrongUser.error === 'sign_in_failed' && wrongPass.error === 'sign_in_failed'
+    && wrongUser.message === wrongPass.message);
+
+  const session = acc.signIn('test', { username: 'ana', password: 'correct horse battery staple' });
+  check('the right password signs in', !!session.token && session.account.role === 'steward');
+  check('and the session token is not stored anywhere in the database',
+    !one('SELECT token_hash FROM sessions WHERE token_hash=?', session.token));
+
+  // ── The ladder, which is the whole design ──────────────────────────────
+  const bo = acc.signIn('test', { username: 'bo', password: 'a perfectly fine passphrase' });
+
+  check('at the keyboard, signed in as a member, the connection is a member',
+    clearanceFor(req({ cookie: bo.token })) === 'members');
+  check('signing in NARROWS and never widens — a member at the keyboard is not the steward',
+    clearanceFor(req({ cookie: bo.token })) !== 'sacred');
+  check('at the keyboard with no session, nothing changes from before',
+    clearanceFor(req()) === 'sacred');
+  check('over the wifi a member is a member',
+    clearanceFor(req({ cookie: bo.token, keyboard: false })) === 'members');
+  check('over the wifi a STEWARD is still capped at the network ceiling',
+    clearanceFor(req({ cookie: session.token, keyboard: false })) === 'council');
+  check('a stranger on the wifi with no session is a stranger',
+    clearanceFor(req({ keyboard: false })) === 'public');
+  check('a made-up cookie earns nothing',
+    clearanceFor(req({ cookie: 'not-a-real-token', keyboard: false })) === 'public');
+
+  // There is ONE permission system. A tool a member may not run is refused the
+  // same way whether they arrived by device or by password.
+  const access = await import('../ai/access.mjs');
+  check('a signed-in member cannot run council work, exactly as a member device cannot',
+    !access.mayRun('review_proof', clearanceFor(req({ cookie: bo.token, keyboard: false }))));
+  check('and a signed-in coordinator can',
+    access.mayRun('review_proof', 'council'));
+  check('making accounts is never reachable from the wifi as a member',
+    !access.mayRun('create_account', 'members'));
+  check('and acting ON somebody else\'s account is the keyboard only',
+    !access.mayRun('set_account_role', 'council')
+    && !access.mayRun('set_account_password', 'council')
+    && !access.mayRun('sign_out_everywhere', 'council'));
+
+  // ── Sessions end ───────────────────────────────────────────────────────
+  acc.signOut(bo.token);
+  check('signing out ends the session immediately',
+    clearanceFor(req({ cookie: bo.token, keyboard: false })) === 'public');
+
+  const bo2 = acc.signIn('test', { username: 'bo', password: 'a perfectly fine passphrase' });
+  const changed = acc.setPassword(member.id, { password: 'a brand new long passphrase', by_steward: true });
+  check('a steward can set a password without knowing the old one',
+    !changed.error && changed.must_change === true);
+  check('and doing so ends every session that account had open',
+    clearanceFor(req({ cookie: bo2.token, keyboard: false })) === 'public');
+  check('changing your own password needs the current one',
+    refused(acc.setPassword(member.id,
+      { current: 'wrong', password: 'yet another long one' }), 'wrong_password'));
+
+  // ── Nobody is deleted, and somebody is always left holding it ──────────
+  check('an account row cannot be deleted at all', (() => {
+    try { dbRun('DELETE FROM accounts WHERE id=?', member.id); return false; }
+    catch { return true; }
+  })());
+  check('the last steward cannot be demoted',
+    refused(acc.setRole(steward.id, 'member'), 'last_steward'));
+  check('nor suspended',
+    refused(acc.setStatus(steward.id, 'suspended'), 'last_steward'));
+
+  // The bug that only a signed-in MEMBER could have found. An account's RID is
+  // `council`, the clearance is computed before the route runs, and `withhold()`
+  // walks the answer removing anything above the caller — so a member asking
+  // who they were had their own account stripped out of the reply and the
+  // interface showed them signed out while they were signed in. Sign-in had it
+  // too, for one request: the clearance is worked out before the sign-in
+  // happens, so the caller is still `public` when their own account is removed
+  // from the answer proving who they are.
+  {
+    const { api } = await import('../server/routes/api.mjs');
+    const res = { writeHead() {}, end() {}, write() {}, setHeader() {} };
+    const boIn = acc.signIn('test', { username: 'bo', password: 'a brand new long passphrase' });
+    const meReq = {
+      method: 'GET', socket: { remoteAddress: '192.168.1.50' },
+      headers: { cookie: `${SESSION_COOKIE}=${boIn.token}` },
+    };
+    const mine = await api(meReq, res, new URL('http://localhost/api/me'));
+    check('a signed-in member is told who they are, rather than withheld from themselves',
+      mine?.account?.username === 'bo' && mine?.clearance === 'members',
+      JSON.stringify(mine).slice(0, 110));
+  }
+
+  const suspended = acc.setStatus(member.id, 'suspended');
+  check('a suspended account is told why, rather than failing like a wrong password',
+    refused(acc.signIn('test',
+      { username: 'bo', password: 'a brand new long passphrase' }), 'account_not_active'));
+  check('and it stays on the list as the author of what it did',
+    acc.listAccounts('test').some((a) => a.id === member.id && a.status === 'suspended'));
+}
+
 // ── Report ────────────────────────────────────────────────────────────────
 const c = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', x: '\x1b[0m' };
 console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);
