@@ -33,7 +33,7 @@ function hsl(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
-export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect,
+export default function Map3D({ places = [], hubs = [], signals = [], focus, onSelect, here = null,
                                 onAddHere, moving = null, onMoved, onCancelMove,
                                 version = 0, selectedId = null }) {
   const [mode, setMode] = useState('terrain');          // terrain | globe
@@ -103,10 +103,35 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     return () => window.removeEventListener('keydown', esc);
   }, [armed, onCancelMove]);
 
+  // The map opens on the person, not on the chapter. It used to open on
+  // places[0] always, so somebody reading the board in Asheville turned to the
+  // map and was shown Austin. The chapter is one press away (see the buttons),
+  // and with no fix at all the chapter is still where it opens.
   const home = places[0] ?? { lat: 30.26, lng: -97.79 };
+  const start = here ?? home;
   const [view, setView] = useState({
-    longitude: home.lng, latitude: home.lat, zoom: 8.6, pitch: 48, bearing: -16,
+    longitude: start.lng, latitude: start.lat, zoom: 8.6, pitch: 48, bearing: -16,
   });
+  const goTo = (p, zoom = 8.6) => p && setView((v) => ({
+    ...v, longitude: p.lng, latitude: p.lat, zoom, transitionDuration: 900,
+  }));
+  // Follow the person when the fix arrives or moves about a kilometre. Not on
+  // mount: the opening view already used it, and a `focus` somebody asked for
+  // must win. Two rules, both from watching it go wrong:
+  //   - it JUMPS rather than flies. The fix usually lands a second after the
+  //     map opens, and an animated flight from Texas to Carolina that stalls
+  //     when the tab is throttled leaves the map parked somewhere in between.
+  //   - once somebody has moved the map themselves it is theirs. A wifi fix
+  //     that wobbles must not yank the view out from under a person reading it.
+  const hereKey = here ? `${here.lat.toFixed(2)},${here.lng.toFixed(2)}` : null;
+  const lastHere = useRef(hereKey);
+  const touched = useRef(false);
+  useEffect(() => {
+    if (hereKey === lastHere.current) return;
+    lastHere.current = hereKey;
+    if (!here || touched.current || focus) return;
+    setView((v) => ({ ...v, longitude: here.lng, latitude: here.lat, zoom: 8.6, transitionDuration: 0 }));
+  }, [hereKey]);
 
   useEffect(() => {
     if (!focus) return;
@@ -145,6 +170,9 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       }));
     }
 
+    const mine = String((level === 'l4' ? here?.l4 : here?.l3) ?? '').toLowerCase();
+    const isMine = (f) => !!mine && String(f.properties.display_code ?? '').toLowerCase() === mine;
+
     if (eco?.features?.length) {
       L.push(new GeoJsonLayer({
         id: `eco-${level}`,
@@ -153,9 +181,11 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         stroked: true, filled: true,
         extruded: relief && mode === 'terrain',
         wireframe: false,
-        getFillColor: (f) => [...colorFor(f.properties.display_name), mode === 'globe' ? 210 : 88],
-        getLineColor: [247, 245, 240, 180],
-        getLineWidth: 60,
+        getFillColor: (f) => [...colorFor(f.properties.display_name), mode === 'globe' ? 210 : isMine(f) ? 150 : 88],
+        // The region the person is standing in is drawn brighter and outlined
+        // in gold, so "which of these am I in" is answered by looking.
+        getLineColor: (f) => (isMine(f) ? [232, 190, 92, 255] : [247, 245, 240, 180]),
+        getLineWidth: (f) => (isMine(f) ? 260 : 60),
         lineWidthMinPixels: 0.8,
         // Relief is visual separation between neighbouring regions, not measured elevation.
         getElevation: (f) => (relief ? 900 + (colorFor(f.properties.display_name)[0] % 9) * 500 : 0),
@@ -182,7 +212,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
             biome: i.object.properties.biome ?? null,
           },
         }),
-        updateTriggers: { getElevation: [relief], getFillColor: [mode] },
+        updateTriggers: { getElevation: [relief], getFillColor: [mode, mine], getLineColor: [mine], getLineWidth: [mine] },
       }));
     }
 
@@ -236,8 +266,26 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       }
     }
 
+    // You are here. Drawn last so nothing sits on top of it, and in both
+    // projections, because it is the one point every visitor looks for first.
+    if (here) {
+      const at = [{ lng: here.lng, lat: here.lat }];
+      const common = {
+        data: at, getPosition: (d) => [d.lng, d.lat], radiusUnits: 'pixels',
+        parameters: { depthTest: false },
+      };
+      L.push(new ScatterplotLayer({ ...common, id: 'here-halo', getRadius: 18, getFillColor: [232, 190, 92, 60],
+        stroked: true, getLineColor: [232, 190, 92, 200], lineWidthMinPixels: 1.5 }));
+      L.push(new ScatterplotLayer({ ...common, id: 'here-dot', getRadius: 6, getFillColor: [232, 190, 92, 255],
+        stroked: true, getLineColor: [8, 15, 13, 255], lineWidthMinPixels: 2, pickable: true,
+        onHover: (i) => setHover(i.object ? {
+          x: i.x, y: i.y, kind: 'You are here', title: here.name ?? 'Where this device is',
+        } : null) }));
+    }
+
     return L;
-  }, [eco, level, relief, mode, signals, hubs, places, features, kindsOn, onSelect]);
+  }, [eco, level, relief, mode, signals, hubs, places, features, kindsOn, onSelect,
+      here?.lat, here?.lng, here?.l3, here?.l4, here?.name]);
 
   // Keyed on `version`, not on row counts. Closing a gate — the very action the
   // panel offers — changes no count anywhere: the same quests, places and
@@ -262,7 +310,10 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
       <DeckGL
         views={views}
         viewState={mode === 'globe' ? { ...view, zoom: Math.min(view.zoom, 5), pitch: 0, bearing: 0 } : view}
-        onViewStateChange={({ viewState }) => setView(viewState)}
+        onViewStateChange={({ viewState, interactionState: i }) => {
+          if (i?.isDragging || i?.isPanning || i?.isZooming || i?.isRotating) touched.current = true;
+          setView(viewState);
+        }}
         // scrollZoom named explicitly. It is on by default, but the wheel was
         // reported dead and an option that is only on by default is one a
         // future prop spread can switch off without anybody noticing.
@@ -322,6 +373,12 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         </div>
         <div className="flex overflow-hidden rounded border border-[var(--line)] bg-[var(--paper)] shadow-sm">
           <Btn active={relief} onClick={() => setRelief((v) => !v)} icon={Layers} label="Relief" />
+        </div>
+        {/* Two places a person wants back at once: where they are, and where
+            the commons is. Away from home these are far apart. */}
+        <div className="flex overflow-hidden rounded border border-[var(--line)] bg-[var(--paper)] shadow-sm">
+          {here && <Btn onClick={() => goTo(here)} icon={Crosshair} label="Where I am" />}
+          {places[0]?.lat != null && <Btn onClick={() => goTo(places[0])} icon={Home} label="The commons" />}
         </div>
         {/* The map was readable and not writable, and the gesture that was
             meant to fix that could not be seen. A button can. */}

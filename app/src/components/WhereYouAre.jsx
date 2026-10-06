@@ -3,60 +3,25 @@ import {
   Crosshair, Loader2, MapPin, RefreshCw, TriangleAlert, ChevronDown, ChevronRight, Download, WifiOff,
 } from 'lucide-react';
 import { callTool } from '../api.js';
+import { useHere, locate, lookUpTyped, forget } from '../here.js';
 import { DossierSections } from './RegionPanel.jsx';
 
 /**
  * Where the person holding this screen is standing, and everything the OS
  * knows about that ground.
  *
- * The board above the fold was only ever about the chapter: open the OS in
- * Asheville and it told you about Barton Creek, because that is where the
- * commons is. Both are true and they are different questions. This panel
- * answers the other one, every time the app opens, without being asked:
- * the ecoregion and its parents, the watershed, the weather, the nearest
- * gage, the soil, what lives here, and the whole downloaded dossier for the
- * ecoregion and the bioregion it sits in.
+ * The board was only ever about the chapter: open the OS in Asheville and it
+ * told you about Barton Creek, because that is where the commons is. Both are
+ * true and they are different questions. This panel answers the other one: the
+ * ecoregion and its parents, the watershed, the weather, the nearest gage, the
+ * soil, what lives here, and the whole downloaded dossier for the ecoregion
+ * and the bioregion it sits in.
  *
- * How it stays fast and stays honest:
- *
- *   THE LAST ANSWER PAINTS FIRST. The previous fix and its lookup are kept in
- *   this browser, so the panel is never empty while the device is thinking.
- *   It says how old that answer is, and replaces it when the new one lands.
- *
- *   INSTANT, THEN FULL. `look_around` at depth "instant" is boundaries, sky
- *   and weather. "full" adds the gage, the soil and the species and takes
- *   seconds longer, so it arrives second and fills in underneath.
- *
- *   A LAPTOP HAS NO GPS. It triangulates from wifi, and asking it for high
- *   accuracy regularly times out. So the ask is for ordinary accuracy, with a
- *   generous timeout, and the accuracy it reports is printed rather than
- *   implied. An ecoregion is tens of kilometres across; a 300 metre fix is
- *   plenty.
- *
- *   EVERY WAY IT CAN FAIL SAYS WHICH ONE IT WAS. "Denied" covers a browser
- *   setting, a system setting and a dismissed prompt, and each has a different
- *   fix. Whatever happens, typing a place name still works.
- *
- *   NOTHING IS WRITTEN TO THE COMMONS. `look_around` writes nothing. The fix
- *   lives in this browser's storage and can be forgotten with one click.
+ * It holds no location of its own. The fix and the lookup live in here.js, so
+ * this panel on the board, the same panel beside the map, and the map itself
+ * all show one answer. `compact` is the version for a narrow column.
  */
 
-const KEY = 'bros.here';
-const REFRESH_AFTER_MS = 5 * 60 * 1000;      // re-ask the device when the tab comes back after this long
-const MOVED_KM = 0.5;                        // under this, the old lookup still describes the ground
-
-function remembered() {
-  try { return JSON.parse(localStorage.getItem(KEY) ?? 'null'); } catch { return null; }
-}
-function remember(v) {
-  try { v ? localStorage.setItem(KEY, JSON.stringify(v)) : localStorage.removeItem(KEY); } catch { /* private window */ }
-}
-function km(a, b) {
-  const R = 6371, r = Math.PI / 180;
-  const dy = (b.lat - a.lat) * r, dx = (b.lng - a.lng) * r;
-  const h = Math.sin(dy / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dx / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
 function ago(at) {
   const m = Math.round((Date.now() - at) / 60000);
   if (m < 1) return 'just now';
@@ -71,121 +36,18 @@ function bold(text) {
       : <React.Fragment key={i}>{part}</React.Fragment>);
 }
 
-/** Why the device would not say where it is, as something a person can act on. */
-async function whyNot(err) {
-  if (!window.isSecureContext) {
-    return 'This page is not on a secure address, so the browser will not share a location here. Type a place instead.';
-  }
-  if (err?.code === 1) {
-    let state = null;
-    try { state = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch { /* older browser */ }
-    if (state === 'denied') {
-      return 'Location is blocked for this page. Click the icon at the left of the address bar, set Location to Allow, then press Find me.';
-    }
-    return 'The browser was not allowed to read a location. On a Mac, turn on Location Services for this browser in System Preferences, Security and Privacy, then press Find me.';
-  }
-  if (err?.code === 3) return 'This device took too long to work out where it is. Press Find me to try again, or type a place.';
-  return 'This device could not work out where it is. Wifi needs to be on for a computer to locate itself. Press Find me to try again, or type a place.';
-}
-
-export default function WhereYouAre({ onShowOnMap, className = '' }) {
-  const start = useRef(remembered()).current;
-  const [fix, setFix] = useState(start?.fix ?? null);       // { lat, lng, accuracy, at, typed }
-  const [look, setLook] = useState(start?.look ?? null);
-  const [locating, setLocating] = useState(false);
-  const [reading, setReading] = useState(false);
-  const [problem, setProblem] = useState(null);
+export default function WhereYouAre({ onShowOnMap, compact = false, className = '' }) {
+  const { fix, look, locating, reading, problem } = useHere();
   const [typing, setTyping] = useState(false);
   const [query, setQuery] = useState('');
-  const seq = useRef(0);
-  const fixRef = useRef(fix); fixRef.current = fix;
-  const lookRef = useRef(look); lookRef.current = look;
-
-  /** Look a point (or a typed name) up: the instant answer, then the full one. */
-  const read = useCallback(async (opts, nextFix) => {
-    const mine = ++seq.current;
-    setReading(true);
-    const first = await callTool('look_around', { depth: 'instant', ...opts }).catch(() => null);
-    if (mine !== seq.current) return;
-    if (!first || first.error) {
-      setReading(false);
-      setProblem(first?.message ?? 'The lookup did not answer. Is this computer online?');
-      return;
-    }
-    const f = { ...nextFix, lat: first.place.lat, lng: first.place.lng, at: Date.now() };
-    setFix(f); setLook(first); setProblem(null);
-    remember({ fix: f, look: first });
-    const full = await callTool('look_around', { depth: 'full', lat: f.lat, lng: f.lng }).catch(() => null);
-    if (mine !== seq.current) return;
-    setReading(false);
-    if (full && !full.error) {
-      // The typed name is the one the person chose; a reverse lookup of its
-      // coordinates would rename it to whatever suburb is nearest.
-      const kept = opts.query ? { ...full, place: { ...full.place, name: first.place.name, detail: first.place.detail } } : full;
-      setLook(kept); remember({ fix: f, look: kept });
-    }
-  }, []);
-
-  /** Ask the device. `quiet` is the automatic ask on open: it never nags. */
-  const locate = useCallback((quiet = false) => {
-    if (!navigator.geolocation) {
-      if (!quiet) setProblem('This browser cannot share a location. Type a place instead.');
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        const here = {
-          lat: Math.round(pos.coords.latitude * 1e4) / 1e4,
-          lng: Math.round(pos.coords.longitude * 1e4) / 1e4,
-          accuracy: Math.round(pos.coords.accuracy),
-          typed: false,
-        };
-        const was = fixRef.current;
-        const full = lookRef.current?.depth === 'full';
-        // Same ground, and the answer is recent: keep it, just note the new fix.
-        if (was && !was.typed && full && km(was, here) < MOVED_KM && Date.now() - was.at < 30 * 60 * 1000) {
-          const f = { ...was, accuracy: here.accuracy, at: Date.now() };
-          setFix(f); setProblem(null); remember({ fix: f, look: lookRef.current });
-          return;
-        }
-        read({ lat: here.lat, lng: here.lng }, here);
-      },
-      async (err) => {
-        setLocating(false);
-        // With an answer already on screen, a quiet failure stays quiet.
-        if (quiet && fixRef.current) return;
-        setProblem(await whyNot(err));
-      },
-      { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 },
-    );
-  }, [read]);
-
-  // On open, and again whenever the tab comes back after a while. A place the
-  // person typed is their choice and is left alone until they ask for the
-  // device again.
-  useEffect(() => {
-    if (!fixRef.current?.typed) locate(true);
-    const back = () => {
-      const f = fixRef.current;
-      if (document.visibilityState !== 'visible' || f?.typed) return;
-      if (!f || Date.now() - f.at > REFRESH_AFTER_MS) locate(true);
-    };
-    document.addEventListener('visibilitychange', back);
-    return () => document.removeEventListener('visibilitychange', back);
-  }, [locate]);
+  const two = compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2';
 
   function submitTyped(e) {
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
     setTyping(false); setQuery('');
-    read({ query: q }, { typed: true, accuracy: null });
-  }
-  function forget() {
-    seq.current++;
-    remember(null); setFix(null); setLook(null); setProblem(null); setReading(false);
+    lookUpTyped(q);
   }
 
   const eco = look?.ecoregion;
@@ -276,7 +138,7 @@ export default function WhereYouAre({ onShowOnMap, className = '' }) {
           {headline && <p className="px-4 pt-3 text-[15px] leading-snug">{bold(headline)}</p>}
 
           {(eco || shed) ? (
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 px-4 py-3 sm:grid-cols-2" data-here-nest>
+            <dl className={`grid ${two} gap-x-6 gap-y-2 px-4 py-3`} data-here-nest>
               <Fact label="Ecoregion" value={eco?.ecoregion_name} note={eco?.ecoregion_code && `EPA Level IV · ${eco.ecoregion_code}`} />
               <Fact label="Bioregion" value={eco?.bioregion_name ?? eco?.level3_name} note={eco?.level3_code && `EPA Level III · ${eco.level3_code}`} />
               <Fact label="Division" value={eco?.level2_name} />
@@ -308,11 +170,11 @@ export default function WhereYouAre({ onShowOnMap, className = '' }) {
           </ul>
 
           {eco?.ecoregion_code && (
-            <Dossier code={eco.ecoregion_code} scheme="epa-l4" open
+            <Dossier code={eco.ecoregion_code} scheme="epa-l4" open two={two}
               title={`Everything about the ${eco.ecoregion_name} ecoregion`} />
           )}
           {eco?.level3_code && (
-            <Dossier code={eco.level3_code} scheme="epa-l3"
+            <Dossier code={eco.level3_code} scheme="epa-l3" two={two}
               title={`The wider ${eco.level3_name} bioregion`} />
           )}
 
@@ -352,7 +214,7 @@ function Fact({ label, value, note }) {
  * that cannot happen (no connection, or this device may not write) the panel
  * says so and offers the button.
  */
-function Dossier({ code, scheme, title, open: startOpen = false }) {
+function Dossier({ code, scheme, title, two, open: startOpen = false }) {
   const [open, setOpen] = useState(startOpen);
   const [brief, setBrief] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -393,7 +255,7 @@ function Dossier({ code, scheme, title, open: startOpen = false }) {
           {!brief && !failed && <p className="px-4 py-2 text-xs text-[var(--ink-3)]">reading…</p>}
           {has && (
             <>
-              <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+              <div className={`grid ${two} gap-x-6`}>
                 <DossierSections brief={brief} className="px-4 py-2" />
               </div>
               <p className="px-4 pt-1 text-[10px] text-[var(--ink-3)]">

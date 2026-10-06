@@ -25,6 +25,7 @@ import {
   MyPlace, Signals, Quests, Council, Gatherings, Exchange, Learn, Federation, Listen, Measure,
 } from './views/Views.jsx';
 import { get, callTool, device } from './api.js';
+import { useHere, startHere } from './here.js';
 
 // ── The shape of the thing ────────────────────────────────────────────────
 // Thirteen flat tabs were thirteen decisions to make before doing anything.
@@ -159,6 +160,11 @@ export default function App() {
     setVersion((v) => v + 1);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Where the person is standing, asked once for the whole app rather than by
+  // whichever panel happens to be open. The map reads the same answer.
+  const here = useHere();
+  useEffect(() => { startHere(); }, []);
 
   async function loadGates(questId) {
     const g = await callTool('quest_gates', { quest_id: questId });
@@ -341,6 +347,12 @@ export default function App() {
             <div className="flex h-full">
               <div className="relative min-w-0 flex-1">
                 <Map3D places={places} hubs={hubs} signals={signals} focus={focus} version={version}
+                       here={here.fix ? {
+                         lat: here.fix.lat, lng: here.fix.lng,
+                         l3: here.look?.ecoregion?.level3_code ?? null,
+                         l4: here.look?.ecoregion?.ecoregion_code ?? null,
+                         name: here.look?.place?.name ?? null,
+                       } : null}
                        selectedId={picked?.id ?? null}
                        // Pressing a piece of ground opens the form for what
                        // goes there, with the coordinate already in it. The
@@ -394,6 +406,9 @@ export default function App() {
               )}
               {tab === 'place' && (
                 <div className="w-[26rem] shrink-0 overflow-y-auto border-l border-[var(--line)] bg-[var(--paper)] p-4">
+                  {/* The ground under the person first, then the chapter's
+                      own place. Away from home these are two different maps. */}
+                  <WhereYouAre compact className="mb-4" onShowOnMap={focusOn} />
                   <MyPlace data={dash} onFocus={focusOn} />
                 </div>
               )}
