@@ -38,6 +38,11 @@ import { attributionFor } from '../adapters/registry.mjs';
  * the weather and the nearest gage. `depth: 'full'` adds the soil under the
  * place and what lives around it, which are the two most striking answers and
  * also the two slowest, so the interface asks for them second.
+ *
+ * `depth: 'instant'` is quick without the gage. The gage walks a period of
+ * record and was measured at 7 to 30 seconds for a point the OS had never seen
+ * (Asheville, 2026-10-06), which is too long for the panel that greets a person
+ * with where they are standing. It asks for instant, paints, then asks for full.
  */
 export async function lookAround({ query = null, lat = null, lng = null, depth = 'quick' } = {}) {
   let place = null;
@@ -69,7 +74,7 @@ export async function lookAround({ query = null, lat = null, lng = null, depth =
     resolveEcoregion(y, x).catch(() => null),
     resolveWatershed(y, x).catch(() => null),
     weatherNow(y, x).catch((e) => ({ available: false, reason: e.message })),
-    nearestGageContext(y, x).catch(() => null),
+    depth === 'instant' ? null : nearestGageContext(y, x).catch(() => null),
   ];
   if (depth === 'full') {
     jobs.push(groundProfile(y, x).catch(() => null), lifeHere(y, x, { radiusKm: 10 }).catch(() => null));

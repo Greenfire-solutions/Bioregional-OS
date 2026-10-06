@@ -1472,7 +1472,8 @@ export const TOOLS = [
       query: str('A place name, address, creek, or road junction.'),
       lat: num('Latitude, if you already have it.'),
       lng: num('Longitude, if you already have it.'),
-      depth: { type: 'string', enum: ['quick', 'full'], description: 'Default quick.' },
+      depth: { type: 'string', enum: ['instant', 'quick', 'full'],
+               description: 'Default quick. "instant" skips the river gage, for a first paint.' },
     }),
     handler: (i) => firstrun.lookAround({
       query: i.query ?? null, lat: i.lat ?? null, lng: i.lng ?? null, depth: i.depth ?? 'quick',

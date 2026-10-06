@@ -12,6 +12,7 @@ import Assistant from './components/Assistant.jsx';
 import Guide from './components/Guide.jsx';
 import Today from './components/Today.jsx';
 import Commons from './components/Commons.jsx';
+import WhereYouAre from './components/WhereYouAre.jsx';
 import Vitals from './components/Vitals.jsx';
 import Season from './components/Season.jsx';
 import FirstRun from './components/FirstRun.jsx';
@@ -400,6 +401,9 @@ export default function App() {
           ) : (
             <div className="h-full overflow-y-auto p-4">
               <div className="mx-auto max-w-3xl">
+                {/* Where the person is standing comes before where the commons is:
+                    the two are different places for anyone who travels. */}
+                {tab === 'home' && <WhereYouAre className="mb-4" onShowOnMap={focusOn} />}
                 {tab === 'home' && <Commons onGoTo={setTab} onChanged={load} />}
                 {tab === 'today' && <Today onChanged={load} onGoTo={setTab} />}
                 {tab === 'vitals' && <Vitals />}

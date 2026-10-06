@@ -114,18 +114,7 @@ export default function RegionPanel({ region, onClose }) {
               Read from disk. No connection was used.
             </p>
           )}
-          {SECTIONS.map(({ key, label, Icon }) => {
-            const sec = brief[key];
-            if (!sec || (Array.isArray(sec) && !sec.length)) return null;
-            return (
-              <section key={key} className="px-4 py-2.5">
-                <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
-                  <Icon className="h-3 w-3" /> {label}
-                </div>
-                <Lines value={sec} />
-              </section>
-            );
-          })}
+          <DossierSections brief={brief} />
           {brief.stale_sections?.length > 0 && (
             <p className="px-4 py-2 text-[10px] text-[var(--ink-3)]">
               Past its refresh date: {brief.stale_sections.join(', ')}. It still reads; it is just older.
@@ -135,6 +124,26 @@ export default function RegionPanel({ region, onClose }) {
       )}
     </aside>
   );
+}
+
+/**
+ * The sections of one downloaded dossier. Exported because the panel for where
+ * a person is standing shows the same dossier, and a second renderer for the
+ * same data is how two screens come to disagree about one region.
+ */
+export function DossierSections({ brief, className = 'px-4 py-2.5' }) {
+  return SECTIONS.map(({ key, label, Icon }) => {
+    const sec = brief?.[key];
+    if (!sec || (Array.isArray(sec) && !sec.length)) return null;
+    return (
+      <section key={key} className={className}>
+        <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+          <Icon className="h-3 w-3" /> {label}
+        </div>
+        <Lines value={sec} />
+      </section>
+    );
+  });
 }
 
 const SECTIONS = [
