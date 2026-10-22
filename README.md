@@ -8,6 +8,12 @@ with no account and no cloud.
 
 ![AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-4A5D4E) ![Node 22+](https://img.shields.io/badge/node-22%2B-4A5D4E) ![local-first](https://img.shields.io/badge/data-stays%20on%20your%20machine-D4AF37)
 
+Built by [Green Fire Research and Innovation Center](https://green-fire-site.vercel.app/) as part of its
+[bioregional AI and bioregional technology](https://green-fire-site.vercel.app/bioregional-ai) work, alongside
+tools for [eco villages](https://green-fire-site.vercel.app/eco-village-technology),
+[permaculture](https://green-fire-site.vercel.app/permaculture-ai) and [land projects](https://green-fire-site.vercel.app/ai-for-land-projects).
+More on what we mean by [solarpunk technology](https://green-fire-site.vercel.app/solarpunk).
+
 ---
 
 ## Getting it
