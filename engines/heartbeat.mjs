@@ -1,0 +1,260 @@
+// ── The heartbeat ─────────────────────────────────────────────────────────
+// The machine tending itself while it is running.
+//
+// Deliberately NOT launchd. On macOS, launchd agents cannot read anything under
+// ~/Desktop or ~/Documents without a TCC grant, and they fail *silently* when
+// they can't — a scheduler that lies about running is worse than none. The OS
+// is something you start; while it is up, it keeps itself current.
+import { all, one, run, create } from '../core/db.mjs';
+import * as bio from './bioregional.mjs';
+import { whatsNext } from './operator.mjs';
+import { workList } from './library.mjs';
+import { compile as compileDossier } from '../adapters/dossier.mjs';
+import { groundToday } from './ground.mjs';
+import { refresh as refreshNeighbours, CADENCE_DAYS } from './neighbours.mjs';
+
+const MINUTE = 60_000;
+
+const TASKS = [
+  {
+    name: 'locate_places',
+    every: 6 * 60 * MINUTE,
+    why: 'A place with no watershed, ecoregion or soil cannot ground a council decision.',
+    async run(chapterId) {
+      // soil_source is in this condition so that places located before the land
+      // adapters existed still get Atlas layer 4 filled in, once, on their own.
+      const pending = all(
+        `SELECT id, name FROM places WHERE chapter_id=?
+           AND (watershed_huc IS NULL OR ecoregion_name IS NULL OR soil_source IS NULL)`,
+        chapterId);
+      if (!pending.length) return null;
+      let done = 0;
+      for (const p of pending) {
+        try { await bio.locate(p.id); done++; } catch { /* offline; try again next beat */ }
+      }
+      return done ? `located ${done} place${done === 1 ? '' : 's'}` : null;
+    },
+  },
+  {
+    name: 'refresh_water',
+    every: 3 * 60 * MINUTE,
+    why: 'Public USGS gage data is free, and stale water readings mislead the Land Seat.',
+    async run(chapterId) {
+      const places = all('SELECT id FROM places WHERE chapter_id=? AND lat IS NOT NULL', chapterId);
+      let added = 0, updated = 0;
+      for (const p of places) {
+        try {
+          const r = await bio.ingestWater(p.id);
+          added += r.added ?? 0; updated += r.updated ?? 0;
+        } catch { /* offline */ }
+      }
+      return (added || updated) ? `water: ${added} new, ${updated} updated` : null;
+    },
+  },
+  {
+    name: 'watch_reviews',
+    every: 60 * MINUTE,
+    why: 'A review date that passes unnoticed is the same as having no review date.',
+    async run(chapterId) {
+      const due = all(
+        `SELECT title, review_date FROM decisions WHERE chapter_id=? AND status='decided'
+           AND review_date IS NOT NULL AND date(review_date) <= date('now')`, chapterId);
+      return due.length
+        ? `${due.length} decision${due.length === 1 ? '' : 's'} past review: ${due.map((d) => d.title).join('; ')}`
+        : null;
+    },
+  },
+  {
+    name: 'read_the_ground',
+    every: 60 * MINUTE,
+    why: 'The panel a person reads first must be warm and must survive the wifi dropping.',
+    async run(chapterId) {
+      // Its real job is filling the on-disk cache so "the land today" answers
+      // instantly, and still answers offline. The headline is the by-product.
+      const g = await groundToday(chapterId);
+      if (g.error) return null;
+      return g.weather?.alerts?.length ? `⚠ ${g.headline}` : g.headline;
+    },
+  },
+  {
+    name: 'watch_hazards',
+    every: 60 * MINUTE,
+    why: 'An official alert nobody saw is the same as no alert — and this is the only ' +
+         'upstream allowed to raise a Watch without a human first.',
+    async run(chapterId) {
+      const places = all(
+        'SELECT id, name FROM places WHERE chapter_id=? AND lat IS NOT NULL', chapterId);
+      let added = 0, updated = 0, worst = 'Info';
+      const rank = { Info: 0, Watch: 1, Critical: 2 };
+      for (const p of places) {
+        try {
+          const h = await bio.hazards(p.id);
+          if (h.error) continue;
+          added += h.signals?.added ?? 0;
+          updated += h.signals?.updated ?? 0;
+          if (rank[h.level] > rank[worst]) worst = h.level;
+        } catch { /* offline; the next beat tries again */ }
+      }
+      // Only speak when something actually started. A standing drought class and
+      // a flood zone are true every hour and are not news.
+      if (!added) return null;
+      return `${worst === 'Critical' ? '⚠ ' : ''}${added} new hazard signal${added === 1 ? '' : 's'}` +
+             `${updated ? `, ${updated} still active` : ''}`;
+    },
+  },
+  {
+    name: 'refresh_library',
+    every: 12 * 60 * MINUTE,
+    why: 'The ecoregion library is what the chapter still has when the network is gone. ' +
+         'Each section has its own cadence, so this only fetches what has actually gone stale.',
+    async run(chapterId) {
+      const work = workList(chapterId);
+      const due = [...work.missing, ...work.stale];
+      if (!due.length) return null;
+      // One region per beat. The library is not urgent, and the upstreams are
+      // free public services — there is no reason to arrive as a burst.
+      const t = due[0];
+      try {
+        const r = await compileDossier(t.code, { scheme: t.scheme });
+        if (r.error || r.unchanged) return null;
+        // The same four outcomes scripts/data.mjs learned, in the copy that was
+        // left behind. `skipped` means a long `npm run data -- --all` already
+        // holds the lock — which is not a rare race but the DESIGNED one, since
+        // the whole point of the lock is that these two reach for the same
+        // region. This branch read it as a refresh and called .join on a field
+        // that is not there, and the catch below turned the crash into `null`:
+        // the beat reported nothing to do, looked healthy, and the library task
+        // had in fact not run at all. Waiting your turn is not failing, and it
+        // is not silence either.
+        if (r.skipped) return `${t.code} ${t.name}: waiting — ${r.skipped}`;
+        if (!Array.isArray(r.refreshed)) {
+          return `${t.code} ${t.name}: unrecognised result (${Object.keys(r).join(', ')})`;
+        }
+        const left = due.length - 1;
+        return `${t.code} ${t.name}: ${r.refreshed.join(', ')}` +
+               (left ? ` · ${left} region${left === 1 ? '' : 's'} still to go` : ' · library current');
+      } catch (err) {
+        // A crash here used to be indistinguishable from a quiet beat. Say it.
+        return `${t.code} ${t.name}: could not refresh — ${err.message}`;
+      }
+    },
+  },
+  {
+    name: 'take_stock',
+    every: 30 * MINUTE,
+    why: 'Someone should always be able to ask what needs doing and get an answer.',
+    async run(chapterId) {
+      const n = whatsNext(chapterId);
+      if (n.error || !n.total) return null;
+      const blocking = n.by_kind.blocking ?? 0;
+      return `${n.total} open · ${blocking} blocking · first: ${n.first.title}`;
+    },
+  },
+  {
+    name: 'read_the_neighbours',
+    // Ticks often, fetches rarely. The cadence that matters is seven days and
+    // it is enforced inside refresh() against each peer's own last-read date,
+    // NOT by this interval — because the OS is something you start, and a
+    // seven-day timer inside a process that runs for an afternoon would fire
+    // once at launch and then never again. Age in the database survives a
+    // restart; a timer does not.
+    every: 6 * 60 * MINUTE,
+    why: `What other chapters published, once every ${CADENCE_DAYS} days. Belonging to ` +
+         'something larger is what sustains volunteer groups — and this is the ambient ' +
+         'version of it, with nothing to keep up with.',
+    async run() {
+      const r = await refreshNeighbours();
+      if (!r.read && !r.changed) return null;
+      return r.changed
+        ? `neighbours: ${r.read} read, ${r.changed} changed what they published`
+        : `neighbours: ${r.read} read`;
+    },
+  },
+];
+
+const log = [];           // in-memory; the durable record is the data itself
+
+/**
+ * When each task last RAN, as distinct from when it last had something to say.
+ *
+ * The log only records ticks that produced a result, so a task running every
+ * half hour and correctly finding nothing to do never appeared in it — and
+ * status() reported `last: null`, which is precisely what a task that has never
+ * fired at all looks like. A silent success and a dead timer were the same
+ * value, in the file whose own header says a scheduler that fails silently is
+ * worse than no scheduler.
+ *
+ * "Ran, nothing to report" is the most common healthy outcome a heartbeat has.
+ * It has to be visible, or the only evidence of life is bad news.
+ */
+const lastRun = new Map();   // task name -> { at, had_result, ms, error? }
+let timers = [];
+let started = null;
+
+export function start(chapterId, { quiet = false } = {}) {
+  if (timers.length) return;
+  started = new Date().toISOString();
+
+  for (const task of TASKS) {
+    const tick = async () => {
+      const t0 = Date.now();
+      try {
+        const result = await task.run(chapterId);
+        lastRun.set(task.name, { at: new Date().toISOString(), had_result: !!result, ms: Date.now() - t0 });
+        if (result) {
+          const entry = { at: new Date().toISOString(), task: task.name, result, ms: Date.now() - t0 };
+          log.unshift(entry);
+          log.length = Math.min(log.length, 200);
+          if (!quiet) console.log(`  ♦ ${task.name}: ${result}`);
+        }
+      } catch (err) {
+        lastRun.set(task.name, { at: new Date().toISOString(), had_result: false, ms: Date.now() - t0, error: err.message });
+        log.unshift({ at: new Date().toISOString(), task: task.name, error: err.message });
+      }
+    };
+    // Stagger the first run so starting the OS is not a thundering herd.
+    const delay = 8_000 + TASKS.indexOf(task) * 12_000;
+    const t = setTimeout(() => { tick(); timers.push(setInterval(tick, task.every)); }, delay);
+    timers.push(t);
+  }
+  return TASKS.map((t) => ({ name: t.name, every_minutes: t.every / MINUTE, why: t.why }));
+}
+
+export function stop() {
+  for (const t of timers) { clearTimeout(t); clearInterval(t); }
+  timers = [];
+}
+
+/**
+ * Four states, not two. Exported so all four can be tested — the two that
+ * matter most only occur after a timer has fired, and a test that can only
+ * reach half the states is a test of half the function.
+ */
+export function taskState(armed, run) {
+  if (!armed) return 'not started';
+  if (!run) return 'not run yet';
+  if (run.error) return 'failed on its last tick';
+  return run.had_result ? 'ran, had something to report' : 'ran, nothing to report';
+}
+
+export function status() {
+  return {
+    running: timers.length > 0,
+    started,
+    tasks: TASKS.map((t) => ({
+      name: t.name,
+      every_minutes: t.every / MINUTE,
+      why: t.why,
+      // Two different questions, kept apart. `last_run` answers "is this alive?"
+      // and is set on every tick. `last_result` answers "did it find anything?"
+      // and is null on a healthy quiet task — which is most of them, most of the
+      // time. Reporting only the second made a working task look like a dead one.
+      last_run: lastRun.get(t.name) ?? null,
+      last_result: log.find((l) => l.task === t.name) ?? null,
+      state: taskState(timers.length > 0, lastRun.get(t.name)),
+    })),
+    recent: log.slice(0, 30),
+    note: 'The heartbeat runs only while the OS is running. Nothing happens when it is closed — ' +
+          'that is deliberate: a scheduler that fails silently is worse than no scheduler.',
+  };
+}

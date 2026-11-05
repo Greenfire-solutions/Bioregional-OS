@@ -1,0 +1,636 @@
+import React from 'react';
+import TheGround, { BaselineOffer } from '../components/TheGround.jsx';
+import LandSeat from '../components/LandSeat.jsx';
+import {
+  CheckCircle2, XCircle, AlertTriangle, Droplets, Users, Scale,
+  RefreshCw, BookOpen, Shield, Clock, MapPin, Plus,
+} from 'lucide-react';
+
+export const Card = ({ children, className = '' }) => (
+  <div className={`rounded border border-[var(--line)] bg-[var(--paper)] p-4 ${className}`}>{children}</div>
+);
+export /**
+ * A page heading, and the one thing this page is FOR.
+ *
+ * The primary action used to live in the tab strip, pushed to the far right as
+ * a small outlined pill — styled as navigation, sitting outside the column the
+ * eye is reading, at the size of a label. "Propose to council" is the entire
+ * point of the council page and it looked like a tab nobody had selected.
+ *
+ * It belongs beside the title, filled, at a size that reads as a thing you
+ * press. Heading plus primary action is the oldest arrangement there is,
+ * because it puts the verb where the noun already drew the eye.
+ */
+const H = ({ children, sub, action }) => (
+  <div className="mb-3 flex flex-wrap items-start gap-3">
+    <div className="min-w-0 flex-1">
+      <h2 className="text-base font-medium">{children}</h2>
+      {sub && <p className="mt-0.5 text-xs text-[var(--ink-2)]">{sub}</p>}
+    </div>
+    {action && (
+      <button onClick={action.onClick}
+        className="flex shrink-0 items-center gap-1.5 rounded bg-[var(--moss)] px-3.5 py-2
+                   text-xs font-medium text-[var(--on-accent)] transition-transform
+                   hover:brightness-110 active:scale-[0.98]"
+        style={{ boxShadow: 'var(--glow)' }}>
+        <Plus className="h-4 w-4" />{action.label}
+      </button>
+    )}
+  </div>
+);
+
+/**
+ * Something you can do to the thing you are looking at.
+ *
+ * These were 11px underlined text — "close it", "decide this", "resolve the
+ * red flag" — sitting below a rule at the bottom of a card. Underlined small
+ * text reads as a footnote, and a footnote is not where somebody looks for the
+ * next move. They are buttons now: a border, a hit area, and a verb.
+ *
+ * `tone` carries the only distinction that matters here. Something blocking the
+ * commons is clay; everything else is ordinary. A page where every action
+ * shouts has no emphasis left for the one that needs it.
+ */
+export const Act = ({ onClick, tone = 'plain', children }) => (
+  <button onClick={onClick}
+    className={`rounded border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+      tone === 'urgent'
+        ? 'border-[#E4C9C2] bg-[#FBF1EE] text-[var(--clay)] hover:border-[var(--clay)]'
+        : 'border-[var(--line)] bg-[var(--paper)] text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]'}`}>
+    {children}
+  </button>
+);
+export const Pill = ({ tone = 'neutral', children }) => {
+  const tones = {
+    neutral: 'bg-[var(--line-2)] text-[var(--ink-2)]',
+    good: 'bg-[#E6EFE7] text-[var(--moss)]',
+    warn: 'bg-[#FBF3DC] text-[#8A6D1F]',
+    bad: 'bg-[#FBF1EE] text-[var(--clay)]',
+    water: 'bg-[#E6EEF1] text-[var(--water)]',
+  };
+  return <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${tones[tone]}`}>{children}</span>;
+};
+const sevTone = (s) => ({ Critical: 'bad', Watch: 'warn' }[s] ?? 'water');
+
+// ── My Place ──────────────────────────────────────────────────────────────
+export function MyPlace({ data, onFocus }) {
+  const d = data?.dashboard;
+  const v = data?.viability;
+  const c = data?.chapter;
+  if (!c) return <Empty>No chapter yet. Run <code>npm run seed</code>, or ask the assistant to create one.</Empty>;
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h2 className="text-lg font-medium">{c.name}</h2>
+          <Pill>{c.scale}</Pill>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Represents</div>
+            <p className="text-xs text-[var(--ink-2)]">{c.represents}</p>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Does not represent</div>
+            <p className="text-xs text-[var(--ink-2)]">{c.does_not_represent}</p>
+          </div>
+        </div>
+      </Card>
+
+      <TheGround />
+
+      {v && (
+        <Card>
+          <H sub="Ten questions from the manual. A chapter is viable only when all ten are yes.">
+            Minimum Viable Chapter Test — {v.passed}/{v.total}
+          </H>
+          <div className="space-y-1.5">
+            {v.checks.map((k) => (
+              <div key={k.id} className="flex items-start gap-2 text-xs">
+                {k.pass
+                  ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--moss)]" />
+                  : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--clay)]" />}
+                <div>
+                  <div className={k.pass ? 'text-[var(--ink-2)]' : 'text-[var(--ink)]'}>{k.q}</div>
+                  {!k.pass && <div className="text-[var(--clay)]">→ {k.fix}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <H sub="Leads with what is unresolved.">Seasonal dashboard</H>
+          <Row label="Critical signals" value={d?.critical?.length ?? 0} tone={d?.critical?.length ? 'bad' : 'good'} />
+          <Row label="Watch signals" value={d?.watch?.length ?? 0} tone={d?.watch?.length ? 'warn' : 'good'} />
+          <Row label="Unverified signals" value={d?.unverified_signals ?? 0} />
+          <Row label="Places not yet located" value={d?.unlocated?.length ?? 0} tone={d?.unlocated?.length ? 'warn' : 'good'} />
+          <Row label="Indicators overdue" value={d?.indicators_overdue?.length ?? 0} tone={d?.indicators_overdue?.length ? 'warn' : 'good'} />
+          {d?.water_last_seen && (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[var(--ink-3)]">
+              <Droplets className="h-3 w-3" /> live water data as of {d.water_last_seen}
+            </div>
+          )}
+        </Card>
+        <Card>
+          <H sub="Who carried the work, and whether value returned.">Benefit flow</H>
+          <Row label="Paid hours" value={data?.benefit?.paid_hours ?? 0} />
+          <Row label="Volunteer hours" value={data?.benefit?.volunteer_hours ?? 0} />
+          {data?.benefit?.warning && (
+            <div className="mt-2 flex items-start gap-2 rounded bg-[#FBF3DC] px-2 py-1.5 text-[11px] text-[#8A6D1F]">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{data.benefit.warning}
+            </div>
+          )}
+          {!!data?.care_gaps?.length && (
+            <div className="mt-3">
+              <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Gatherings missing care provision</div>
+              {data.care_gaps.map((g) => <div key={g.id} className="text-xs text-[var(--clay)]">· {g.title}</div>)}
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+const Row = ({ label, value, tone }) => (
+  <div className="flex items-center justify-between border-b border-[var(--line-2)] py-1.5 last:border-0 text-xs">
+    <span className="text-[var(--ink-2)]">{label}</span>
+    <Pill tone={tone ?? 'neutral'}>{value}</Pill>
+  </div>
+);
+export const Empty = ({ children }) => (
+  <div className="rounded border border-dashed border-[var(--line)] p-8 text-center text-sm text-[var(--ink-2)]">{children}</div>
+);
+
+// ── Signals ───────────────────────────────────────────────────────────────
+export function Signals({signals, onFocus, primary}) {
+  const manual = signals.filter((s) => s.source_adapter !== 'usgs');
+  const live = signals.filter((s) => s.source_adapter === 'usgs');
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="Observations from land and people. Verification is a human act.">Signals</H>
+      {manual.map((s) => (
+        <Card key={s.id}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Pill tone={sevTone(s.severity)}>{s.severity}</Pill>
+                <Pill>{s.category}</Pill>
+                {!s.verified && <Pill tone="warn">unverified</Pill>}
+              </div>
+              <h3 className="mt-1.5 text-sm font-medium">{s.title}</h3>
+              <p className="mt-1 text-xs text-[var(--ink-2)]">{s.description}</p>
+              <div className="mt-1.5 text-[11px] text-[var(--ink-3)]">{s.location_name} · {s.author}</div>
+            </div>
+            {s.lat != null && (
+              <button onClick={() => onFocus({ lat: s.lat, lng: s.lng })}
+                className="shrink-0 rounded border border-[var(--line)] p-1.5 hover:border-[var(--moss)]" title="Show on map">
+                <MapPin className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </Card>
+      ))}
+      {!!live.length && (
+        <Card>
+          <H sub={`${live.length} live USGS gage readings, public domain. Refreshed by the Bioregional engine.`}>
+            Automated water signals
+          </H>
+          <div className="max-h-72 space-y-1 overflow-y-auto">
+            {live.slice(0, 60).map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-2 border-b border-[var(--line-2)] py-1 text-xs last:border-0">
+                <span className="truncate text-[var(--ink-2)]">{s.title}</span>
+                <span className="shrink-0 font-mono text-[11px]">{s.quantity_value} {s.quantity_unit}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ── Quests ────────────────────────────────────────────────────────────────
+export function Quests({quests, tasks = [], gates, onLoadGates, onFocus, onAct, primary}) {
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="A high score never overrides a red flag, missing consent, or a missing maintenance owner.">Quests</H>
+      {quests.map((q) => {
+        const g = gates[q.id];
+        const open = g?.filter((x) => x.required && !x.satisfied) ?? null;
+        return (
+          <Card key={q.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone={q.status === 'Complete' ? 'good' : 'neutral'}>{q.status}</Pill>
+                  <Pill>{q.stage.replace(/_/g, ' ')}</Pill>
+                  {q.category && <Pill>{q.category}</Pill>}
+                </div>
+                <h3 className="mt-1.5 text-sm font-medium">{q.title}</h3>
+                <p className="mt-1 text-xs text-[var(--ink-2)]">{q.description}</p>
+              </div>
+              {q.lat != null && (
+                <button onClick={() => onFocus({ lat: q.lat, lng: q.lng })}
+                  className="shrink-0 rounded border border-[var(--line)] p-1.5 hover:border-[var(--moss)]">
+                  <MapPin className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {/* ── The work inside this project ───────────────────────────
+                A project was a paragraph with nine gates on it, and what
+                anybody was actually going to DO lived on another screen the
+                first person to look never found. The gates are the protocol's
+                half; this is the Saturday half, and it belongs on the same
+                card. */}
+            <TasksOn quest={q} tasks={tasks.filter((t) => t.quest_id === q.id)} onAct={onAct} />
+
+            <div className="mt-3 border-t border-[var(--line-2)] pt-2">
+              {!g ? (
+                <Act onClick={() => onLoadGates(q.id)}>Check consent &amp; safety gates</Act>
+              ) : (
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+                    Gates — {open.length ? `${open.length} open` : 'all satisfied'}
+                  </div>
+                  {g.map((x) => (
+                    <div key={x.gate} className="flex items-center gap-2 text-[11px]">
+                      {x.satisfied
+                        ? <CheckCircle2 className="h-3 w-3 text-[var(--moss)]" />
+                        : <XCircle className="h-3 w-3 text-[var(--clay)]" />}
+                      <span className={x.satisfied ? 'text-[var(--ink-3)]' : 'text-[var(--ink)]'}>
+                        {x.gate.replace(/_/g, ' ')}
+                      </span>
+                      {!x.satisfied && onAct && (
+                        <Act tone="urgent" onClick={() => onAct('satisfy_quest_gate', { quest_id: q.id, gate: x.gate })}>Close a gate</Act>
+                      )}
+                    </div>
+                  ))}
+                  {onAct && (
+                    <div className="flex gap-3 pt-1.5">
+                      <Act onClick={() => onAct('update_quest', { quest_id: q.id })}>Define the project</Act>
+                      <Act onClick={() => onAct('advance_quest', { quest_id: q.id })}>Advance a stage</Act>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * A project's tasks, on the project.
+ *
+ * Deliberately a SUMMARY plus a door, not a second copy of the Tasks screen.
+ * Two full task interfaces would be two places to fix a bug in — the same
+ * argument verbs.js and actions.js make about wording and behaviour. What a
+ * person needs here is to see that the work exists, who has it, and whether
+ * anything is missing its evidence.
+ *
+ * The empty state is the important one. A project with no tasks is the normal
+ * state of every project in a commons that has just upgraded, and a blank space
+ * there says the feature is missing rather than unused.
+ */
+function TasksOn({ quest, tasks, onAct }) {
+  const open = tasks.filter((t) => t.status !== 'done' && t.status !== 'abandoned');
+  const unclaimed = open.filter((t) => !t.assignees?.length).length;
+  const needEvidence = open.filter((t) => t.evidence === 'none').length;
+
+  return (
+    <div className="mt-3 border-t border-[var(--line-2)] pt-2">
+      <div className="mb-1.5 flex items-center gap-2">
+        <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+          The work {tasks.length ? `— ${open.length} open of ${tasks.length}` : ''}
+        </div>
+        <button onClick={() => onAct?.('add_task', { quest_id: quest.id })}
+          className="ml-auto flex items-center gap-1 rounded border border-[var(--line)] px-2 py-0.5
+                     text-[10px] text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]">
+          <Plus className="h-3 w-3" />Add a task
+        </button>
+      </div>
+
+      {!tasks.length ? (
+        <p className="text-[11px] leading-snug text-[var(--ink-3)]">
+          Nothing written down yet — what is somebody actually going to do?
+          Tasks carry their own point on the map, and the ones that change the land
+          do not close without a before-and-after.
+        </p>
+      ) : (
+        <>
+          <ul className="space-y-1">
+            {open.slice(0, 4).map((t) => (
+              <li key={t.id} className="flex items-baseline gap-2 text-[11px]">
+                <span className="truncate text-[var(--ink)]">{t.title}</span>
+                <span className="ml-auto shrink-0 text-[10px] text-[var(--ink-3)]">
+                  {t.assignees?.length
+                    ? t.assignees.map((a) => a.person_name).join(', ')
+                    : 'nobody yet'}
+                </span>
+              </li>
+            ))}
+            {open.length > 4 && (
+              <li className="text-[10px] text-[var(--ink-3)]">and {open.length - 4} more</li>
+            )}
+          </ul>
+          {(unclaimed || needEvidence) && (
+            <p className="mt-1.5 text-[10px] leading-snug text-[var(--ink-3)]">
+              {[unclaimed && `${unclaimed} nobody has picked up`,
+                needEvidence && `${needEvidence} with no before-and-after`]
+                .filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Council ───────────────────────────────────────────────────────────────
+export function Council({decisions, due, onAct, primary}) {
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="Every agenda item carries a Land Seat report. Irreversible items need a heavier method.">Council</H>
+
+      {/* Above the agenda, because the report is written here and read later.
+          The measurements were always on this machine and never on this page. */}
+      <LandSeat />
+      {!!due?.length && (
+        <Card className="border-[#E4C9C2] bg-[#FBF1EE]">
+          <div className="flex items-center gap-2 text-xs font-medium text-[var(--clay)]">
+            <Clock className="h-3.5 w-3.5" /> {due.length} decision{due.length === 1 ? '' : 's'} due for review
+          </div>
+          {due.map((d) => <div key={d.id} className="mt-1 text-xs text-[var(--ink-2)]">· {d.title} ({d.review_date})</div>)}
+        </Card>
+      )}
+      {decisions.map((d) => (
+        <Card key={d.id}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone={d.status === 'decided' ? 'good' : 'warn'}>{d.status}</Pill>
+            <Pill>{d.method.replace(/_/g, ' ')}</Pill>
+            <Pill>{d.scale}</Pill>
+            {!d.reversible && <Pill tone="bad">irreversible</Pill>}
+          </div>
+          <h3 className="mt-1.5 text-sm font-medium">{d.title}</h3>
+          <p className="mt-1 text-xs text-[var(--ink-2)]">{d.body}</p>
+          {d.red_flags && (
+            <div className="mt-2 flex items-start gap-2 rounded bg-[#FBF1EE] px-2 py-1.5 text-[11px] text-[var(--clay)]">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /><span><b>Red flag:</b> {d.red_flags}</span>
+            </div>
+          )}
+          <div className="mt-2 rounded bg-[var(--paper-2)] px-2 py-1.5">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
+              <Scale className="h-3 w-3" /> Land Seat — {d.land_seat_steward ?? 'unassigned'}
+            </div>
+            <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">{d.land_seat_report}</p>
+          </div>
+          {d.review_date && <div className="mt-2 text-[11px] text-[var(--ink-3)]">Review: {d.review_date}</div>}
+          {onAct && (
+            <div className="mt-2 flex gap-3 border-t border-[var(--line-2)] pt-2">
+              {d.red_flags && (
+                <Act tone="urgent" onClick={() => onAct('clear_red_flag', { decision_id: d.id })}>
+                  Resolve the red flag
+                </Act>
+              )}
+              {d.status !== 'decided' && (
+                <Act onClick={() => onAct('decide_council_item', { decision_id: d.id })}>
+                  Decide this
+                </Act>
+              )}
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── Simple list views ─────────────────────────────────────────────────────
+export function Gatherings({gatherings, primary}) {
+  const care = (g) => ['care_meals', 'care_transport', 'care_childcare', 'care_accessibility']
+    .filter((k) => g[k]).length;
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="Care provision is infrastructure, not catering. Fewer than two provisions is flagged.">Gatherings</H>
+      {gatherings.map((g) => (
+        <Card key={g.id}>
+          <div className="flex items-center gap-2">
+            <Pill>{g.kind}</Pill>
+            <Pill tone={care(g) >= 2 ? 'good' : 'bad'}>{care(g)}/4 care</Pill>
+          </div>
+          <h3 className="mt-1.5 text-sm font-medium">{g.title}</h3>
+          <p className="mt-1 text-xs text-[var(--ink-2)]">{g.description}</p>
+          <div className="mt-1.5 flex items-center gap-3 text-[11px] text-[var(--ink-3)]">
+            <span>{g.starts_at}</span><span>{g.location_name}</span>
+            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{g.rsvp_count}</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export function Exchange({exchange, primary}) {
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="Contributions as ValueFlows economic events — exportable to hREA or Bonfire.">Exchange &amp; Care</H>
+      {exchange?.events?.map((e) => (
+        <Card key={e.id}>
+          <div className="flex items-center gap-2">
+            <Pill tone={e.relationship === 'volunteer' ? 'neutral' : 'good'}>{e.relationship.replace(/_/g, ' ')}</Pill>
+            <Pill>{e.vf_action}</Pill>
+            {!e.terms_ack && e.relationship !== 'volunteer' && <Pill tone="bad">terms not acknowledged</Pill>}
+          </div>
+          <h3 className="mt-1.5 text-sm font-medium">{e.resource_name}</h3>
+          <p className="mt-1 text-xs text-[var(--ink-2)]">{e.note}</p>
+          <div className="mt-1.5 text-[11px] text-[var(--ink-3)]">
+            {e.provider_name} · {e.vf_quantity} {e.vf_unit}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export function Learn({learn, doctrine, primary}) {
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="Knowledge written so it can travel without extracting the place it came from.">Learn</H>
+      {learn.map((l) => (
+        <Card key={l.id}>
+          <div className="flex items-center gap-2">
+            <Pill>{l.kind}</Pill><Pill tone={l.travels ? 'good' : 'bad'}>{l.travels ? 'may travel' : 'stays here'}</Pill>
+            <Pill>{l.license}</Pill>
+          </div>
+          <h3 className="mt-1.5 text-sm font-medium">{l.title}</h3>
+          <p className="mt-1 text-xs text-[var(--ink-2)]">{l.summary}</p>
+        </Card>
+      ))}
+      {doctrine && (
+        <Card>
+          <H sub={doctrine.source}>The doctrine this OS runs on</H>
+          <p className="text-xs italic text-[var(--ink-2)]">{doctrine.operating_sentence}</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">The double mandate</div>
+              {doctrine.double_mandate.map((m) => <div key={m} className="text-xs text-[var(--ink-2)]">· {m}</div>)}
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">AI may not decide</div>
+              <div className="text-xs text-[var(--ink-2)]">{doctrine.ai_may_not_decide.join(' · ')}</div>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">The twelve-stage living loop</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {doctrine.living_loop.map((s) => (
+                <span key={s.stage} className="rounded bg-[var(--line-2)] px-1.5 py-0.5 text-[10px]">
+                  {s.stage}. {s.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export function Federation({peers, onDiscover, discovering, primary}) {
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="Chapters that share without merging. Discovery runs over the Murmurations protocol.">Federation</H>
+      <button onClick={onDiscover} disabled={discovering}
+        className="flex items-center gap-2 rounded bg-[var(--moss)] px-3 py-2 text-xs text-white disabled:opacity-50">
+        <RefreshCw className={`h-3.5 w-3.5 ${discovering ? 'animate-spin' : ''}`} />
+        Discover neighbours on the Murmurations network
+      </button>
+      {peers.map((p) => (
+        <Card key={p.id}>
+          <div className="flex items-center gap-2">
+            <Pill tone={p.status === 'connected' ? 'good' : 'neutral'}>{p.status}</Pill>
+            <Pill>{p.protocol}</Pill>
+          </div>
+          <h3 className="mt-1.5 text-sm font-medium">{p.name}</h3>
+          {p.bioregion_name && <div className="text-xs text-[var(--ink-2)]">{p.bioregion_name}</div>}
+          {p.url && <a href={p.url} target="_blank" rel="noreferrer"
+            className="mt-1 block truncate text-[11px] text-[var(--water)] underline">{p.url}</a>}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── Stage 2: Listen ───────────────────────────────────────────────────────
+export function Listen({intake, primary}) {
+  const waiting = intake.filter((i) => i.status === 'received');
+  const answered = intake.filter((i) => i.status !== 'received');
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="The front door. Someone brings a need; the commons answers and can be appealed.">Listen</H>
+      {intake.length === 0 && (
+        <Empty>
+          Nothing has been brought yet. Until one person submits a need and receives a response,
+          the chapter fails its own viability test.
+        </Empty>
+      )}
+      {!!waiting.length && (
+        <div className="text-[10px] uppercase tracking-wide text-[var(--clay)]">
+          Waiting for an answer — {waiting.length}
+        </div>
+      )}
+      {[...waiting, ...answered].map((i) => (
+        <Card key={i.id} className={i.status === 'received' ? 'border-[#E4C9C2]' : ''}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone={i.status === 'received' ? 'bad' : i.status === 'declined' ? 'warn' : 'good'}>
+              {i.status.replace(/_/g, ' ')}
+            </Pill>
+            <Pill>{i.kind}</Pill>
+            {i.private ? <Pill tone="warn">private</Pill> : null}
+          </div>
+          <p className="mt-2 text-sm">{i.body}</p>
+          <div className="mt-1.5 text-[11px] text-[var(--ink-3)]">
+            {i.submitted_by || 'anonymous'}{i.affected_parties ? ` · affects: ${i.affected_parties}` : ''}
+          </div>
+          {i.response && (
+            <div className="mt-2 border-l-2 border-[var(--moss)] pl-2.5">
+              <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Response</div>
+              <p className="text-xs text-[var(--ink-2)]">{i.response}</p>
+            </div>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ── Stage 11: Measure ─────────────────────────────────────────────────────
+export function Measure({indicators, onAct, onRefresh, primary}) {
+  return (
+    <div className="space-y-4">
+      <H action={primary} sub="An indicator without a decision trigger is decoration. Monitoring has to be able to change a decision.">Measure</H>
+      {indicators.length === 0 && (
+        <Empty>Nothing is being measured yet. Add an indicator with a baseline and a decision trigger.</Empty>
+      )}
+      {indicators.map((n) => {
+        const moved = n.latest_value != null && n.baseline_value != null
+          ? n.latest_value - n.baseline_value : null;
+        const wanted = n.target_value != null && n.baseline_value != null
+          ? n.target_value - n.baseline_value : null;
+        const toward = moved != null && wanted != null
+          ? (Math.sign(moved) === Math.sign(wanted) || moved === 0) : null;
+        const overdue = n.target_by && new Date(n.target_by) < new Date() && !n.measurement_count;
+        return (
+          <Card key={n.id}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Pill tone={n.measurement_count ? (toward === false ? 'bad' : 'good') : 'warn'}>
+                {n.measurement_count ? `${n.measurement_count} reading${n.measurement_count === 1 ? '' : 's'}` : 'never measured'}
+              </Pill>
+              {overdue && <Pill tone="bad">target date passed</Pill>}
+              {toward === false && <Pill tone="bad">moving away from target</Pill>}
+            </div>
+            <h3 className="mt-1.5 text-sm font-medium">{n.name}</h3>
+            <div className="mt-2 flex flex-wrap gap-4 text-xs">
+              <Stat label="Baseline" value={fmt(n.baseline_value, n.unit)} sub={n.baseline_at} />
+              <Stat label="Latest" value={n.latest_value != null ? fmt(n.latest_value, n.unit) : '—'} sub={n.latest_at} />
+              <Stat label="Target" value={fmt(n.target_value, n.unit)} sub={n.target_by} />
+            </div>
+            {n.method && <p className="mt-2 text-[11px] text-[var(--ink-3)]"><b>Method:</b> {n.method}</p>}
+            {/* An indicator with no baseline cannot fire its own trigger. The
+                open record may have one; this is the only way a person can
+                reach it without Claude Code. */}
+            {n.baseline_value == null && <BaselineOffer indicator={n} onApplied={onRefresh} />}
+            {n.decision_trigger && (
+              <div className="mt-2 rounded bg-[var(--paper-2)] px-2.5 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Decision trigger</div>
+                <p className="text-[11px] text-[var(--ink-2)]">{n.decision_trigger}</p>
+              </div>
+            )}
+            {n.stewardship_horizon && (
+              <p className="mt-1.5 text-[11px] text-[var(--ink-3)]"><b>After the project:</b> {n.stewardship_horizon}</p>
+            )}
+            {onAct && (
+              <button onClick={() => onAct('record_measurement', { indicator_id: n.id })}
+                className="mt-2 rounded border border-[var(--line)] px-2.5 py-1 text-[11px] hover:border-[var(--moss)]">
+                Record a reading
+              </button>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+const Stat = ({ label, value, sub }) => (
+  <div>
+    <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">{label}</div>
+    <div className="font-mono text-sm">{value}</div>
+    {sub && <div className="text-[10px] text-[var(--ink-3)]">{String(sub).slice(0, 10)}</div>}
+  </div>
+);
+const fmt = (v, u) => (v == null ? '—' : `${v}${u ? ' ' + u : ''}`);

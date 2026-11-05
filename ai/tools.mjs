@@ -1,0 +1,2488 @@
+// ── The one tool registry ─────────────────────────────────────────────────
+// Defined once, exposed twice:
+//   • mcp/server.mjs  → Claude Code drives the whole OS over MCP
+//   • server/routes/ai.mjs → the in-app assistant, same tools, same rules
+// Handlers go through the engines, so the protocol gates apply to the AI
+// exactly as they apply to a person. The AI cannot write past a red flag.
+import { all, one, create, run, latestMeasurement } from '../core/db.mjs';
+import * as council from '../engines/council.mjs';
+import * as bio from '../engines/bioregional.mjs';
+import * as quest from '../engines/quest.mjs';
+import * as tasks from '../engines/tasks.mjs';
+import * as proof from '../engines/proof.mjs';
+import * as exchange from '../engines/exchange.mjs';
+import * as steward from '../engines/stewardship.mjs';
+import * as murmur from '../adapters/murmurations.mjs';
+import * as koi from '../adapters/koi.mjs';
+import { atlasGeoJSON, signalsFromGeoJSON } from '../adapters/geo.mjs';
+import { ecoregionPolygons } from '../adapters/layers.mjs';
+import * as operator from '../engines/operator.mjs';
+import * as ground from '../engines/ground.mjs';
+import * as share from '../server/share.mjs';
+import * as round from '../engines/round.mjs';
+import { protect } from '../server/clearance.mjs';
+import * as registry from '../adapters/registry.mjs';
+import * as firstrun from '../engines/firstrun.mjs';
+import * as loops from '../engines/loops.mjs';
+import * as dispatch from '../engines/dispatch.mjs';
+import * as attention from '../engines/attention.mjs';
+import * as vitals from '../engines/vitals.mjs';
+import * as neighbours from '../engines/neighbours.mjs';
+import * as turning from '../engines/turning.mjs';
+import * as landseat from '../engines/landseat.mjs';
+import * as matching from '../engines/matching.mjs';
+import * as board from '../engines/board.mjs';
+import * as mapboard from '../engines/mapboard.mjs';
+import * as enrol from '../engines/enrol.mjs';
+import * as accounts from '../engines/accounts.mjs';
+import * as ledger from '../engines/ledger.mjs';
+import * as library from '../engines/library.mjs';
+import { compile as compileDossier } from '../adapters/dossier.mjs';
+import * as access from './access.mjs';
+
+const S = (props, required = []) => ({ type: 'object', properties: props, required });
+const str = (description) => ({ type: 'string', description });
+const num = (description) => ({ type: 'number', description });
+const bool = (description) => ({ type: 'boolean', description });
+
+function defaultChapter() {
+  return one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id ?? null;
+}
+const ch = (input) => input.chapter_id || defaultChapter();
+
+/**
+ * The place a land question means when nobody said which — the same anchor
+ * ground_today uses, so "how is it out there?" and "what is the soil like?"
+ * resolve to the same ground instead of one working and one refusing.
+ * Returns null only when the chapter has no located place at all.
+ */
+function anchorId(input) {
+  const chapter = ch(input);
+  if (!chapter) return null;
+  try { return ground.anchorPlace(chapter)?.id ?? null; } catch { return null; }
+}
+
+/** One refusal, so the three land tools word it identically. */
+const noWhere = () => ({
+  error: 'no_location',
+  message: 'Add a place with coordinates, or pass a lat/lng — everything the land ' +
+           'can tell you hangs off a point on it.',
+  action: { tool: 'add_place', input: {} },
+});
+
+export const TOOLS = [
+  // ---------- orientation ----------
+  {
+    name: 'chapter_status',
+    description:
+      'Overall state of the commons: chapter identity, the seasonal bioregional dashboard ' +
+      '(critical/watch signals, unlocated places, overdue indicators), and the Minimum Viable ' +
+      'Chapter Test. Start here when asked how the commons is doing.',
+    input_schema: S({ chapter_id: str('Chapter id; omit for the default chapter.') }),
+    handler: (i) => {
+      const id = ch(i);
+      if (!id) return { error: 'No chapter yet. Use create_chapter first.' };
+      return {
+        chapter: one('SELECT * FROM chapters WHERE id=?', id),
+        dashboard: bio.dashboard(id),
+        minimum_viable_test: council.minimumViableTest(id),
+        care_gaps: quest.careGaps(id),
+        benefit_flow: exchange.benefitFlow(id),
+      };
+    },
+  },
+  {
+    name: 'create_chapter',
+    description:
+      'Found a chapter. The manual requires a chapter to publish what it does AND does not ' +
+      'represent — both fields are mandatory, because unbounded claims of representation are ' +
+      'the first failure mode of place-based organizing.',
+    input_schema: S({
+      id: str('Short slug, e.g. barton-creek'),
+      name: str('Chapter name'),
+      scale: { type: 'string', enum: ['site', 'watershed', 'bioregion', 'ecoregional'] },
+      represents: str('What and whom this chapter DOES represent'),
+      does_not_represent: str('What and whom it explicitly does NOT represent'),
+      lat: num('Centre latitude'), lng: num('Centre longitude'),
+      locality: str('Town/city'), region: str('State/province'), country: str('Country'),
+    }, ['id', 'name', 'represents', 'does_not_represent']),
+    handler: (i) => create('chapters', 'chapter', i.id, { ...i }),
+  },
+
+  // ---------- the map & its layers ----------
+  {
+    name: 'list_places',
+    description: 'All places in the chapter with their resolved ecoregion, biome and watershed.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => all('SELECT * FROM places WHERE chapter_id=? ORDER BY name', ch(i)),
+  },
+  {
+    name: 'add_place',
+    description:
+      'Add a place, then resolve it against open reference data (EPA ecoregions, USGS watershed ' +
+      'boundaries). Resolution happens automatically — a place without a watershed and ecoregion ' +
+      'fails the Minimum Viable Chapter Test.',
+    input_schema: S({
+      chapter_id: str(''), name: str('Place name'),
+      lat: num('Latitude'), lng: num('Longitude'),
+      region: str('Human-readable region'), description: str('What this place is'),
+    }, ['name', 'lat', 'lng']),
+    handler: async (i) => {
+      const id = ch(i);
+      const p = create('places', 'place', id, {
+        chapter_id: id, name: i.name, lat: i.lat, lng: i.lng,
+        region: i.region ?? null, description: i.description ?? null,
+      });
+      return await bio.locate(p.id);
+    },
+  },
+  {
+    name: 'locate_place',
+    description:
+      'Re-resolve a place against the live ecoregion and watershed services. Returns the full ' +
+      'nested hierarchy: ecoregion → level III → level II → biome, plus HUC12 subwatershed.',
+    input_schema: S({ place_id: str('Place id') }, ['place_id']),
+    handler: (i) => bio.locate(i.place_id),
+  },
+  {
+    name: 'get_ecoregion_layer',
+    description:
+      'Fetch ecoregion polygons as GeoJSON for a bounding box — this is the data behind the 3D ' +
+      'map. Use it to answer questions about which ecoregions border each other, how large they ' +
+      'are, or what biome a region belongs to. Source: EPA Ecoregions Level III/IV, public domain.',
+    input_schema: S({
+      west: num('West lng'), south: num('South lat'), east: num('East lng'), north: num('North lat'),
+      level: { type: 'string', enum: ['l3', 'l4'], description: 'Level III (coarse) or IV (fine). Default l3.' },
+    }, ['west', 'south', 'east', 'north']),
+    handler: async (i) => {
+      const gj = await ecoregionPolygons(i, { level: i.level ?? 'l3' });
+      // Return the summary, not megabytes of coordinates — the map renders the geometry.
+      const names = {};
+      for (const f of gj.features) {
+        const k = i.level === 'l4' ? f.properties.US_L4NAME : f.properties.US_L3NAME;
+        names[k] = (names[k] ?? 0) + 1;
+      }
+      return { feature_count: gj.features.length, ecoregions: names, bbox: [i.west, i.south, i.east, i.north] };
+    },
+  },
+  {
+    name: 'get_atlas',
+    description:
+      'The Living Commons Atlas as GeoJSON — signals and hubs, filtered by the caller\'s clearance. ' +
+      'Material above the clearance is counted as redacted, never silently dropped.',
+    input_schema: S({
+      chapter_id: str(''),
+      clearance: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+    }),
+    handler: (i) => atlasGeoJSON(ch(i), { clearance: i.clearance ?? 'public' }),
+  },
+
+  // ---------- observation ----------
+  {
+    name: 'list_signals',
+    description: 'Signals (observations from land and people), newest first.',
+    input_schema: S({
+      chapter_id: str(''),
+      severity: { type: 'string', enum: ['Info', 'Watch', 'Critical'] },
+      category: str('Hydrological | Ecological | Climate | Disturbance | Social | Infrastructure | Cultural'),
+      limit: num('Default 50'),
+    }),
+    handler: (i) => all(
+      `SELECT * FROM signals WHERE chapter_id=?
+        ${i.severity ? 'AND severity=?' : ''} ${i.category ? 'AND category=?' : ''}
+       ORDER BY created_at DESC LIMIT ?`,
+      ...[ch(i), i.severity, i.category, i.limit ?? 50].filter((v) => v !== undefined && v !== null)
+    ),
+  },
+  {
+    name: 'add_signal',
+    description: 'Record an observation. Unverified by default — verification is a human act.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str(''), title: str('Short title'),
+      category: str('Hydrological | Ecological | Climate | Disturbance | Social | Infrastructure | Cultural'),
+      severity: { type: 'string', enum: ['Info', 'Watch', 'Critical'] },
+      description: str('What was observed'), location_name: str(''),
+      lat: num(''), lng: num(''), author: str('Who observed it'),
+      sensitivity: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+      source: {
+        type: 'string', enum: ['notice', 'manual'],
+        description:
+          'How it was observed: "notice" for the one-line daily prompt in the interface, "manual" ' +
+          'for a full entry by a person. Leave unset when the assistant is recording it — an ' +
+          'observation must never be filed as if a human made it.',
+      },
+    }, ['title']),
+    handler: (i) => {
+      const { source, ...row } = i;
+      return create('signals', 'signal', ch(i), {
+        ...row, chapter_id: ch(i), verified: 0, source_adapter: source ?? 'assistant',
+      }, i.sensitivity ?? 'public');
+    },
+  },
+  {
+    name: 'ingest_water_data',
+    description:
+      'Pull live USGS stream gage readings (discharge, gage height) near a place and file them as ' +
+      'Hydrological signals. Public domain data. Run this to refresh the water picture.',
+    input_schema: S({ place_id: str('Place id') }, ['place_id']),
+    handler: (i) => bio.ingestWater(i.place_id),
+  },
+
+  // ---------- the work ----------
+  {
+    name: 'list_quests',
+    description: 'Projects and their stage in the 12-step Green Fire Quest pathway.',
+    input_schema: S({ chapter_id: str(''), status: str('Open | Active | Paused | Complete | Stopped') }),
+    handler: (i) => all(
+      `SELECT * FROM quests WHERE chapter_id=? ${i.status ? 'AND status=?' : ''} ORDER BY created_at DESC`,
+      ...[ch(i), i.status].filter(Boolean)
+    ),
+  },
+  {
+    name: 'open_quest',
+    description:
+      'Open a project. Its consent and safety gates are created unsatisfied — the quest cannot ' +
+      'reach the build stage until each one is closed with evidence and a named reviewer.',
+    input_schema: S({
+      chapter_id: str(''), title: str('Project title'), place_id: str(''), signal_id: str(''),
+      // The quests table has carried lat/lng since the beginning and the tool
+      // never offered them, so a project could only ever be drawn at the centre
+      // of the place it was filed against — marked "borrowed", correctly, and
+      // with no way for anybody to give it the coordinate it actually had.
+      lat: num('Where this project is, if it is somewhere in particular.'),
+      lng: num(''),
+      location_name: str('What people call that spot.'),
+      category: str(''), description: str(''), need_statement: str('The need and the place'),
+      desired_condition: str('What measurable condition should change, by when, for whom'),
+      smallest_experiment: str('The smallest useful and safe experiment'),
+      maintenance_owner: str('Who maintains this after the project period'),
+    }, ['title']),
+    handler: (i) => quest.openQuest(ch(i), { ...i, chapter_id: ch(i) }),
+  },
+  {
+    name: 'quest_gates',
+    description:
+      'The consent/safety gates on a quest and whether each is satisfied. Use this before ' +
+      'claiming a project is ready to build.',
+    input_schema: S({ quest_id: str('') }, ['quest_id']),
+    handler: (i) => quest.gates(i.quest_id),
+  },
+  {
+    name: 'check_quest_advance',
+    description:
+      'Ask whether a quest may advance to a stage, and get the specific blocking reasons if not. ' +
+      'Read-only — safe to call freely.',
+    input_schema: S({ quest_id: str(''), to_stage: str('Target stage') }, ['quest_id', 'to_stage']),
+    handler: (i) => quest.canAdvance(i.quest_id, i.to_stage),
+  },
+
+  // ---------- council ----------
+  {
+    name: 'council_agenda',
+    description: 'Open council items, plus decisions whose review date has arrived.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ({ agenda: council.agenda(ch(i)), due_for_review: council.dueForReview(ch(i)) }),
+  },
+  {
+    name: 'propose_decision',
+    description:
+      'Put an item to council. A Land Seat report is REQUIRED: ecological observations, seasonal ' +
+      'conditions, downstream effects, uncertainty and red flags. Irreversible items must use a ' +
+      'supermajority/consensus or explicit-permission method. The tool refuses otherwise.',
+    input_schema: S({
+      chapter_id: str(''), title: str(''), body: str(''),
+      method: {
+        type: 'string',
+        enum: ['publish_notify', 'delegated_after_advice', 'consent', 'participatory_fund',
+               'supermajority_consensus', 'explicit_permission', 'emergency'],
+      },
+      scale: { type: 'string', enum: ['site', 'watershed', 'bioregion', 'ecoregional'] },
+      reversible: bool('Is this reversible?'),
+      land_seat_report: str('REQUIRED. Ecological conditions, downstream effects, uncertainty, red flags.'),
+      land_seat_steward: str('Who served the Land Seat'),
+      affected_parties: str(''), review_date: str('YYYY-MM-DD'), red_flags: str(''),
+    }, ['title', 'land_seat_report']),
+    handler: (i) => council.propose(ch(i), { ...i }),
+  },
+  {
+    name: 'minimum_viable_test',
+    description:
+      'Run the manual\'s ten-question Minimum Viable Chapter Test and return which checks fail ' +
+      'and the specific fix for each.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => council.minimumViableTest(ch(i)),
+  },
+
+  // ---------- exchange & care ----------
+  {
+    name: 'benefit_flow',
+    description:
+      'Who carried the work and whether value returned to them. Flags a chapter running on more ' +
+      'than 80% unpaid labour — the manual treats exhaustion as a failure mode, not a virtue.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ({
+      flow: exchange.benefitFlow(ch(i)),
+      contributions: exchange.contributionSummary(ch(i)),
+      unacknowledged_terms: exchange.unacknowledgedTerms(ch(i)),
+    }),
+  },
+  {
+    name: 'record_exchange',
+    description:
+      'Log a contribution as a ValueFlows economic event. Paid, contractor, apprentice, credit, ' +
+      'work-trade and revenue-share relationships require terms_ack — the contributor must have ' +
+      'seen the terms before work began.',
+    input_schema: S({
+      chapter_id: str(''), quest_id: str(''),
+      vf_action: { type: 'string', enum: ['work', 'produce', 'consume', 'use', 'transfer', 'give', 'receive', 'raise', 'lower', 'cite', 'accept'] },
+      provider_id: str('Agent id'), receiver_id: str('Agent id'),
+      resource_name: str('What was contributed'), vf_quantity: num(''), vf_unit: str('e.g. hour'),
+      relationship: { type: 'string', enum: ['paid', 'contractor', 'apprentice', 'credit', 'work_trade', 'volunteer', 'revenue_share'] },
+      terms_ack: bool('Has the contributor acknowledged the terms?'), note: str(''),
+    }, ['vf_action', 'relationship']),
+    handler: (i) => exchange.record(ch(i), { ...i }),
+  },
+
+  // ---------- federation & knowledge ----------
+  {
+    name: 'discover_peers',
+    description:
+      'Search the Murmurations network for other place-based and regenerative organizations near ' +
+      'this chapter, and record them as federation peers. This is how a chapter finds its neighbours.',
+    input_schema: S({ chapter_id: str(''), range: str('e.g. 100km'), tags: str('Comma-separated filter tags') }),
+    handler: async (i) => {
+      const c = one('SELECT * FROM chapters WHERE id=?', ch(i));
+      const res = await murmur.discoverNearby({ lat: c?.lat, lng: c?.lng, range: i.range ?? '100km', tags: i.tags });
+      const added = murmur.recordPeers(res.peers);
+      return { found: res.peers.length, newly_recorded: added, stale: res.stale, peers: res.peers.slice(0, 25) };
+    },
+  },
+  {
+    name: 'murmurations_profile',
+    description:
+      'Generate (and validate against the live Murmurations Library) the public profile that makes ' +
+      'this chapter discoverable to the wider network. Returns the JSON to host at a public URL.',
+    input_schema: S({ chapter_id: str(''), primary_url: str('Public URL where the profile will be hosted') }),
+    handler: async (i) => {
+      const c = one('SELECT * FROM chapters WHERE id=?', ch(i));
+      const profile = murmur.chapterProfile(c, { primaryUrl: i.primary_url });
+      const validation = await murmur.validate(profile).catch((e) => ({ ok: false, error: e.message }));
+      return { profile, validation };
+    },
+  },
+  {
+    name: 'knowledge_manifest',
+    description:
+      'The KOI-style manifest of what knowledge exists here and at what sensitivity — what could ' +
+      'travel to another chapter, and what is withheld. Labels travel; material stays.',
+    input_schema: S({
+      chapter_id: str(''),
+      clearance: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+    }),
+    handler: (i) => koi.manifest(ch(i), { clearance: i.clearance ?? 'public' }),
+  },
+
+  // ---------- the guardrail ----------
+  {
+    name: 'log_ai_use',
+    description:
+      'Record that AI materially shaped a public report, map, plan, match or recommendation. ' +
+      'The manual requires this whenever AI output reaches people. A named human reviewer is ' +
+      'mandatory; restricted or sacred material also needs a correction path. Call this after ' +
+      'you produce anything the chapter will act on or publish.',
+    input_schema: S({
+      chapter_id: str(''), tool: str('e.g. Claude Opus 5 via BioRegional OS'),
+      purpose: str('What the AI did'),
+      data_class: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+      human_reviewer: str('REQUIRED — the person accountable for this output'),
+      known_limits: str(''), correction_path: str(''), affected_object_rid: str(''),
+    }, ['tool', 'purpose', 'human_reviewer']),
+    handler: (i) => steward.logAI(ch(i), { ...i }),
+  },
+
+  // ---------- Stage 2: Listen ----------
+  {
+    name: 'list_intake',
+    description:
+      'Community intake — needs, ideas, stories, resources, opportunities and concerns people ' +
+      'have brought. Private items are excluded unless include_private is true.',
+    input_schema: S({
+      chapter_id: str(''),
+      status: { type: 'string', enum: ['received','acknowledged','in_council','routed','declined','appealed'] },
+      include_private: bool('Include items marked private. Default false.'),
+    }),
+    handler: (i) => all(
+      `SELECT * FROM intake WHERE chapter_id=? ${i.include_private ? '' : 'AND private=0'}
+        ${i.status ? 'AND status=?' : ''} ORDER BY created_at DESC`,
+      ...[ch(i), i.status].filter(Boolean)
+    ),
+  },
+  {
+    name: 'submit_intake',
+    description:
+      'Someone brings a need, idea, story, resource, opportunity or concern. This is Stage 2 of ' +
+      'the loop and the front door of the whole commons. Mark it private if it contains personal ' +
+      'circumstances — private items stay out of public listings and exports.',
+    input_schema: S({
+      chapter_id: str(''),
+      kind: { type: 'string', enum: ['need','idea','story','resource','opportunity','concern'] },
+      body: str('What they said, in their words where possible'),
+      submitted_by: str('Who brought it'),
+      contact: str('How to reach them back'),
+      affected_parties: str('Who else this touches'),
+      private: bool('Keep out of public listings'),
+    }, ['body']),
+    handler: (i) => create('intake', 'intake', ch(i), {
+      ...i, chapter_id: ch(i), status: 'received',
+    }, i.private ? 'council' : 'members'),
+  },
+  {
+    name: 'respond_to_intake',
+    description:
+      'Answer someone who brought something, and move it out of "received". The protocol requires ' +
+      'that a person can submit a need, receive a response, and appeal — this closes the second leg.',
+    input_schema: S({
+      intake_id: str('Intake id'),
+      response: str('What the commons is saying back'),
+      status: { type: 'string', enum: ['acknowledged','in_council','routed','declined','appealed'] },
+    }, ['intake_id', 'response']),
+    handler: (i) => {
+      const row = one('SELECT * FROM intake WHERE id=?', i.intake_id);
+      if (!row) return { error: 'not_found' };
+      if (i.status === 'declined' && !i.response.trim()) {
+        return { error: 'reason_required', message: 'Declining without a reason is not a response.' };
+      }
+      // Stamped only on the FIRST answer. A later edit to the wording is not a
+      // second response, and letting it move the timestamp would quietly reset
+      // the wait on the one measure that says whether people are being heard.
+      run(`UPDATE intake SET response=?, status=?,
+                  responded_at=COALESCE(responded_at, datetime('now')) WHERE id=?`,
+          i.response, i.status ?? 'acknowledged', i.intake_id);
+      return one('SELECT * FROM intake WHERE id=?', i.intake_id);
+    },
+  },
+
+  // ---------- moving work forward (these were unreachable) ----------
+  {
+    name: 'satisfy_quest_gate',
+    description:
+      'Close a consent or safety gate on a quest. Requires the evidence and the name of the person ' +
+      'who reviewed it — a gate does not close on a checkbox. This is what unblocks a project.',
+    input_schema: S({
+      quest_id: str(''),
+      gate: {
+        type: 'string',
+        enum: ['rights_holder_consent','indigenous_consent','land_access','youth_safeguarding',
+               'permits_insurance','ecological_assessment','maintenance_owner',
+               'affected_party_process','data_consent'],
+      },
+      evidence: str('What actually satisfies this — the document, the conversation, the permit'),
+      reviewed_by: str('The person accountable for that judgement'),
+    }, ['quest_id', 'gate', 'evidence', 'reviewed_by']),
+    handler: (i) => quest.satisfyGate(i.quest_id, i.gate, { evidence: i.evidence, reviewed_by: i.reviewed_by }),
+  },
+  {
+    name: 'advance_quest',
+    description:
+      'Move a quest to the next stage of the Green Fire Quest pathway. Refuses with specific ' +
+      'reasons if gates are open, no maintenance owner is named, no baseline exists, or nothing ' +
+      'has been written down. Check first with check_quest_advance.',
+    input_schema: S({
+      quest_id: str(''),
+      to_stage: {
+        type: 'string',
+        enum: ['signal','listening','baseline','council_review','research','co_design',
+               'resource_plan','prototype','teach_tell','test','decide','report_replicate'],
+      },
+    }, ['quest_id', 'to_stage']),
+    handler: (i) => quest.advance(i.quest_id, i.to_stage),
+  },
+  {
+    name: 'update_quest',
+    description:
+      'Fill in or correct a quest definition — the need, the desired measurable condition, the ' +
+      'smallest useful experiment, ecological fit, budget, maintenance owner, end-of-life plan.',
+    input_schema: S({
+      quest_id: str(''), need_statement: str(''), desired_condition: str(''),
+      smallest_experiment: str(''), ecological_fit: str(''), budget_note: str(''),
+      maintenance_owner: str(''), end_of_life_plan: str(''),
+      title: str('Correct the title.'),
+      description: str(''),
+      location_name: str('What people call the spot.'),
+      lat: num('Move it. Both halves or neither.'), lng: num(''),
+      status: { type: 'string', enum: ['Open','Active','Paused','Complete','Stopped'] },
+    }, ['quest_id']),
+    handler: (i) => {
+      // lat and lng move together or not at all — the same rule the tasks
+      // engine applies, and for the same reason: a row with one half of a
+      // coordinate is drawn at [null, 30] and rendered by calling .toFixed on
+      // null. An EDIT is the likelier way to get there than a create, because
+      // somebody correcting one number does not think of the other.
+      if ((i.lat === undefined) !== (i.lng === undefined)) {
+        return { error: 'half_a_coordinate',
+                 message: 'A point needs both halves. Give a latitude and a longitude, or neither.' };
+      }
+      const fields = ['need_statement','desired_condition','smallest_experiment','ecological_fit',
+                      'budget_note','maintenance_owner','end_of_life_plan','status',
+                      'title','description','location_name','lat','lng']
+        .filter((f) => i[f] !== undefined);
+      if (!fields.length) return { error: 'nothing_to_update' };
+      run(`UPDATE quests SET ${fields.map((f) => `${f}=?`).join(',')} WHERE id=?`,
+          ...fields.map((f) => i[f]), i.quest_id);
+      return one('SELECT * FROM quests WHERE id=?', i.quest_id);
+    },
+  },
+
+  // ---------- Stage 8: Prototype — the work, and the evidence it happened ----
+  // A quest is a project; a task is what somebody actually does on a Saturday.
+  // Before these, the work inside a project lived on paper, in a group chat, or
+  // in one person's head, and the commons could not tell work from the claim
+  // of work.
+  {
+    name: 'list_tasks',
+    description:
+      'The work inside the projects: who is carrying each task, where it is, and whether the ' +
+      'before-and-after evidence is missing, filed or checked. Pass quest_id for one project.',
+    input_schema: S({
+      chapter_id: str(''),
+      quest_id: str('One project; omit for every task in the chapter.'),
+      status: { type: 'string', enum: ['todo', 'doing', 'blocked', 'done', 'abandoned'] },
+      unclaimed: bool('Only tasks nobody has picked up.'),
+    }),
+    handler: (i) => tasks.listTasks(ch(i),
+      { quest_id: i.quest_id ?? null, status: i.status ?? null, unclaimed: !!i.unclaimed }),
+  },
+  {
+    name: 'add_task',
+    description:
+      'Write down one thing somebody is going to do, inside a project. Give it a coordinate when ' +
+      'the work is somewhere in particular — "the second crossing" is a place, and the map draws ' +
+      'a task at its own point rather than at the centre of the project it belongs to. ' +
+      'Tasks require a before-and-after photograph by default; pass requires_before_after false ' +
+      'only for work that changes nothing visible, such as a phone call or a permit filed.',
+    input_schema: S({
+      quest_id: str('The project this belongs to.'),
+      title: str('What somebody is actually going to do.'),
+      description: str(''),
+      stage: { type: 'string', enum: quest.STAGES,
+        description: 'Which of the twelve stages this task serves. Optional.' },
+      lat: num('Where the work is, if it is somewhere in particular.'),
+      lng: num(''),
+      place_id: str('A place in this chapter; defaults to the project\'s place.'),
+      due_at: str('YYYY-MM-DD, if there is a date it has to be done by.'),
+      requires_before_after: bool('Default true.'),
+      created_by: str('Who wrote this down.'),
+    }, ['quest_id', 'title']),
+    handler: (i) => tasks.addTask(i),
+  },
+  {
+    name: 'claim_task',
+    description:
+      'Take a task on. Self-service and open: a commons where work has to be handed out by a ' +
+      'coordinator stops when the coordinator is away. More than one person can be on a task, ' +
+      'because ecological work is done by groups.',
+    input_schema: S({
+      task_id: str(''),
+      person_name: str('The name to record. Not a login — there are no accounts here.'),
+      person_id: str('A person already in this commons, if there is one.'),
+      role: { type: 'string', enum: ['doing', 'leading', 'helping', 'teaching', 'learning'] },
+    }, ['task_id', 'person_name']),
+    handler: (i) => tasks.claimTask(i.task_id,
+      { person_name: i.person_name, person_id: i.person_id ?? null, role: i.role ?? 'doing' }),
+  },
+  {
+    name: 'release_task',
+    description:
+      'Step back from a task. The record of having carried it is KEPT — a task three people held ' +
+      'before it was finished is a fact about this commons, and removing the row would make the ' +
+      'record say they were never there.',
+    input_schema: S({
+      task_id: str(''), person_name: str(''), reason: str('Optional, and worth writing.'),
+    }, ['task_id', 'person_name']),
+    handler: (i) => tasks.releaseTask(i.task_id, { person_name: i.person_name, reason: i.reason ?? null }),
+  },
+  {
+    name: 'complete_task',
+    description:
+      'Finish a task. REFUSES while a task that requires a before-and-after has none: two ' +
+      'photographs of the same ground is the one form of evidence somebody who was not there can ' +
+      'check. It needs the pair FILED, not yet checked — waiting on a reviewer to close your own ' +
+      'finished work is how a board fills with things that are actually done.',
+    input_schema: S({
+      task_id: str(''), by: str('Who finished it.'), note: str('Anything worth recording about how it went.'),
+    }, ['task_id']),
+    handler: (i) => tasks.completeTask(i.task_id, { by: i.by ?? null, note: i.note ?? null }),
+  },
+  // ---------- Stage 10: an economy a commons defines for itself ----------
+  // Not a currency — the tools to make one. What a unit is, what it is worth,
+  // who may make more and what it is redeemable for are all theirs. The
+  // arithmetic is not: entries are append-only, corrections are reversals,
+  // balances are always added up from the entries, and every movement is two
+  // legs summing to zero.
+  {
+    name: 'list_currencies',
+    description:
+      'What this commons counts, what one unit means in their own words, how much exists and how ' +
+      'much is out with people. Every figure is added up from the entries — there is no balance ' +
+      'stored anywhere, which is the one thing that keeps a ledger honest.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ledger.currencies(ch(i)),
+  },
+  {
+    name: 'define_currency',
+    description:
+      'Create the unit this commons counts in. NEEDS A DECIDED COUNCIL DECISION — an economy is ' +
+      'something a community agrees, not a setting somebody switches on. ' +
+      'zero_sum (the default) means nobody issues: every movement is a transfer, all balances ' +
+      'always add to nothing, and the unit is the promise between members — which is what most ' +
+      'local exchange systems that lasted actually are. Turn it off and units come into existence ' +
+      'when an issuer makes them, by the policy you name. `credit_limit` is how far below zero a ' +
+      'member may go, which in a mutual-credit ring is the whole design.',
+    input_schema: S({
+      chapter_id: str(''),
+      name: str('What you call it — Hours, Seeds, Meals, the name of your creek.'),
+      unit_of: str('What ONE unit is, in your words: "an hour of work", "a kilo of seed".'),
+      plural: str(''), symbol: str(''),
+      zero_sum: bool('Default true: nobody issues, balances always sum to zero.'),
+      credit_limit: num('How far below zero a member may go. Leave out for no limit.'),
+      issue_policy: { type: 'string', enum: ledger.ISSUE_POLICIES,
+        description: 'Who may make new units, when zero_sum is off.' },
+      per_verified_proof: num('For on_verified_proof: units per checked before-and-after.'),
+      decided_by: str('The council decision that agreed this. Required.'),
+      created_by: str(''),
+    }, ['name', 'unit_of', 'decided_by']),
+    handler: (i) => ledger.defineCurrency(ch(i), i),
+  },
+  {
+    name: 'balances',
+    description: 'Who holds what, added up from the entries. Never a stored number.',
+    input_schema: S({ chapter_id: str(''), currency_id: str('') }, ['currency_id']),
+    handler: (i) => ({
+      currency: ledger.currency(i.currency_id),
+      balances: ledger.balances(i.currency_id),
+    }),
+  },
+  {
+    name: 'issue_credit',
+    description:
+      'Bring units into existence and give them to somebody. Refused outright for a zero-sum ' +
+      'currency, because that is what zero-sum means. When the policy is on_verified_proof it ' +
+      'needs a proof that has actually been CHECKED — evidence pays once somebody who was not ' +
+      'there has looked at it — and the same proof is never paid twice.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), agent_id: str('Who receives them.'),
+      amount: num(''), note: str(''),
+      proof_id: str('The checked before-and-after this pays for.'),
+      task_id: str(''), quest_id: str(''),
+      decided_by: str('The decision behind it, when the policy is council.'),
+      created_by: str(''),
+    }, ['currency_id', 'agent_id', 'amount']),
+    handler: (i) => ledger.issue(ch(i), i),
+  },
+  {
+    name: 'transfer_credit',
+    description:
+      'Move units from one person or organisation to another — the only movement a zero-sum ' +
+      'currency has. Refused if it would take the sender past the credit limit this commons set.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''),
+      from_agent_id: str(''), to_agent_id: str(''), amount: num(''),
+      note: str('What it is for.'),
+      exchange_event_id: str('The contribution it settles, if there is one recorded.'),
+      created_by: str(''),
+    }, ['currency_id', 'from_agent_id', 'to_agent_id', 'amount']),
+    handler: (i) => ledger.transfer(ch(i), i),
+  },
+  {
+    name: 'open_pool',
+    description:
+      'Declare what the units are actually good for: a pool holding real things — money, seed, ' +
+      'hours of a van — that units can be redeemed against, and the terms in your own words. ' +
+      'NEEDS A DECIDED COUNCIL DECISION. A currency with no pool is not broken; it is a promise ' +
+      'between people, which is what mutual credit is.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), name: str(''),
+      holds: str('What is in it: "£420", "60 kg seed garlic", "8 hours of the van".'),
+      terms: str('What it takes to get something out.'),
+      rate: num('Units per lot, if there is a fixed one.'),
+      decided_by: str('Required.'), created_by: str(''),
+    }, ['currency_id', 'name', 'holds', 'decided_by']),
+    handler: (i) => ledger.openPool(ch(i), i),
+  },
+  {
+    name: 'list_pools',
+    description: 'The pools, what they hold, their terms and how much has been redeemed against each.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ledger.pools(ch(i)),
+  },
+  {
+    name: 'redeem_credit',
+    description:
+      'Spend units on what a pool holds. The units go back out of circulation rather than to ' +
+      'another person, which is what makes a pool a pool. Says what actually came out, because a ' +
+      'pool whose outgoings are not written down is a pool nobody can check.',
+    input_schema: S({
+      chapter_id: str(''), pool_id: str(''), agent_id: str(''), amount: num(''),
+      got: str('What came out: "2 kg garlic", "£15", "the van on Saturday".'),
+      note: str(''), created_by: str(''),
+    }, ['pool_id', 'agent_id', 'amount', 'got']),
+    handler: (i) => ledger.redeem(ch(i), i),
+  },
+  {
+    name: 'reverse_entry',
+    description:
+      'Undo a movement by writing its opposite. Nothing on this ledger is ever deleted or edited ' +
+      '— a mistake and its correction both stay visible, which is the difference between a record ' +
+      'and a story. Needs a reason, because that is the only thing that explains to a reader in a ' +
+      'year what they are looking at.',
+    input_schema: S({
+      chapter_id: str(''), group_id: str('The movement to undo.'), reason: str(''), created_by: str(''),
+    }, ['group_id', 'reason']),
+    handler: (i) => ledger.reverse(ch(i), i),
+  },
+  {
+    name: 'ledger_entries',
+    description: 'The entries themselves, newest first — the record everything else is added up from.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), agent_id: str(''), limit: num('Default 100.'),
+    }),
+    handler: (i) => ledger.entries(ch(i),
+      { currency_id: i.currency_id ?? null, agent_id: i.agent_id ?? null, limit: i.limit ?? 100 }),
+  },
+  {
+    name: 'check_ledger',
+    description:
+      'Does it add up? Every movement must sum to zero, a zero-sum currency\'s holdings must too, ' +
+      'and nobody should be past the limit their commons set. A ledger nobody ever checks is a ' +
+      'spreadsheet with a trigger on it.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ledger.check(ch(i)),
+  },
+  {
+    name: 'retire_currency',
+    description:
+      'Stop using a unit. Not a delete: every entry stands and the ledger still balances — a ' +
+      'commons that stops counting in something has not made the work that earned it stop having ' +
+      'happened. Needs a decision and a reason.',
+    input_schema: S({
+      chapter_id: str(''), currency_id: str(''), reason: str(''), decided_by: str('Required.'),
+    }, ['currency_id', 'reason', 'decided_by']),
+    handler: (i) => ledger.retireCurrency(ch(i), i),
+  },
+
+  // ---------- who people are ----------
+  // Signing in itself is NOT here: it sets a cookie, and a tool cannot. See
+  // server/routes/auth.mjs. Everything about MANAGING accounts is, because it
+  // is ordinary work on rows and belongs in the one registry with the rest.
+  {
+    name: 'list_accounts',
+    description:
+      'Who can sign in to this commons, their role and whether they are still active. Never a ' +
+      'password hash — those do not leave the engine, in any answer, to anybody.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => accounts.listAccounts(ch(i)),
+  },
+  {
+    name: 'create_account',
+    description:
+      'Give somebody a way to sign in. NOT open registration — a commons is people who know each ' +
+      'other, and somebody who can reach the port is not a member because they filled in a form. ' +
+      'Roles are steward, coordinator and member, and a role IS a clearance: it feeds the same ' +
+      'ladder an enrolled device feeds, so there is no second set of permissions anywhere.',
+    input_schema: S({
+      chapter_id: str(''),
+      username: str('2–40 characters: letters, numbers, dot, dash, underscore.'),
+      password: str('At least 10 characters. Four ordinary words beats anything with punctuation.'),
+      display_name: str('The name that appears on what they do.'),
+      role: { type: 'string', enum: accounts.ROLES },
+      person_id: str('The person in this commons they are, if they are already recorded.'),
+      created_by: str('Who is making it.'),
+      must_change: bool('Make them choose their own password at the first sign-in.'),
+    }, ['username', 'password']),
+    handler: (i) => accounts.createAccount(ch(i), i),
+  },
+  {
+    name: 'set_account_role',
+    description:
+      'Change what somebody may do. Refuses to demote the last steward — a commons with nobody ' +
+      'who can act for it is one laptop away from being nobody\'s.',
+    input_schema: S({
+      account_id: str(''), role: { type: 'string', enum: accounts.ROLES },
+    }, ['account_id', 'role']),
+    handler: (i) => accounts.setRole(i.account_id, i.role),
+  },
+  {
+    name: 'set_account_status',
+    description:
+      'Suspend an account, restore one, or record that somebody has left. There is no delete: an ' +
+      'account is the author of everything it did, and a row that vanished would take that record ' +
+      'with it. Suspending ends every session it has open.',
+    input_schema: S({
+      account_id: str(''),
+      status: { type: 'string', enum: ['active', 'suspended', 'left'] },
+      reason: str(''),
+    }, ['account_id', 'status']),
+    handler: (i) => accounts.setStatus(i.account_id, i.status, { reason: i.reason ?? null }),
+  },
+  {
+    name: 'set_account_password',
+    description:
+      'Set a password. Changing your OWN needs the current one. A steward setting somebody else\'s ' +
+      'does not — that is helping a person who is locked out — and it forces them to choose their ' +
+      'own at the next sign-in, so nobody keeps a password that is not theirs. Either way every ' +
+      'other session for that account ends.',
+    input_schema: S({
+      account_id: str(''), password: str('The new one.'),
+      current: str('The existing password, when somebody is changing their own.'),
+      by_steward: bool('A steward setting somebody else\'s.'),
+    }, ['account_id', 'password']),
+    handler: (i) => accounts.setPassword(i.account_id,
+      { current: i.current ?? null, password: i.password, by_steward: !!i.by_steward }),
+  },
+  {
+    name: 'sign_out_everywhere',
+    description:
+      'End every session an account has open. What a steward does after a laptop goes missing.',
+    input_schema: S({ account_id: str('') }, ['account_id']),
+    handler: (i) => accounts.signOutEverywhere(i.account_id),
+  },
+  {
+    name: 'update_task',
+    description:
+      'Correct a task that was written down wrong — its title, what it says, when it is due, the ' +
+      'stage it serves, where it is, or whether it needs a before-and-after. Moving it between ' +
+      'states is set_task_status, which has rules this deliberately cannot walk past.',
+    input_schema: S({
+      task_id: str(''), title: str(''), description: str(''),
+      due_at: str('YYYY-MM-DD'),
+      stage: { type: 'string', enum: quest.STAGES },
+      lat: num('Both halves or neither.'), lng: num(''),
+      requires_before_after: bool(''),
+    }, ['task_id']),
+    handler: (i) => tasks.updateTask(i.task_id, i),
+  },
+  {
+    name: 'set_task_status',
+    description:
+      'Move a task to todo, doing, blocked or abandoned. Marking one blocked is a statement about ' +
+      'the world, not about staffing — it survives people joining and leaving. ' +
+      'ABANDONING IS HOW A TASK IS REMOVED: there is no delete, because a task row carries who ' +
+      'claimed it and every before-and-after filed against it, and deleting would take the ' +
+      'evidence with it. An abandoned task leaves the map, the board and every count; it needs a ' +
+      'reason in `note`, and the record is kept.',
+    input_schema: S({
+      task_id: str(''),
+      status: { type: 'string', enum: ['todo', 'doing', 'blocked', 'done', 'abandoned'] },
+      note: str(''),
+    }, ['task_id', 'status']),
+    handler: (i) => tasks.setTaskStatus(i.task_id, i.status, { note: i.note ?? null }),
+  },
+  {
+    name: 'task_board',
+    description:
+      'The work of this commons at a glance: what nobody has picked up, what is in hand, and what ' +
+      'is waiting to be checked. Counts nothing anybody has completed — work is not a score.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => tasks.taskBoard(ch(i)),
+  },
+  {
+    name: 'submit_proof',
+    description:
+      'File a before-and-after pair against a task. Both files are uploaded first (POST the bytes ' +
+      'to /api/media with the name in an x-bros-filename header; each upload answers with an id). ' +
+      'A PAIR is insisted on: the claim being made is comparative — this is what it was, this is ' +
+      'what it is — and one photograph of a clear culvert proves only that a culvert is clear.',
+    input_schema: S({
+      task_id: str(''),
+      before_media_id: str('The id the before upload answered with.'),
+      after_media_id: str('The id the after upload answered with.'),
+      note: str('What was done, in a sentence.'),
+      submitted_by: str('Who did the work. REQUIRED — it is what makes it possible to say ' +
+        'somebody else checked it.'),
+    }, ['task_id', 'before_media_id', 'after_media_id', 'submitted_by']),
+    handler: (i) => proof.submitProof(i.task_id, {
+      before_media_id: i.before_media_id, after_media_id: i.after_media_id,
+      note: i.note ?? null, submitted_by: i.submitted_by ?? null,
+    }),
+  },
+  {
+    name: 'pending_proofs',
+    description: 'Evidence filed and waiting for somebody to look at it, oldest first.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => proof.pendingProofs(ch(i)),
+  },
+  {
+    name: 'review_proof',
+    description:
+      'Check somebody else\'s work and say so. REFUSES a check signed by the person who submitted ' +
+      'it: the entire purpose of a before-and-after is that a person who was not there can look at ' +
+      'it. Rejecting requires a reason, because the person who did the work has to know what to ' +
+      'do about it.',
+    input_schema: S({
+      proof_id: str(''),
+      decision: { type: 'string', enum: ['verified', 'rejected'] },
+      reviewed_by: str('The name of the person making the check.'),
+      note: str('Required when rejecting.'),
+    }, ['proof_id', 'decision', 'reviewed_by']),
+    handler: (i) => proof.reviewProof(i.proof_id,
+      { decision: i.decision, reviewed_by: i.reviewed_by, note: i.note ?? null }),
+  },
+  {
+    name: 'list_media',
+    description:
+      'Every file this commons holds, with its hash and whether that hash is real. Files live in ' +
+      'data/media on this machine — no bucket, no third party holding the evidence.',
+    input_schema: S({ chapter_id: str(''), limit: num('Default 100.') }),
+    handler: (i) => proof.listMedia(ch(i), { limit: i.limit ?? 100 }),
+  },
+  {
+    name: 'check_evidence',
+    description:
+      'Re-read every stored file and re-hash it. Says which are missing, which have changed since ' +
+      'they were filed, and which never had a real hash — three different problems that look ' +
+      'identical in the interface. A proof store nobody ever checks is a promise.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => proof.verifyStore(ch(i)),
+  },
+  {
+    name: 'withdraw_media',
+    description:
+      'Remove a file from this commons. The bytes are deleted; the ROW stays, so a proof that ' +
+      'pointed at it says "withdrawn" rather than quietly losing half of a pair and reading as ' +
+      'though the evidence was never there.',
+    input_schema: S({ media_id: str(''), reason: str('') }, ['media_id']),
+    handler: (i) => proof.withdrawMedia(i.media_id, { reason: i.reason ?? null }),
+  },
+  {
+    name: 'decide_council_item',
+    description:
+      'Finalise a council decision. Refuses while a red flag is open, and refuses without a review ' +
+      'date — monitoring must be able to change the decision later.',
+    input_schema: S({
+      decision_id: str(''), review_date: str('YYYY-MM-DD — when this gets looked at again'),
+    }, ['decision_id']),
+    handler: (i) => council.decide(i.decision_id, { review_date: i.review_date }),
+  },
+  {
+    name: 'clear_red_flag',
+    description:
+      'Record that a red flag on a council item has been resolved, and how. The text of what was ' +
+      'resolved is kept in the decision body so the history is not erased.',
+    input_schema: S({
+      decision_id: str(''), resolution: str('How the objection was answered or the harm prevented'),
+      resolved_by: str('Who resolved it'),
+    }, ['decision_id', 'resolution', 'resolved_by']),
+    handler: (i) => {
+      const d = one('SELECT * FROM decisions WHERE id=?', i.decision_id);
+      if (!d) return { error: 'not_found' };
+      if (!d.red_flags) return { error: 'no_red_flag', message: 'There is no open red flag on this item.' };
+      run(`UPDATE decisions SET red_flags=NULL, body = COALESCE(body,'') ||
+             char(10) || char(10) || '[Red flag resolved ' || date('now') || ' by ' || ? || '] ' ||
+             'Was: ' || ? || ' — Resolution: ' || ?
+           WHERE id=?`,
+          i.resolved_by, d.red_flags, i.resolution, i.decision_id);
+      return one('SELECT * FROM decisions WHERE id=?', i.decision_id);
+    },
+  },
+
+  // ---------- Stage 11: Measure ----------
+  {
+    name: 'list_indicators',
+    description: 'Indicators and their latest measurements — what is actually being tracked and whether it moved.',
+    input_schema: S({ chapter_id: str(''), quest_id: str('') }),
+    handler: (i) => all(
+      `SELECT i.*,
+              (SELECT value FROM measurements m WHERE m.indicator_id=i.id ${latestMeasurement('m')} LIMIT 1) AS latest_value,
+              (SELECT measured_at FROM measurements m WHERE m.indicator_id=i.id ${latestMeasurement('m')} LIMIT 1) AS latest_at,
+              (SELECT COUNT(*) FROM measurements m WHERE m.indicator_id=i.id) AS measurement_count
+         FROM indicators i WHERE i.chapter_id=? ${i.quest_id ? 'AND i.quest_id=?' : ''}
+        ORDER BY i.created_at DESC`,
+      ...[ch(i), i.quest_id].filter(Boolean)
+    ),
+  },
+  {
+    name: 'add_indicator',
+    description:
+      'Define what will be measured. The protocol requires a baseline, a desired condition with a ' +
+      'date, a method, and a DECISION TRIGGER — the result that would force the project to change, ' +
+      'pause or stop. An indicator without a trigger is decoration.',
+    input_schema: S({
+      chapter_id: str(''), quest_id: str(''), name: str('What is being measured'),
+      unit: str('metres, litres, count, degrees C…'),
+      baseline_value: num('What was true before'), baseline_at: str('YYYY-MM-DD'),
+      target_value: num('What should be true'), target_by: str('YYYY-MM-DD'),
+      method: str('Who measures, how, to what standard'),
+      cadence: str('How often'),
+      decision_trigger: str('REQUIRED. What result causes adaptation, pause, escalation or stopping'),
+      stewardship_horizon: str('Who checks again after the project ends, and for how long'),
+    }, ['name', 'decision_trigger']),
+    handler: (i) => create('indicators', 'indicator', ch(i), { ...i, chapter_id: ch(i) }),
+  },
+  {
+    name: 'record_measurement',
+    description:
+      'Record a reading against an indicator. Reports whether this crosses the decision trigger, ' +
+      'so measurement can actually change a decision rather than just accumulate.',
+    input_schema: S({
+      indicator_id: str(''), value: num('The reading'),
+      uncertainty: num('Plus or minus'), measured_by: str('Who took it'),
+      method_note: str('Anything unusual about the conditions'),
+      measured_at: str('YYYY-MM-DD, defaults to today'),
+    }, ['indicator_id', 'value']),
+    handler: (i) => {
+      const ind = one('SELECT * FROM indicators WHERE id=?', i.indicator_id);
+      if (!ind) return { error: 'not_found' };
+      const m = create('measurements', 'measurement', ind.chapter_id, {
+        indicator_id: i.indicator_id, value: i.value, uncertainty: i.uncertainty ?? null,
+        measured_by: i.measured_by ?? null, method_note: i.method_note ?? null,
+        measured_at: i.measured_at ?? null, source_adapter: 'manual',
+      });
+      // Moving away from the target is the case the manual cares about.
+      let direction = null;
+      if (ind.baseline_value != null && ind.target_value != null) {
+        const wanted = ind.target_value - ind.baseline_value;
+        const got = i.value - ind.baseline_value;
+        direction = Math.sign(wanted) === Math.sign(got) || got === 0 ? 'toward_target' : 'away_from_target';
+      }
+      return {
+        measurement: m, indicator: ind.name, direction,
+        decision_trigger: ind.decision_trigger,
+        review_needed: direction === 'away_from_target',
+        note: direction === 'away_from_target'
+          ? 'This reading moves away from the target. The decision trigger above should be applied now, not at the next review.'
+          : null,
+      };
+    },
+  },
+
+  // ---------- Culture, Maker, Media ----------
+  {
+    name: 'list_gatherings',
+    description: 'Gatherings and their care provision score.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => all('SELECT * FROM gatherings WHERE chapter_id=? ORDER BY starts_at', ch(i)),
+  },
+  {
+    name: 'add_gathering',
+    description:
+      'Schedule a gathering. Care provision is part of the record, not an afterthought — a ' +
+      'gathering with fewer than two provisions is flagged by the care gap report.',
+    input_schema: S({
+      chapter_id: str(''), title: str(''), quest_id: str(''), place_id: str(''),
+      kind: { type: 'string', enum: ['session','council','workshop','work_party','listening','screening','market','ceremony'] },
+      starts_at: str('YYYY-MM-DD HH:MM'), location_name: str(''), description: str(''),
+      care_meals: bool('Food provided'), care_transport: bool('Transport help'),
+      care_childcare: bool('Child or elder care'), care_accessibility: bool('Accessibility accommodations'),
+      care_notes: str('What is actually on offer, and who to ask'),
+    }, ['title']),
+    handler: (i) => create('gatherings', 'gathering', ch(i), { ...i, chapter_id: ch(i) }),
+  },
+  {
+    name: 'update_gathering',
+    description:
+      'Change an existing gathering — most often to add the care provision it was missing. This ' +
+      'is the tool the care-gap report and the map point at: the only way to add care used to be ' +
+      'add_gathering, which INSERTS, so "add care to this gathering" quietly created a second ' +
+      'gathering with the same title and left the unprovisioned one exactly as it was. Only the ' +
+      'fields you pass are changed.',
+    input_schema: S({
+      gathering_id: str('Which gathering'),
+      title: str(''), starts_at: str('YYYY-MM-DD HH:MM'), location_name: str(''), description: str(''),
+      care_meals: bool('Food provided'), care_transport: bool('Transport help'),
+      care_childcare: bool('Child or elder care'), care_accessibility: bool('Accessibility accommodations'),
+      care_notes: str('What is actually on offer, and who to ask'),
+      rsvp_count: num('How many have said they are coming'),
+    }, ['gathering_id']),
+    handler: (i) => {
+      const g = one('SELECT * FROM gatherings WHERE id=?', i.gathering_id);
+      if (!g) return { error: 'not_found', message: 'No gathering with that id.' };
+      const FIELDS = ['title', 'starts_at', 'location_name', 'description', 'care_meals',
+                      'care_transport', 'care_childcare', 'care_accessibility', 'care_notes',
+                      'rsvp_count'];
+      // Only what was actually passed. An update that wrote every column would
+      // blank the fields the caller did not mention, which is how "add care"
+      // becomes "delete the description".
+      const given = FIELDS.filter((f) => i[f] !== undefined && i[f] !== null);
+      if (!given.length) {
+        return { error: 'nothing_to_update', message: `Pass at least one of: ${FIELDS.join(', ')}.` };
+      }
+      run(`UPDATE gatherings SET ${given.map((f) => `${f}=?`).join(', ')} WHERE id=?`,
+          ...given.map((f) => (typeof i[f] === 'boolean' ? (i[f] ? 1 : 0) : i[f])), i.gathering_id);
+      const after = one('SELECT * FROM gatherings WHERE id=?', i.gathering_id);
+      const care = after.care_meals + after.care_transport + after.care_childcare + after.care_accessibility;
+      return {
+        ...after, care_provided: care,
+        note: care < 2
+          ? 'Still fewer than two of four. Ecological work fails when people are exhausted, ' +
+            'excluded, unpaid, unsafe or unsupported.'
+          : null,
+      };
+    },
+  },
+  {
+    name: 'add_hub',
+    description: 'Register a hub — a physical or distributed node of the commons.',
+    input_schema: S({
+      chapter_id: str(''), name: str(''), place_id: str(''),
+      type: {
+        type: 'string',
+        enum: ['Council and Culture House','Field Station','Maker and Repair Lab','Learning Commons',
+               'Media and Data Lab','Food, Seed, and Water Node','Resilience and Care Node',
+               'Stewardship Hub','Civic Commons'],
+      },
+      description: str(''), lat: num(''), lng: num(''), stewards_count: num(''),
+    }, ['name']),
+    handler: (i) => create('hubs', 'hub', ch(i), { ...i, chapter_id: ch(i) }),
+  },
+  {
+    name: 'add_agent',
+    description: 'Register a person, organization or ecological agent who takes part in exchange.',
+    input_schema: S({
+      chapter_id: str(''), name: str(''),
+      vf_agent_type: { type: 'string', enum: ['Person','Organization','EcologicalAgent'] },
+      role: str(''), contact: str(''),
+    }, ['name']),
+    handler: (i) => create('agents', 'agent', ch(i), { ...i, chapter_id: ch(i) }),
+  },
+  {
+    name: 'list_agents',
+    description: 'Everyone and everything registered as an economic agent in this commons.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => all('SELECT * FROM agents WHERE chapter_id=? ORDER BY name', ch(i)),
+  },
+  {
+    name: 'publish_learning',
+    description:
+      'Write down what was learned so it can travel. Set travels=false for knowledge that must ' +
+      'stay in this place — that flag is honoured by the federation layer.',
+    input_schema: S({
+      chapter_id: str(''), title: str(''), quest_id: str(''),
+      kind: { type: 'string', enum: ['guide','workshop','toolkit','case_study','story','protocol'] },
+      summary: str('What another place would need to know'),
+      license: str('Default CC-BY-SA-4.0'),
+      travels: bool('May another chapter receive this? Default true.'),
+    }, ['title', 'summary']),
+    handler: (i) => create('learn', 'learn', ch(i), {
+      ...i, chapter_id: ch(i), travels: i.travels === false ? 0 : 1,
+      license: i.license ?? 'CC-BY-SA-4.0',
+    }),
+  },
+
+  // ---------- Media consent register ----------
+  {
+    name: 'record_consent',
+    description:
+      'Register media consent before anything is published. Records who granted it, for what ' +
+      'purpose, whether they review before publication, whether they may withdraw, and what ' +
+      'benefit sharing was agreed.',
+    input_schema: S({
+      chapter_id: str(''), subject: str('Who or what the material is about'),
+      purpose: str('Exactly what it will be used for'),
+      granted_by: str('Who gave consent'), granted_at: str('YYYY-MM-DD'),
+      review_before_publication: bool('Default true'), withdrawable: bool('Default true'),
+      benefit_sharing: str('What returns to them if this generates value'),
+      sensitive_location_masked: bool('Are sensitive locations removed?'),
+      notes: str(''),
+    }, ['subject', 'purpose']),
+    handler: (i) => create('media_consent', 'consent', ch(i), {
+      ...i, chapter_id: ch(i),
+      review_before_publication: i.review_before_publication === false ? 0 : 1,
+      withdrawable: i.withdrawable === false ? 0 : 1,
+    }, 'members'),
+  },
+  {
+    name: 'withdraw_consent',
+    description:
+      'Someone has withdrawn their consent. Marks it immediately and lists what needs to come down. ' +
+      'The protocol treats this as non-negotiable.',
+    input_schema: S({ consent_id: str(''), reason: str('') }, ['consent_id']),
+    handler: (i) => {
+      const c = one('SELECT * FROM media_consent WHERE id=?', i.consent_id);
+      if (!c) return { error: 'not_found' };
+      if (!c.withdrawable) {
+        return { error: 'not_withdrawable',
+                 message: 'This record was created as non-withdrawable. Escalate to council — do not overwrite it here.' };
+      }
+      run(`UPDATE media_consent SET withdrawn_at=datetime('now'),
+             notes=COALESCE(notes,'') || char(10) || '[Withdrawn] ' || COALESCE(?,'') WHERE id=?`,
+          i.reason ?? '', i.consent_id);
+      return { withdrawn: one('SELECT * FROM media_consent WHERE id=?', i.consent_id),
+               action_required: `Anything published under "${c.purpose}" about "${c.subject}" must be taken down or re-cleared.` };
+    },
+  },
+  {
+    name: 'consent_audit',
+    description: 'Consent that has been withdrawn, never granted, or has no benefit sharing agreed.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => steward.consentAudit(ch(i)),
+  },
+
+  // ---------- Atlas layer registry ----------
+  {
+    name: 'register_atlas_layer',
+    description:
+      'Record one of the twelve Living Commons Atlas layers: what it is, where it came from, its ' +
+      'licence, and how sensitive it is. Sensitive species locations, sacred places and personal ' +
+      'information must be classified above "public".',
+    input_schema: S({
+      chapter_id: str(''),
+      layer_no: num('1-12, matching the atlas layer list in the protocol'),
+      name: str(''), source: str('Where the data came from'), source_license: str(''),
+      sensitivity: { type: 'string', enum: ['public','members','council','restricted','sacred'] },
+      geojson_path: str('Path to a local file, if any'), notes: str(''),
+    }, ['layer_no', 'name']),
+    handler: (i) => create('atlas_layers', 'atlas_layer', ch(i), { ...i, chapter_id: ch(i) },
+                           i.sensitivity ?? 'public'),
+  },
+  {
+    name: 'list_atlas_layers',
+    description: 'Which of the twelve atlas layers exist, their sources, licences and sensitivity.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => {
+      // The layer names and the open sources that can fill them come from the
+      // registry, not from a second copy of the list living here. The copy that
+      // used to sit in this handler is exactly the drift the registry prevents.
+      const coverage = registry.layerCoverage(ch(i));
+      return {
+        registered: all('SELECT * FROM atlas_layers WHERE chapter_id=? ORDER BY layer_no', ch(i)),
+        coverage,
+        resolved: coverage.filter((l) => l.resolved).length,
+        missing: coverage.filter((l) => !l.resolved)
+          .map((l) => ({ layer_no: l.layer_no, name: l.name, available_upstream: l.available_upstream })),
+      };
+    },
+  },
+
+  // ---------- Federation: actually sending and receiving ----------
+  {
+    name: 'export_knowledge',
+    description:
+      'Bundle one object for travel to another chapter. Refuses anything above the given clearance ' +
+      'or marked do-not-travel, and strips personal detail. Labels travel; material stays.',
+    input_schema: S({
+      rid: str('The Reference Identifier, from knowledge_manifest'),
+      clearance: { type: 'string', enum: ['public','members','council','restricted','sacred'] },
+    }, ['rid']),
+    handler: (i) => koi.bundle(i.rid, { clearance: i.clearance ?? 'public' }),
+  },
+  {
+    name: 'publish_to_network',
+    description:
+      'Post this chapter\'s hosted profile URL to the Murmurations Index so aggregators and other ' +
+      'chapters can find it. The profile must already be hosted at a public URL — generate it with ' +
+      'murmurations_profile first. This is the one action that makes the chapter publicly visible.',
+    input_schema: S({ profile_url: str('The public URL where your profile JSON is hosted') }, ['profile_url']),
+    handler: (i) => murmur.postToIndex(i.profile_url),
+  },
+  {
+    name: 'import_field_data',
+    description:
+      'Import a GeoJSON file of field observations (CoMapeo, Mapeo, QGIS, an agency download) as ' +
+      'draft signals. Everything imported lands unverified and members-only until a human reviews it.',
+    input_schema: S({
+      chapter_id: str(''), path: str('Path to the .geojson file on this computer'),
+      place_id: str('Attach to this place'), dry_run: bool('Preview without saving'),
+    }, ['path']),
+    handler: (i) => {
+      const id = ch(i);
+      let drafts;
+      try { drafts = signalsFromGeoJSON(i.path, { chapterId: id, placeId: i.place_id ?? null }); }
+      catch (e) {
+        // A code the caller can switch on, not prose in the code field. Every
+        // other tool here answers with a short machine-readable error plus a
+        // sentence; this one put the whole sentence IN the code, so an AI
+        // caller had nothing to branch on and a human got the same text twice.
+        //
+        // The two cases are also genuinely different problems with different
+        // fixes — a path that does not exist is a typo, a file that will not
+        // parse is the wrong export — and collapsing them into one string made
+        // the caller guess which it was.
+        const missing = /ENOENT|no such file/i.test(e.message);
+        return {
+          error: missing ? 'file_not_found' : 'unreadable_geojson',
+          message: missing
+            ? `No file at ${i.path}. Give the full path to a .geojson file on this computer — ` +
+              'nothing is uploaded, it is read from disk where it already is.'
+            : `${i.path} could not be read as GeoJSON: ${e.message}. CoMapeo, Mapeo and QGIS ` +
+              'all export a FeatureCollection; a shapefile or a .zip has to be converted first.',
+          path: i.path,
+        };
+      }
+      if (i.dry_run) return { would_import: drafts.length, preview: drafts.slice(0, 10) };
+      let n = 0;
+      for (const d of drafts) {
+        const { sensitivity, ...row } = d;
+        create('signals', 'signal', id, row, sensitivity ?? 'members');
+        n++;
+      }
+      return { imported: n, note: 'All imported observations are unverified and members-only until reviewed.' };
+    },
+  },
+
+  // ---------- what the land is doing ----------
+  {
+    name: 'ground_today',
+    description:
+      'What the land is doing right now at the chapter\'s anchor place: sun and moon computed ' +
+      'locally, live weather and any official hazard alert, the nearest USGS gage measured against ' +
+      'its own median for THIS calendar day across the whole period of record, and what this week ' +
+      'held in earlier years. Read-only. Use it to answer "how is it out there?" and to open a ' +
+      'briefing before anything is asked of anyone.',
+    input_schema: S({
+      chapter_id: str(''),
+      place_id: str('Look out from this place instead of the chapter default.'),
+    }),
+    handler: (i) => ground.groundToday(ch(i), { place_id: i.place_id ?? null }),
+    // What this answer looks like to a connection that is not the keyboard.
+    // Declared HERE, beside the tool, because the one registry is where a
+    // capability's rules live — a route deciding what to strip would be a
+    // second place that knows about audiences, and the next route would not.
+    view: ground.groundSeenBy,
+  },
+  {
+    name: 'this_week_last_year',
+    description:
+      'Observations, decisions and gatherings recorded near this calendar date in earlier years. ' +
+      'The chapter\'s own memory of the season — empty until there is a year of records, and it ' +
+      'says so rather than pretending.',
+    input_schema: S({
+      chapter_id: str(''),
+      window_days: num('How many days either side of today to look. Default 3.'),
+    }),
+    handler: (i) => ground.thisWeekInHistory(ch(i), { window_days: i.window_days ?? 3 }),
+  },
+
+  // ---------- the land itself: soil, life, hazard ----------
+  // These three take a place_id, a lat/lng, or nothing at all. "Nothing" has to
+  // work: ground_today already answers "how is it out there?" with no arguments
+  // by resolving the chapter's anchor place, and a person asking "what is the
+  // soil like here?" is asking the same kind of question. Refusing one while
+  // answering the other is an inconsistency the caller has to learn rather than
+  // one they can guess.
+  {
+    name: 'soil_at',
+    description:
+      'The ground under a place: soil series, taxonomic order, drainage, whether it is hydric, and ' +
+      'depth-weighted pH, organic matter, clay and available water capacity over the top 30 cm — ' +
+      'plus elevation and land cover. USDA SSURGO where it covers, ISRIC SoilGrids anywhere else. ' +
+      'Resolved once and stored on the place; soil does not change on a schedule. Use it before ' +
+      'designing any planting, restoration, septic, drainage or building work.',
+    input_schema: S({
+      place_id: str('A place to read and update; omit if giving coordinates.'),
+      lat: num('Latitude, if no place_id'), lng: num('Longitude, if no place_id'),
+      refresh: bool('Re-ask upstream even if the place already has an answer. Rarely needed.'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.locate(place, { refresh: !!i.refresh });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { groundProfile } = await import('../adapters/soil.mjs');
+      return groundProfile(i.lat, i.lng);
+    },
+  },
+  {
+    name: 'life_here',
+    description:
+      'Atlas layer 5 — what lives here. The ranked species list people have actually identified ' +
+      'nearby, how deeply the place has been recorded and since when, how many records are of ' +
+      'something at risk, and whether the ground is inside a protected area. ' +
+      'READ THIS BEFORE PUBLISHING ANYTHING FROM IT: the threatened block comes back at ' +
+      '"restricted" and must stay there. No coordinates for rare taxa are requested from any ' +
+      'upstream or stored, because aggregating obscured records is how the obscuring gets undone.',
+    input_schema: S({
+      place_id: str('A place; omit if giving coordinates.'),
+      lat: num('Latitude, if no place_id'), lng: num('Longitude, if no place_id'),
+      radius_km: num('Search radius in kilometres. Default 10.'),
+      limit: num('How many species to list. Default 20.'),
+    }),
+    handler: async (i) => {
+      const opts = { radiusKm: i.radius_km ?? 10, limit: i.limit ?? 20 };
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.lifeHere(place, opts);
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { lifeHere } = await import('../adapters/life.mjs');
+      return lifeHere(i.lat, i.lng, opts);
+    },
+  },
+  {
+    name: 'hazards_at',
+    description:
+      'Atlas layer 6 — official National Weather Service alerts in effect, the FEMA regulatory ' +
+      'flood zone, the US Drought Monitor class for the county, and satellite heat detections. ' +
+      'With a place_id it also files active alerts as signals and records the flood zone on the ' +
+      'place. Standing conditions (flood zone, drought class) are never filed as signals — only ' +
+      'things that started. When a source cannot be reached it says so: silence here is never an ' +
+      'all-clear.',
+    input_schema: S({
+      place_id: str('A place; omit if giving coordinates. Required to file signals.'),
+      lat: num('Latitude, if no place_id'), lng: num('Longitude, if no place_id'),
+      ingest: bool('File active alerts as signals. Default true when a place_id is given.'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.hazards(place, { ingest: i.ingest !== false });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { hazardsHere } = await import('../adapters/hazards.mjs');
+      return hazardsHere(i.lat, i.lng);
+    },
+  },
+  {
+    name: 'upstream_sources',
+    description:
+      'Every open dataset and API this OS can reach: what it is, who publishes it, its licence, ' +
+      'which Atlas layer it fills, whether it covers the US only or the whole world, and when it ' +
+      'last actually answered. Also names any source that needs a key this machine does not have. ' +
+      'Use it to answer "where did this number come from?" and to build the attribution an export ' +
+      'has to carry.',
+    input_schema: S({ layer_no: num('Only sources for this Atlas layer, 1-12.') }),
+    handler: (i) => {
+      registry.syncSources();
+      const list = i.layer_no ? registry.sourcesForLayer(i.layer_no) : registry.SOURCES;
+      const fetched = Object.fromEntries(
+        all('SELECT id, last_fetched_at FROM upstream_sources').map((r) => [r.id, r.last_fetched_at]));
+      return {
+        sources: list.map((s) => ({
+          id: s.id, name: s.name, project: s.project, atlas_layer: s.layer,
+          license: s.license, attribution: s.attribution, url: s.url,
+          coverage: s.coverage, adapter: s.adapter, cadence: s.cadence,
+          default_sensitivity: s.sensitivity,
+          needs_key: s.requires_key ?? null,
+          last_answered: fetched[s.id] ?? null,
+          notes: s.notes ?? null,
+        })),
+        needs_keys: registry.missingKeys(),
+        note: 'Declared in adapters/registry.mjs. Licence and attribution live there once, so an ' +
+              'export and the map legend cannot disagree about them.',
+      };
+    },
+  },
+
+  // ---------- the first sixty seconds ----------
+  {
+    name: 'look_around',
+    description:
+      'Everything this OS can find out about a point, live, WITHOUT WRITING ANYTHING: ' +
+      'ecoregion, watershed, the soil under it, what lives around it, the nearest gage against ' +
+      'its own period of record, weather, hazards, and today\'s light. Takes a place name ' +
+      '("Barton Creek Greenbelt, Austin TX") or a lat/lng. Use it to answer "what is it like ' +
+      'there?" for anywhere on earth, and as the first screen a new person ever sees — the ' +
+      'reveal comes before any commitment is asked for. depth "quick" answers in seconds; ' +
+      '"full" adds soil and species and takes longer.',
+    input_schema: S({
+      query: str('A place name, address, creek, or road junction.'),
+      lat: num('Latitude, if you already have it.'),
+      lng: num('Longitude, if you already have it.'),
+      depth: { type: 'string', enum: ['instant', 'quick', 'full'],
+               description: 'Default quick. "instant" skips the river gage, for a first paint.' },
+    }),
+    handler: (i) => firstrun.lookAround({
+      query: i.query ?? null, lat: i.lat ?? null, lng: i.lng ?? null, depth: i.depth ?? 'quick',
+    }),
+  },
+  {
+    name: 'settling_in',
+    description:
+      'Whether this commons is about anywhere or anyone yet: one place with coordinates, one ' +
+      'person named, and three things people noticed — human observations only, never gage ' +
+      'readings. Read-only. The board puts whatever is missing at the top of what needs doing, ' +
+      'because an installed commons with nothing in it is how these die.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => firstrun.settledIn(ch(i)),
+  },
+  {
+    name: 'begin_here',
+    description:
+      'Found a chapter at a point and resolve it against the real world in one pass. ' +
+      'Requires BOTH what the chapter represents and what it explicitly does not — that gate is ' +
+      'not relaxed for being the first thing somebody does, because the easiest moment to make ' +
+      'an unbounded claim of representation is the moment somebody is excited and typing fast.',
+    input_schema: S({
+      chapter_name: str('What this commons is called'),
+      represents: str('What and whom it DOES represent'),
+      does_not_represent: str('What and whom it explicitly does NOT represent'),
+      place_name: str('The first place — defaults to the chapter name'),
+      lat: num('Latitude'), lng: num('Longitude'),
+      scale: { type: 'string', enum: ['site', 'watershed', 'bioregion', 'ecoregional'] },
+      chapter_id: str('Short slug; derived from the name if omitted'),
+      locality: str('Town/city'), region: str('State/province'), country: str('Country'),
+    }, ['chapter_name', 'represents', 'does_not_represent', 'lat', 'lng']),
+    handler: (i) => firstrun.beginHere(i),
+  },
+
+  // ---------- what came of it ----------
+  {
+    name: 'what_moved',
+    description:
+      'What people\'s observations actually turned into: the chain from a human observation to ' +
+      'the project it started, the gates that closed, the council decision it caused, the ' +
+      'measurements taken and the learning written up. Only observations a PERSON made are ' +
+      'attributed to a person — gage readings, weather alerts and fire detections are excluded, ' +
+      'because crediting somebody for a warning NOAA issued is worse than saying nothing. ' +
+      'Use it to answer "did any of this matter?".',
+    input_schema: S({
+      chapter_id: str(''),
+      since_days: num('Only count chains that moved in this many days. Default 90.'),
+      limit: num('How many to return. Default 12.'),
+    }),
+    handler: (i) => loops.whatMoved(ch(i), {
+      since_days: i.since_days ?? 90, limit: i.limit ?? 12,
+    }),
+  },
+  {
+    name: 'intake_promise',
+    description:
+      'Whether the commons is keeping the promise the protocol makes: a person can submit a ' +
+      'need, receive a response, and appeal. Returns what was brought, what was answered, who ' +
+      'has been waiting longest, and how many are past the fourteen-day mark.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => loops.intakePromise(ch(i)),
+  },
+  {
+    name: 'carrying',
+    description:
+      'Who is holding how much of the open work, and who has held the same thing longest. ' +
+      'Counts only responsibilities still owed — an open project\'s maintenance owner, a ' +
+      'pending decision\'s land seat, a recurring indicator\'s last reader — never finished ' +
+      'work, because counting what people have completed would make this a scoreboard. ' +
+      'Raises a person by name only when they hold more than half of everything open. Use it ' +
+      'to answer "is anybody carrying too much?" before somebody quietly burns out.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => attention.carrying(ch(i)),
+  },
+  {
+    name: 'place_attention',
+    description:
+      'Which ground has actually been attended to lately and which has gone longest without ' +
+      'anybody — observations, gatherings and readings a PERSON recorded, over a rolling ' +
+      'window. Automated readings are excluded: a creek with a gage on it files data every ' +
+      'three hours whether or not a human has been there. Ranks places, never people.',
+    input_schema: S({
+      chapter_id: str(''),
+      days: num('Rolling window in days. Default 90.'),
+    }),
+    handler: (i) => attention.placeAttention(ch(i), { days: i.days ?? 90 }),
+  },
+  {
+    name: 'vitals',
+    description:
+      'The seven questions that say whether a commons is working, answered from its own ' +
+      'database and without any telemetry: are needs being heard, does observation lead ' +
+      'anywhere, does monitoring change decisions, is the work spread, is care real, is ' +
+      'knowledge travelling, and is it still alive. Each returns a number, the threshold it ' +
+      'is judged against and the protocol rule it comes from, so the judgement can be argued ' +
+      'with. A question with nothing to measure returns null rather than zero — a chapter ' +
+      'that has held no gatherings has no care score, it does not have a care score of nought.',
+    input_schema: S({
+      chapter_id: str(''),
+      days: num('Window for the measures that use one. Default 90.'),
+    }),
+    handler: (i) => vitals.vitals(ch(i), { days: i.days ?? 90 }),
+  },
+  {
+    name: 'neighbours',
+    description:
+      'What other chapters in the network have published, one line each, as this commons last ' +
+      'read it. Deliberately not live: the lines are refreshed weekly in the background, so ' +
+      'opening this shows what was already known rather than fetching. Nothing here generates ' +
+      'a task or expects a reply — it is peripheral awareness of belonging to something larger, ' +
+      'not an inbox. A neighbour\'s text is never written into this commons\' own tables.',
+    input_schema: S({
+      chapter_id: str(''),
+      limit: num('How many neighbours to list. Default 8.'),
+    }),
+    handler: (i) => neighbours.neighbours(ch(i), { limit: i.limit ?? 8 }),
+  },
+
+  // ---------- the season: stages 11, 12 and back round to 6 ----------
+  {
+    name: 'season_review',
+    description:
+      'Everything the database can say about the season so far: which indicators moved and ' +
+      'which moved less than the uncertainty on their own reading, what finished, what stopped, ' +
+      'what is still running, what was written up so it can travel, what was decided, and who ' +
+      'the work reached. Read-only — this is what a council reads BEFORE deciding what stops ' +
+      'and what continues. It never answers the three questions a machine cannot.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => turning.seasonReview(ch(i)),
+  },
+  {
+    name: 'open_season',
+    description:
+      'Open a named season, with the priority list stage 6 requires. If no priorities are ' +
+      'given, it offers what the operator says is blocking or slipped — each already citing ' +
+      'its own protocol rule. Refuses while another season is still open, because two open ' +
+      'seasons means neither ever gets reviewed.',
+    input_schema: S({
+      chapter_id: str(''),
+      name: str('What the chapter calls it — "Autumn 2026", "the low-water season"'),
+      priorities: { type: 'array', items: { type: 'string' },
+        description: 'The seasonal priority list, if the council has already decided it' },
+    }, ['name']),
+    handler: (i) => turning.openSeason(ch(i), { name: i.name, priorities: i.priorities }),
+  },
+  {
+    name: 'close_season',
+    description:
+      'Close the open season with stage 11\'s impact and learning report and stage 12\'s stop / ' +
+      'continue / change / travel. REFUSES until a person has answered the three questions the ' +
+      'database cannot: what did NOT change, what unintended effects appeared, and whose ' +
+      'experience is missing. Those three are the entire value of a review — a report made only ' +
+      'of what moved is a progress report, and nothing has ever gone wrong in one. The refusal ' +
+      'hands back the computed review so whoever answers them is not also made to go and find ' +
+      'the numbers.',
+    input_schema: S({
+      chapter_id: str(''),
+      what_did_not_change: str('What did not change?'),
+      unintended_effects: str('What unintended effects appeared?'),
+      whose_experience_is_missing: str('Whose experience is missing?'),
+      stops: str('What should stop'),
+      continues: str('What should continue or expand'),
+      changes: str('What should adapt'),
+      travels: str('What knowledge can travel to another chapter'),
+      closed_by: str('Who is closing it'),
+    // The three are NOT listed as `required` here, and that is deliberate rather
+    // than an oversight. runTool enforces required fields before a handler ever
+    // runs, so listing them would make its generic "close_season requires: ..."
+    // the only refusal a caller could ever see — and this handler's refusal is
+    // the useful one: it names each question, says WHY a machine will not answer
+    // it, and hands back the whole computed review so that whoever sits down to
+    // answer them is not also sent off to find the numbers they are answering
+    // about. The gate is not weaker; it is the same gate, worded by the engine
+    // that knows what it is guarding.
+    }),
+    handler: (i) => turning.closeSeason(ch(i), i),
+  },
+  {
+    name: 'seasons',
+    description:
+      'Every season this chapter has been through, with the three human answers each was closed ' +
+      'on. The loop is seasonal — a commons with no seasons runs forward and never closes, and ' +
+      'nobody gets the experience of having finished anything.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => turning.seasons(ch(i)),
+  },
+
+  // ---------- the land, at the council table ----------
+  {
+    name: 'land_seat_brief',
+    description:
+      'What the land is doing, for whoever is writing the Land Seat report on a council item: ' +
+      'the latest gage reading and whether it is stale, any official hazard alert, what people ' +
+      'have noticed lately, critical observations with no project behind them, and where the ' +
+      'season has got to. Entirely local — database plus solar equations computed on this ' +
+      'machine — so a council meeting with no wifi can still seat the land. It returns MATERIAL, ' +
+      'not a drafted report: the Land Seat is a person speaking for a place, and it also names ' +
+      'the two things no database can supply (downstream effects, and what is not known).',
+    input_schema: S({ chapter_id: str(''), place_id: str('Defaults to the chapter anchor') }),
+    handler: (i) => landseat.brief(ch(i), { place_id: i.place_id ?? null }),
+  },
+  {
+    name: 'quest_score',
+    description:
+      'Stage 6 for one project: how urgent, regenerative, feasible and maintainable it is, each ' +
+      'read from records that already exist rather than self-assessed. A project with an open ' +
+      'required gate, a red flag or no maintenance owner has NO overall score at all — not a low ' +
+      'one — because the manual says a high score never overrides those, and a number that sorts ' +
+      'will eventually be read as "nearly ready".',
+    input_schema: S({ quest_id: str('') }, ['quest_id']),
+    handler: (i) => quest.score(i.quest_id),
+  },
+  {
+    name: 'seasonal_priorities',
+    description:
+      'Stage 6\'s required output: the seasonal priority list. Ranks every open project that can ' +
+      'be ranked and lists separately the ones held back by a gate, a flag or a missing ' +
+      'maintenance owner — because "what should we do next" and "what is stopping what we already ' +
+      'chose" are the same conversation.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => quest.priorities(ch(i)),
+  },
+  {
+    name: 'map_features',
+    description:
+      'Everything in this commons that can honestly be drawn on the map — places, hubs, open ' +
+      'projects, needs brought and still waiting, gatherings, what people noticed, and what the ' +
+      'instruments reported — each tagged with its kind and a badge worth reading before anybody ' +
+      'clicks it. Every feature says whether the coordinate is its OWN or borrowed: a need and a ' +
+      'gathering have no lat/lng in the schema, so they can only be drawn at the centre of the ' +
+      'place they belong to, and "this is here" and "this belongs to a group whose centre is ' +
+      'here" are different claims. Private needs never appear: a pin is a disclosure with a ' +
+      'location on it.',
+    input_schema: S({
+      chapter_id: str(''),
+      kinds: { type: 'array', items: { type: 'string' },
+        description: 'Only these kinds. Default all of them.' },
+    }),
+    handler: (i) => mapboard.mapFeatures(ch(i), { kinds: i.kinds?.length ? i.kinds : null }),
+  },
+  {
+    name: 'commons_board',
+    description:
+      'One composition answering the four questions a person arrives with: where am I, what is ' +
+      'going on, who is here, and what can I do. The ground and what it is doing now, the open ' +
+      'projects with what is actually in the way of each, who is carrying what, who could help ' +
+      'with what, and the handful of things worth doing next — each with the one action that ' +
+      'does it. Entirely offline and instant: it is the first paint of the first screen and must ' +
+      'never wait on an upstream. Nothing here is new information; it is the same engines ' +
+      'arranged by what a person is looking for rather than by which protocol stage produced it.',
+    input_schema: S({
+      chapter_id: str(''),
+      actions: num('How many things to do. Default 5.'),
+      projects: num('How many projects. Default 8.'),
+    }),
+    handler: (i, ctx) => board.board(ch(i),
+      { actions: i.actions ?? 5, projects: i.projects ?? 8, clearance: ctx?.clearance ?? null }),
+  },
+  {
+    name: 'override_gate',
+    description:
+      'Pass a gate WITHOUT satisfying it, on a named person\'s authority and with a written ' +
+      'reason. Not a way to switch a gate off — a way to make going past it a recorded act with ' +
+      'somebody\'s name on it, kept and shown for as long as the project exists, so the commons ' +
+      'argues with the person rather than with the software. Three gates never graduate: ' +
+      'rights-holder consent, indigenous consent and youth safeguarding, because an override is ' +
+      'made by whoever is at the keyboard and those are not that person\'s to make.',
+    input_schema: S({
+      quest_id: str(''),
+      // Every gate is listed, including the three that never graduate. The
+      // central enum guard would otherwise refuse those first, with a generic
+      // "must be one of" that names the allowed values and not the reason —
+      // and the reason is the entire content of that refusal. Consent is not
+      // yours to waive; a consultation slot is not closed by a deadline; the
+      // person safeguarding protects is not in the room. The gate is not
+      // weaker for being listed: overrideGate refuses it either way.
+      gate: {
+        type: 'string',
+        enum: ['rights_holder_consent', 'indigenous_consent', 'land_access',
+               'youth_safeguarding', 'permits_insurance', 'ecological_assessment',
+               'maintenance_owner', 'affected_party_process', 'data_consent'],
+        description: 'Which gate to pass',
+      },
+      reason: str('Why this project proceeds without it. Kept forever.'),
+      overridden_by: str('Who is taking responsibility for that'),
+    }, ['quest_id', 'gate', 'reason', 'overridden_by']),
+    handler: (i) => quest.overrideGate(i.quest_id, i.gate,
+      { reason: i.reason, overridden_by: i.overridden_by }),
+  },
+  {
+    name: 'the_round',
+    description:
+      "This week's round: the handful of things picked once and held, what is left of them, and "
+      + 'whether it is finished. An item leaves the round when the WORK is done — when it is no '
+      + 'longer in whats_next — never because somebody ticked it. Opens a round if none is open. '
+      + 'Ask this rather than whats_next when the question is "what am I doing this week".',
+    input_schema: S({
+      chapter_id: str(''),
+      size: num('How many things a round holds. Default 5.'),
+    }),
+    handler: (i) => round.theRound(ch(i), { size: i.size ?? 5 }),
+  },
+  {
+    name: 'set_aside',
+    description:
+      'Not this week. Takes the item out of this round with a reason that is kept. The work is '
+      + 'not done and does not disappear — it stays in whats_next and can be picked up in a later '
+      + 'round. A reason is required: "set aside" with no reason reads, a month later, exactly '
+      + 'like nobody having looked.',
+    input_schema: S({
+      chapter_id: str(''),
+      key: str('The item key, from the_round.'),
+      reason: str('Why it is not this week.'),
+    }),
+    handler: (i) => round.setAside(ch(i), i.key, i.reason),
+  },
+  {
+    name: 'sharing_status',
+    description:
+      'Whether other devices on this wifi can reach the OS right now, the address they would '
+      + 'use, and how much this commons holds above members-only. Read-only.',
+    input_schema: S({}),
+    handler: () => share.sharingStatus(),
+  },
+  {
+    name: 'start_sharing',
+    description:
+      'Let other devices on this wifi reach the OS, so a second person can join, a QR at a '
+      + 'gathering works, and the join page is reachable. Nothing restarts and the steward\'s own '
+      + 'session is unaffected. Devices off this machine are held at public and cannot ask for '
+      + 'more. REFUSES if the commons holds anything above members-only, listing what is held; '
+      + 'pass anyway:true to share knowingly once the people those records belong to have said so.',
+    input_schema: S({
+      anyway: bool('Share even though this commons holds restricted or sacred records. '
+        + 'That is a decision for the people those records belong to.'),
+    }),
+    handler: (i) => share.startSharing({ anyway: i.anyway === true }),
+  },
+  {
+    name: 'stop_sharing',
+    description:
+      'Stop other devices on this wifi from reaching the OS. The address stops answering '
+      + 'immediately. Nothing on this computer changes and no data is touched.',
+    input_schema: S({}),
+    handler: () => share.stopSharing(),
+  },
+  {
+    name: 'invite_device',
+    description:
+      'Open an invitation for a second person to write to this commons. Returns a short code to ' +
+      'read off the screen — no account, no password, nothing for anybody to remember. The code ' +
+      'is single-use, expires in twenty minutes, and grants only the right to ASK to join, which ' +
+      'the steward already decided by showing it. It is shown ONCE and is never readable again.',
+    input_schema: S({
+      chapter_id: str(''),
+      role: { type: 'string', enum: ['member', 'coordinator'],
+        description: 'member reads members-only; coordinator also reads council' },
+      created_by: str('Who is inviting'),
+      minutes: num('How long the code lasts. Default 20.'),
+    }),
+    handler: (i) => enrol.inviteDevice(ch(i), {
+      role: i.role ?? 'member', created_by: i.created_by ?? null, minutes: i.minutes,
+    }),
+  },
+  {
+    name: 'enrol_device',
+    description:
+      'Redeem an invitation code from this device. Returns a token to keep on the device — shown ' +
+      'once, stored only as a hash, and never recoverable: a lost phone is revoked and reissued, ' +
+      'not recovered. The label is required because "Maya\'s phone" is what makes a revocation ' +
+      'list readable six months later and "device-4" is not.',
+    input_schema: S({
+      chapter_id: str(''),
+      code: str('The code from the steward\'s screen'),
+      label: str('A name for this device, e.g. "Maya\'s phone"'),
+      person_name: str('Who this device belongs to, if they want to be named'),
+    }, ['code', 'label']),
+    handler: (i) => enrol.enrolDevice(ch(i), {
+      code: i.code, label: i.label, person_name: i.person_name ?? null,
+    }),
+  },
+  {
+    name: 'list_devices',
+    description:
+      'Every device that can write to this commons, and every one that used to. Revoked devices ' +
+      'stay on the list: they are still the recorded author of everything they filed, and ' +
+      'removing the row would orphan that work rather than undo it.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => enrol.devices(ch(i)),
+  },
+  {
+    name: 'revoke_device',
+    description:
+      'Stop a device writing. It keeps everything it has already written and stays on the list — ' +
+      'a device that vanished would take the record of who did the work with it.',
+    input_schema: S({ device_id: str(''), reason: str('Why, for the record') }, ['device_id']),
+    handler: (i) => enrol.revokeDevice(i.device_id, { reason: i.reason ?? null }),
+  },
+  {
+    name: 'name_deputy',
+    description:
+      'Name who holds this chapter and who holds it when they cannot. The deputy must be a ' +
+      'different person and must have AGREED — recording somebody as deputy without asking them ' +
+      'is how a chapter discovers it has no deputy at the moment it needs one. A chapter fails ' +
+      'its own viability test until both are named, because a commons that stops when one person ' +
+      'is ill was never a commons.',
+    input_schema: S({
+      chapter_id: str(''),
+      steward: str('Who holds this chapter day to day'),
+      deputy: str('Who holds it when the steward cannot'),
+      deputy_agreed: bool('Has the deputy actually been asked and said yes?'),
+    }, ['steward', 'deputy']),
+    handler: (i) => {
+      const id = ch(i);
+      if (!id) return { error: 'no_chapter' };
+      const s = String(i.steward ?? '').trim();
+      const d = String(i.deputy ?? '').trim();
+      if (s.toLowerCase() === d.toLowerCase()) {
+        return {
+          error: 'same_person',
+          message: 'The steward and the deputy have to be two different people. A chapter whose ' +
+                   'deputy is its steward has an arrangement on paper and none in the world.',
+        };
+      }
+      if (!i.deputy_agreed) {
+        return {
+          error: 'not_agreed',
+          message: `Ask ${d} first. Recording somebody as deputy without asking is how a chapter ` +
+                   'finds out it has no deputy on the day it needs one — and the day it needs one ' +
+                   'is the day nobody can ask. Come back when they have said yes.',
+        };
+      }
+      run(`UPDATE chapters SET steward=?, deputy=?, deputy_agreed_at=datetime('now') WHERE id=?`,
+          s, d, id);
+      return {
+        steward: s, deputy: d,
+        note: `${d} should know where the backup lives and should restore one themselves at ` +
+              'least once. A backup nobody has restored is a backup nobody has.',
+        next: { tool: 'backup_commons', input: {} },
+      };
+    },
+  },
+  {
+    name: 'who_could_help',
+    description:
+      'Join what this commons is short of against what people have already been recorded doing, ' +
+      'and against what the neighbours say they do. Needs are read from what is genuinely open: ' +
+      'needs brought and unanswered, projects with no maintenance owner, gates waiting for a ' +
+      'reviewer, indicators on a cadence nobody has ever read. Skills are read from what people ' +
+      'HAVE DONE — work recorded, gates reviewed, measurements taken, observations filed — never ' +
+      'from a self-declared profile, because a skills form is accurate the day it is written and ' +
+      'the people least likely to fill one in are the ones already doing the most. ' +
+      'Private intake items are excluded: a private need is private from the matcher too. ' +
+      'Returns CANDIDATES with the words that matched, never introductions or rankings.',
+    input_schema: S({
+      chapter_id: str(''),
+      limit: num('How many open needs to match. Default 8.'),
+    }),
+    handler: (i) => matching.whoCouldHelp(ch(i), { limit: i.limit ?? 8 }),
+  },
+
+  // ---------- what this locality already publishes ----------
+  {
+    name: 'discover_local_data',
+    description:
+      'Find datasets the chapter\'s OWN city or county publishes about a subject — water, soil, ' +
+      'trees, flooding, historic sites — by asking the Socrata and ArcGIS Hub catalogues what its ' +
+      'local portals hold. This is the layer no federal feed has: a city\'s own monitoring of the ' +
+      'creek a chapter organizes around. Anything unambiguously PUBLIC DOMAIN is added to the ' +
+      'Atlas automatically; every other licence, including open ones with attribution or ' +
+      'share-alike conditions, is held as a candidate for a person to read. Accepting terms on ' +
+      'the commons\' behalf is not something this can do for you.',
+    input_schema: S({
+      chapter_id: str(''),
+      subject: str('What to look for: water, creek, soil, trees, flooding, heat, historic sites…'),
+      locality: str('Override the chapter\'s own locality'),
+      region: str('Override the chapter\'s own region or state'),
+      limit: num('How many to consider. Default 12.'),
+    }, ['subject']),
+    handler: (i) => bio.discoverData(ch(i), {
+      subject: i.subject, locality: i.locality, region: i.region, limit: i.limit ?? 12,
+    }),
+  },
+  {
+    name: 'list_discovered',
+    description:
+      'Datasets found on local portals: what was approved, what was declined and why, and what is ' +
+      'still waiting on somebody to read a licence.',
+    input_schema: S({
+      chapter_id: str(''),
+      status: { type: 'string', enum: ['candidate', 'approved', 'declined'] },
+      subject: str('Only those found while looking for this subject'),
+    }),
+    handler: (i) => bio.listDiscovered(ch(i), { status: i.status ?? null, subject: i.subject ?? null }),
+  },
+  {
+    name: 'approve_dataset',
+    description:
+      'Accept a discovered dataset\'s licence on behalf of the commons and put it on the Atlas. ' +
+      'REFUSED without a named reviewer: this is somebody agreeing to terms, and a decision with ' +
+      'no name on it cannot be questioned later. Public-domain datasets never need this — they ' +
+      'approve themselves.',
+    input_schema: S({
+      dataset_id: str('From list_discovered'),
+      reviewed_by: str('Who read the licence and is accepting it'),
+      note: str('What the terms require — attribution text, share-alike, anything to honour'),
+      sensitivity: { type: 'string', enum: ['public', 'members', 'council', 'restricted', 'sacred'] },
+    }, ['dataset_id', 'reviewed_by']),
+    handler: (i) => bio.approveDataset(i.dataset_id, {
+      reviewed_by: i.reviewed_by, note: i.note ?? null, sensitivity: i.sensitivity ?? 'members',
+    }),
+  },
+  {
+    name: 'decline_dataset',
+    description:
+      'Refuse a discovered dataset, with the reason kept. A refusal nobody can read gets ' +
+      're-litigated next season.',
+    input_schema: S({
+      dataset_id: str(''), reviewed_by: str('Who decided'),
+      reason: str('Why — unclear terms, wrong place, superseded, not ours to publish'),
+    }, ['dataset_id', 'reason']),
+    handler: (i) => bio.declineDataset(i.dataset_id, { reviewed_by: i.reviewed_by ?? null, reason: i.reason }),
+  },
+
+  // ---------- reaching the people who are not the steward ----------
+  {
+    name: 'card_for_the_week',
+    description:
+      'The weekly card: a short, paste-ready block for the group chat the commons already uses. ' +
+      'Carries the land (the part nobody else in that chat can produce), what people\'s ' +
+      'observations turned into, the next gathering with its care provision spelled out, and ' +
+      'ONE ask pointed at somebody who is not the steward. It SENDS NOTHING — a person posts it. ' +
+      'Returns plain text plus structured sections; never carries media, because almost everything ' +
+      'this OS can reach is CC-BY-NC and is not redistributed.',
+    input_schema: S({
+      chapter_id: str(''),
+      days: num('How far back "this week" reaches. Default 7.'),
+    }),
+    handler: (i) => dispatch.cardForTheWeek(ch(i), { days: i.days ?? 7 }),
+  },
+  {
+    name: 'mark_card_sent',
+    description:
+      'Record that a card was produced and posted, so the OS can notice a long silence. Kept in a ' +
+      'local file rather than the database: when a card was last sent is a fact about this ' +
+      'computer, not about the commons, and must never travel to another chapter in an export.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => dispatch.markCardSent(ch(i)),
+  },
+
+  // ---------- the people, the memory, the growing year ----------
+  {
+    name: 'community_here',
+    description:
+      'Atlas layers 7-10 — what is already here. Where care can be reached (clinics, pharmacies, ' +
+      'food banks, refuges, elder care, childcare, community rooms, public water), what is made ' +
+      'and repaired, and how food, materials and energy move. From OpenStreetMap, so it is ' +
+      'community-maintained: good for finding what exists, never a substitute for ringing ahead, ' +
+      'and absence here is not evidence of absence.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''), radius_km: num('Default 3'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.communityAt(place, { radiusKm: i.radius_km ?? 3 });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { communityHere } = await import('../adapters/community.mjs');
+      return communityHere(i.lat, i.lng, { radiusKm: i.radius_km ?? 3 });
+    },
+  },
+  {
+    name: 'culture_here',
+    description:
+      'Atlas layer 11 — this place\'s memory. Historic sites and markers on the ground, Wikipedia ' +
+      'articles anchored to it, digitised newspapers that named it, research published about it, ' +
+      'and field recordings of what lives here. NOTE ON THE RECORDINGS: most are CC-BY-NC, which ' +
+      'this project does not redistribute — audio is linked at its own host and never copied, and ' +
+      'no recording may enter an export or anything shared. The counts, species and dates are ' +
+      'facts and travel freely.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''), radius_km: num('Default 5'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.cultureAt(place, { radiusKm: i.radius_km ?? 5 });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { cultureHere } = await import('../adapters/culture.mjs');
+      return cultureHere(i.lat, i.lng, { radiusKm: i.radius_km ?? 5 });
+    },
+  },
+  {
+    name: 'growing_year',
+    description:
+      'When the land here wakes up, and whether this year is early or late. Thirty-year normal ' +
+      'first-leaf and first-bloom dates from the USA-NPN Spring Index with this year\'s anomaly, ' +
+      'the USDA hardiness zone, and forty years of monthly climate normals. This is the season ' +
+      'clock\'s evidence — the question a seasonal cycle turns on, answerable on day one instead ' +
+      'of after years of the chapter\'s own records.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''), zip: str('US postal code, for the hardiness zone'),
+    }),
+    handler: async (i) => {
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.growingYearAt(place, { zip: i.zip ?? null });
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { growingYear } = await import('../adapters/phenology.mjs');
+      return growingYear(i.lat, i.lng, { zip: i.zip ?? null });
+    },
+  },
+  {
+    name: 'propose_baseline',
+    description:
+      'Offer a defensible baseline for an indicator from public record, before anyone types a ' +
+      'number. The protocol says monitoring must change decisions, but a decision_trigger set ' +
+      'against a guessed baseline cannot honestly fire — so this draws the starting value from ' +
+      'open data instead: creek discharge against its own multi-decade median for this calendar ' +
+      'day, soil organic matter from the survey, species richness, the normal first-leaf date, ' +
+      'climate normals. Every answer carries its source, licence and method. REFUSES rather than ' +
+      'guesses: a wrong baseline makes a decision look evidenced when it is not.',
+    input_schema: S({
+      chapter_id: str(''),
+      indicator: str('What is being measured — creek flow, soil organic matter, species richness, first leaf date, temperature'),
+      place_id: str('Which place; defaults to the best-resolved one'),
+    }, ['indicator']),
+    handler: (i) => bio.proposeBaseline(ch(i), { indicator: i.indicator, place_id: i.place_id ?? null }),
+  },
+
+  {
+    name: 'rsvp_to_gathering',
+    description:
+      'Say somebody is coming to a gathering that already exists. Increments its count — it does ' +
+      'NOT create a gathering, because a phone at the back of a room tapping "I am coming" must ' +
+      'never be able to invent an event nobody scheduled.',
+    input_schema: S({
+      gathering_id: str('The gathering being answered'),
+      chapter_id: str(''),
+    }, ['gathering_id']),
+    handler: (i) => {
+      const g = one('SELECT * FROM gatherings WHERE id=?', i.gathering_id);
+      if (!g) return { error: 'not_found', message: 'No gathering with that id.' };
+      run('UPDATE gatherings SET rsvp_count = rsvp_count + 1 WHERE id=?', g.id);
+      const after = one('SELECT title, rsvp_count FROM gatherings WHERE id=?', g.id);
+      return { ...after, note: 'Counted. Care provision is what decides who can actually come.' };
+    },
+  },
+
+  {
+    name: 'water_here',
+    description:
+      'Atlas layers 2 and 3 — what is in the water and where it goes. The nearest mapped channel ' +
+      'with its stream order and how much ground drains through it, what it flows toward, and ' +
+      'water quality sampling nearby: E. coli, nitrate, dissolved oxygen, turbidity, pH, ' +
+      'conductance, temperature. Results are grouped by characteristic AND unit and never ' +
+      'averaged across units — nitrate is reported both as N and as NO3 in the same dataset, and a ' +
+      'median across the two is a number that corresponds to no measurement. Units that look wrong ' +
+      'are flagged rather than printed as if they were concentrations.',
+    input_schema: S({
+      chapter_id: str(''), place_id: str('Defaults to the chapter\'s anchor place'),
+      lat: num(''), lng: num(''),
+      radius_km: num('Default 5'), since_years: num('How far back to look for sampling. Default 3.'),
+    }),
+    handler: async (i) => {
+      const opts = { radiusKm: i.radius_km ?? 5, sinceYears: i.since_years ?? 3 };
+      const place = i.place_id ?? anchorId(i);
+      if (place) return bio.hydrologyAt(place, opts);
+      if (i.lat == null || i.lng == null) return noWhere();
+      const { hydrologyHere } = await import('../adapters/hydrology.mjs');
+      return hydrologyHere(i.lat, i.lng, opts);
+    },
+  },
+
+  {
+    name: 'set_indicator_baseline',
+    description:
+      'Set the starting value an indicator is measured against. Use it after propose_baseline to ' +
+      'accept a value from public record, or to record a reading somebody took. REFUSES to ' +
+      'overwrite an existing baseline without a stated reason: moving a baseline rewrites the ' +
+      'meaning of every measurement already taken against it, and the old readings do not change ' +
+      'to match. Whether the number came from public record or from a person is kept either way.',
+    input_schema: S({
+      indicator_id: str('From list_indicators'),
+      value: num('The baseline value'),
+      unit: str('If the indicator has none yet'),
+      method: str('How it was arrived at'),
+      source: str('Where it came from, if public record'),
+      licence: str('The source licence, if public record'),
+      measured_at: str('YYYY-MM-DD; defaults to today'),
+      reason: str('Required only when replacing a baseline that already exists'),
+    }, ['indicator_id', 'value']),
+    handler: (i) => bio.setBaseline(i.indicator_id, {
+      value: i.value, unit: i.unit ?? null, method: i.method ?? null,
+      source: i.source ?? null, licence: i.licence ?? null,
+      measured_at: i.measured_at ?? null, reason: i.reason ?? null,
+    }),
+  },
+
+  // ---------- what needs doing ----------
+  {
+    name: 'whats_next',
+    description:
+      'The single most useful call: everything across all twelve stages that is waiting on a human, ' +
+      'ranked by whether it blocks other work or has already slipped. Use this to answer "what ' +
+      'should we do?" rather than guessing.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => operator.whatsNext(ch(i)),
+  },
+
+  // ---------- the ecoregion library ----------
+  {
+    name: 'library_status',
+    description:
+      'How much of the ecoregion library is downloaded, how much is stale, and which regions this ' +
+      'chapter actually sits in. The library works with no network once downloaded.',
+    input_schema: S({ chapter_id: str('') }),
+    handler: (i) => ({
+      coverage: library.coverage(),
+      my_regions: ch(i) ? library.myRegions(ch(i)) : null,
+      work: ch(i) ? library.workList(ch(i)) : null,
+    }),
+  },
+  {
+    name: 'list_regions',
+    description:
+      'Find ecoregions in the index that ships with the software — all 967 Level IV and 85 Level ' +
+      'III. Narrow by free text, by a point, or by adjacency to another region. Entirely offline. ' +
+      'Extents are rectangular and ecoregions are not, so a point usually matches several: these ' +
+      'are candidates. For the definitive region at a point use locate_place.',
+    input_schema: S({
+      query: str('Name, code, state or biome — e.g. "Edwards", "30c", "Texas", "Great Plains"'),
+      near: { type: 'object', description: 'Only regions whose extent covers this point',
+              properties: { lat: { type: 'number' }, lng: { type: 'number' } } },
+      next_to: str('Only regions adjacent to this region code'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      downloaded_only: bool('Only regions already in the offline library'),
+      limit: num('Default 25'),
+    }),
+    handler: (i) => {
+      const scheme = i.scheme ?? 'epa-l4';
+      let pool;
+      let note = null;
+
+      if (i.next_to) {
+        pool = library.neighbours(i.next_to, { scheme, limit: 200 })
+          .map((n) => library.region(n.code, { scheme }) ?? n);
+      } else if (i.near && i.near.lat != null && i.near.lng != null) {
+        const at = library.regionsAt(i.near.lat, i.near.lng);
+        pool = scheme === 'epa-l3' ? at.level3 : at.level4;
+        note = 'Candidates by rectangular extent. Use locate_place for the authoritative boundary.';
+      } else {
+        pool = library.regions({ scheme });
+      }
+
+      const q = (i.query ?? '').toLowerCase();
+      const list = pool
+        .filter((r) => !q || `${r.code} ${r.name} ${r.level3_name ?? ''} ${r.biome ?? ''} ${(r.states ?? []).join(' ')}`
+          .toLowerCase().includes(q))
+        .map((r) => ({
+          code: r.code, name: r.name, level3_name: r.level3_name ?? r.name,
+          biome: r.biome, states: r.states,
+          downloaded: !!library.loadDossier(r.code, scheme),
+        }))
+        .filter((r) => !i.downloaded_only || r.downloaded);
+
+      return { matches: list.length, note, regions: list.slice(0, i.limit ?? 25) };
+    },
+  },
+  {
+    name: 'region_brief',
+    description:
+      'Everything known about one ecoregion — plants, animals, threatened species, soil, climate, ' +
+      'water and local resources — read entirely from disk. Works offline. If it has not been ' +
+      'downloaded yet, says so and how to get it.',
+    input_schema: S({
+      code: str('Ecoregion code, e.g. 30c'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+    }, ['code']),
+    handler: (i) => library.brief(i.code, { scheme: i.scheme ?? 'epa-l4' }),
+  },
+  {
+    name: 'find_species',
+    description:
+      'Search every downloaded ecoregion for a plant, animal, insect or fungus by common or ' +
+      'scientific name, and see which regions it is actually recorded in and how often. Entirely ' +
+      'offline. Threatened species are searchable by name; their locations are never stored.',
+    input_schema: S({ query: str('e.g. "Ashe juniper", "monarch", "Quercus"'), limit: num('Default 40') },
+                    ['query']),
+    handler: (i) => library.findSpecies(i.query, { limit: i.limit ?? 40 }),
+  },
+  {
+    name: 'download_region',
+    description:
+      'Download or refresh one ecoregion\'s dossier from the open upstreams. Only sections past ' +
+      'their refresh cadence are fetched, so calling this repeatedly is cheap. Needs a connection; ' +
+      'everything it writes is then readable forever offline.',
+    input_schema: S({
+      code: str('Ecoregion code'),
+      scheme: { type: 'string', enum: ['epa-l4', 'epa-l3'] },
+      force: bool('Refetch every section even if current'),
+    }, ['code']),
+    handler: async (i) => {
+      const r = await compileDossier(i.code, { scheme: i.scheme ?? 'epa-l4', force: !!i.force });
+      if (r.error) return r;
+      return {
+        region: r.name ?? r.region, code: r.region,
+        refreshed: r.refreshed ?? [], unchanged: !!r.unchanged,
+        size_kb: r.bytes ? Math.round(r.bytes / 1024) : null,
+        note: 'Stored on disk. Readable from now on with no connection.',
+      };
+    },
+  },
+];
+
+export const TOOL_MAP = Object.fromEntries(TOOLS.map((t) => [t.name, t]));
+
+/** Anthropic Messages API tool definitions (no handlers). */
+export function anthropicTools() {
+  return TOOLS.map(({ name, description, input_schema }) => ({ name, description, input_schema }));
+}
+
+/**
+ * Tools whose use "materially shapes a public report, map, plan, match, or
+ * recommendation" — the manual's own phrase, and the trigger for logging.
+ *
+ * A deliberately short list. Logging every read would bury the entries that
+ * matter under a heartbeat's worth of lookups, and the operator turns each
+ * unreviewed row into blocking work — so a noisy log would train a steward to
+ * clear it without reading, which is worse than no log.
+ *
+ * These are the writes that change what the commons says, decides, or shows
+ * to somebody outside it.
+ */
+export const MATERIAL_TOOLS = new Set([
+  'add_signal', 'open_quest', 'update_quest', 'satisfy_quest_gate', 'advance_quest',
+  'propose_decision', 'decide_council_item', 'clear_red_flag',
+  'respond_to_intake', 'submit_intake',
+  'add_indicator', 'record_measurement', 'set_indicator_baseline',
+  'publish_learning', 'approve_dataset', 'record_exchange',
+  'add_place', 'add_gathering', 'begin_here',
+  'publish_to_network', 'withdraw_consent', 'record_consent',
+]);
+
+/**
+ * How this call arrived. Only an AI caller is logged.
+ *
+ * A person clicking a form in the interface is not "AI materially shaping" the
+ * commons, and recording their every action as an AI action would make the
+ * transparency register meaningless in the other direction — it would stop
+ * being a record of what the machine did.
+ */
+const AI_CALLERS = new Set(['assistant', 'mcp', 'claude-code']);
+
+export async function runTool(name, input = {}, { via = 'ui', clearance = null } = {}) {
+  const t = TOOL_MAP[name];
+  if (!t) return { error: `unknown tool ${name}` };
+  // Who is asking, when the call arrived over a network. Local callers — MCP,
+  // the assistant, the suite, the prover — pass no clearance and are the
+  // steward's own process. The HTTP route passes what the connection earned,
+  // and the policy in ai/access.mjs says what that clearance may run. Checked
+  // before `required`, because telling a stranger which fields a tool wants is
+  // telling them about a tool they may not use.
+  if (clearance !== null && !access.mayRun(name, clearance)) {
+    return access.refusal(name, clearance);
+  }
+  // A tool may publish a narrower view of itself to a stranger. Applied here,
+  // once, for every caller — so the answer a stranger gets cannot depend on
+  // which route they arrived through, and a tool that declares no public_view
+  // simply has nothing extra to offer them.
+  //
+  // WITHHOLD FIRST, THEN PROJECT. The order is the whole security property and
+  // getting it backwards was a real hole, not a theoretical one.
+  //
+  // `withhold()` removes protected objects by matching their `id`. The public
+  // projection DROPS `id` — deliberately, because an id is a handle for asking
+  // about a thing by id. Run the projection first and withhold has nothing left
+  // to match on, so it removes nothing and reports `withheld: 0`. Measured on a
+  // commons whose anchor place was marked sacred: a MEMBER got `place:
+  // undefined, withheld: 1`, and a STRANGER got the place named, with
+  // `withheld: 0`. Public was more permissive than members, and the protection
+  // was not merely absent — it was affirmatively reported as not having been
+  // needed.
+  //
+  // This is a new shape for the list in the warden's brief: not "defence in
+  // depth hid a broken half", but one half BLINDING the other. The two defences
+  // were each reviewed alone and each was correct alone.
+  //
+  // It lives here rather than in the route because the route is not the only
+  // caller, and because the next route would get the order wrong again. The
+  // route withholds too; a second pass finds nothing and costs one query.
+  // What is protected is decided BEFORE the handler runs.
+  //
+  // withhold() refuses outright any answer whose own id is protected — right
+  // for "show me this record", wrong for "here is the need I just brought".
+  // `submit_intake` files an intake whose RID is members-or-council, so a
+  // stranger bringing a need got back `That is above what this connection may
+  // read` about their own words.
+  //
+  // Taking the snapshot first draws the line exactly where it belongs: a row
+  // that did not exist when the call started cannot be somebody else's record.
+  // Anything that WAS protected a moment ago still is.
+  const hiddenBefore = clearance == null || clearance === 'sacred'
+    ? null
+    : new Set(all(`SELECT local_id FROM rids WHERE sensitivity IN ('restricted','sacred','council','members')`)
+      .map((r) => r.local_id));
+
+  const project = (out) => {
+    const held = protect(out, clearance, all, hiddenBefore);
+    // Declared per tool, applied at EVERY clearance below the keyboard, because
+    // the first rule such a view enforces is not about audiences at all: an
+    // answer whose subject was withheld still carries everything that points at
+    // it. See groundSeenBy().
+    return typeof t.view === 'function' ? t.view(held, clearance) : held;
+  };
+  // Required fields are enforced here, not in each handler, so every caller —
+  // MCP, the assistant, the REST API, the generated forms — gets the same answer.
+  const missing = (t.input_schema?.required ?? []).filter((k) => {
+    const v = (input ?? {})[k];
+    return v === undefined || v === null || (typeof v === 'string' && !v.trim());
+  });
+  if (missing.length) {
+    return {
+      error: 'missing_required',
+      message: `${name} requires: ${missing.join(', ')}. ` +
+               (t.input_schema.properties[missing[0]]?.description ?? ''),
+      missing,
+    };
+  }
+  // And the allowed VALUES, for the same reason and in the same place. Every enum
+  // here is also a CHECK constraint in schema.sql, so an unlisted value was already
+  // refused — but by SQLite, arriving as `CHECK constraint failed: kind IN (...)`.
+  // That is the right refusal wearing the wrong face: database-speak, from a layer
+  // the caller does not know exists, naming a column rather than the field they sent.
+  //
+  // It lands hardest on the AI callers, which are first-class here. A model handed a
+  // schema and then refused for obeying it has no way to self-correct except by
+  // guessing, which makes the whole registry untrustworthy rather than just this call.
+  //
+  // Written as a LIST because enum is not the only way a call can be wrong — unknown
+  // field, wrong type and out-of-range all currently reach the catch-all below and
+  // come back as raw SQLite too. The aim is a reason the caller can act on for every
+  // way a call can be wrong, with the catch-all as the last resort rather than the
+  // first responder. Add the next rule here; nothing else has to change.
+  const props = t.input_schema?.properties ?? {};
+  const given = input ?? {};
+
+  // ── Coerce a list that arrived as a line of text ─────────────────────────
+  // The generated form renders anything that is not a boolean, a number or an
+  // enum as a text box, so a field declared `array` came back as a string: type
+  // "fix the culvert, plant the bank" into open_season's priorities and the
+  // season stored the sentence instead of two priorities. Nothing errored —
+  // a string has a .length, so every guard downstream passed it through, and it
+  // only surfaced as a list that would not render.
+  //
+  // Corrected here rather than in the form, because the form is not the only
+  // caller that gets this wrong: JSON Schema types are not enforced by MCP
+  // clients any more than `required` is, so an assistant can send a string into
+  // an array field just as easily as a person can.
+  //
+  // Only for arrays OF STRINGS, and only splitting on newlines, commas and
+  // semicolons. Anything structured is left exactly as it arrived rather than
+  // guessed at — a wrong guess about shape is worse than a clean refusal.
+  for (const [k, spec] of Object.entries(props)) {
+    if (spec?.type !== 'array' || spec?.items?.type !== 'string') continue;
+    if (typeof given[k] !== 'string') continue;
+    given[k] = given[k].split(/[\n,;]+/).map((v) => v.trim()).filter(Boolean);
+  }
+
+  const RULES = [
+    {
+      error: 'not_allowed_value',
+      find: () => Object.entries(props)
+        .filter(([k, spec]) => Array.isArray(spec.enum)
+          && given[k] !== undefined && given[k] !== null
+          && !spec.enum.includes(given[k]))
+        .map(([k, spec]) => ({ field: k, got: given[k], allowed: spec.enum })),
+      say: (b) => `${name}.${b.field} must be one of: ${b.allowed.join(', ')} — got ${JSON.stringify(b.got)}.`,
+    },
+  ];
+  for (const rule of RULES) {
+    const found = rule.find();
+    if (found.length) return { error: rule.error, message: rule.say(found[0]), invalid: found };
+  }
+  try {
+    // Handlers receive the connection's clearance as a second argument.
+    //
+    // Almost none of them want it, and `(i) => ...` simply ignores it. The one
+    // that does is the board: it picks the five things to show, and without
+    // knowing who is looking it handed a newly enrolled member four buttons
+    // that refuse — after she had opened the form and typed a paragraph of
+    // evidence and a reviewer's name into it. `runTool` knew the answer the
+    // whole time.
+    const out = await t.handler(input ?? {}, { clearance, via });
+    // Logged AFTER the handler and only on success, because the register is a
+    // record of what the AI actually changed — an attempt the gates refused is
+    // the protocol working, not a material act, and recording it would fill the
+    // steward's review queue with things that never happened.
+    if (AI_CALLERS.has(via) && MATERIAL_TOOLS.has(name) && !out?.error) {
+      steward.recordAIAction(ch(input ?? {}), {
+        tool: name,
+        purpose: t.description?.split('.')[0]?.slice(0, 200) ?? `Ran ${name}`,
+        affected_object_rid: out?.rid ?? null,
+        via,
+      });
+    }
+    return project(out);
+  } catch (err) {
+    return { error: err.message };
+  }
+}
