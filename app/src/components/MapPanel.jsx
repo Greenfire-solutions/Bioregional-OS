@@ -13,14 +13,14 @@ import { verb } from '../verbs.js';
  *
  * Every kind ends in something you can do, because a map you can only read is a
  * picture. The action is the one that matches what is actually wrong with the
- * thing — a blocked project offers the gate, a waiting need offers the answer —
+ * thing, a blocked project offers the gate, a waiting need offers the answer,
  * rather than a generic "open" that lands somebody back in a list.
  */
 export default function MapPanel({ feature, onClose, onAct, onGoTo, onMove }) {
   if (!feature) return null;
   const k = KIND[feature.kind] ?? KIND.observation;
   // Two different questions, and conflating them is how a task would have got
-  // a project's sentence. `attention` is about how it is DRAWN — one rule, in
+  // a project's sentence. `attention` is about how it is DRAWN, one rule, in
   // mapKinds.js, shared with the markers and the globe. `inTheWay` is about
   // what this particular panel says next, and only a project has gates.
   const attention = needsAttention(feature);
@@ -64,7 +64,7 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo, onMove }) {
         {feature.precise === false ? (
           <p className="flex items-start gap-1.5 text-[11px] leading-snug text-[var(--ink-3)]">
             <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
-            No coordinate of its own — drawn at the centre of
+            No coordinate of its own, drawn at the centre of
             {feature.borrowed_from ? ` ${feature.borrowed_from}` : ' its chapter'}.
           </p>
         ) : (
@@ -106,7 +106,7 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo, onMove }) {
 
         {feature.kind === 'gathering' && feature.care != null && (
           <p className={`text-[11px] leading-snug ${feature.care < 2 ? 'text-[var(--clay)]' : 'text-[var(--ink-2)]'}`}>
-            {feature.care} of four care provisions — meals, transport, childcare, accessibility.
+            {feature.care} of four care provisions, meals, transport, childcare, accessibility.
             {feature.care < 2 && ' Ecological work fails when people are unsupported.'}
           </p>
         )}
@@ -114,7 +114,7 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo, onMove }) {
 
       {/* Who is carrying it, and the evidence itself. A panel about a piece of
           work that shows neither is a label. The photographs are small here on
-          purpose — enough to see that a pair exists and roughly what it shows;
+          purpose, enough to see that a pair exists and roughly what it shows;
           judging it properly happens on the Tasks screen, at a size somebody
           can actually judge. */}
       {feature.kind === 'task' && !!feature.badge && (
@@ -158,7 +158,7 @@ export default function MapPanel({ feature, onClose, onAct, onGoTo, onMove }) {
               find one. */}
           {feature.kind === 'task' && (
             <p className="mt-1.5 text-[9px] leading-snug text-[var(--ink-3)]">
-              Dropping keeps the record — a task carries who claimed it and every
+              Dropping keeps the record, a task carries who claimed it and every
               before-and-after filed against it.
             </p>
           )}

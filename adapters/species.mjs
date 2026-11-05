@@ -51,7 +51,7 @@ export async function speciesIn(bbox, { group = 'plants', limit = 60, threatened
   };
 }
 
-/** GBIF's count of everything recorded inside a polygon — the scientific baseline. */
+/** GBIF's count of everything recorded inside a polygon, the scientific baseline. */
 export async function occurrenceTotals(bbox) {
   const [w, s, e, n] = bbox;
   const wkt = `POLYGON((${w} ${s},${e} ${s},${e} ${n},${w} ${n},${w} ${s}))`;
@@ -67,7 +67,7 @@ export async function occurrenceTotals(bbox) {
   return { source: 'GBIF', totals: out, wkt_used: wkt };
 }
 
-/** Native status, habit and duration for US plants — the practical questions. */
+/** Native status, habit and duration for US plants, the practical questions. */
 export async function plantProfile(scientificName) {
   try {
     const { data } = await getJSON(

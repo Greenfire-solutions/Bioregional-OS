@@ -1,7 +1,7 @@
 // ── Letting a second person write ─────────────────────────────────────────
 // Until now everyone using this OS was the steward: no accounts, and the only
 // thing a phone on the wifi could do was bring a need through /join. That is a
-// good floor and it is not a commons — a chapter where one person types and
+// good floor and it is not a commons, a chapter where one person types and
 // everyone else submits to them is a chapter that stops when that person is
 // ill, and the governance research is unanimous that it does stop.
 //
@@ -14,7 +14,7 @@
 //
 //   THE CODE IS A HANDSHAKE, NOT A KEY. CoMapeo's pattern: the code on screen
 //   opens an invitation, and it is single-use and short-lived. It carries no
-//   commons material itself — what it grants is the right to ASK to be enrolled,
+//   commons material itself, what it grants is the right to ASK to be enrolled,
 //   which the steward already decided by showing it.
 //
 //   THE SECRET IS NEVER STORED. Both the enrolment code and the device token
@@ -31,7 +31,7 @@
 // And the boundary this shares with server/clearance.mjs is the important part.
 // A query parameter saying `clearance=sacred` is a CLAIM, and that is why it
 // was a vulnerability. A device token is a SECRET the holder was given by
-// somebody standing in the room — possessing it is the proof. The difference is
+// somebody standing in the room, possessing it is the proof. The difference is
 // not cosmetic and the code keeps them apart: the token is compared against a
 // stored hash in constant time, and it never travels in a URL where it would
 // land in a log or a referrer.
@@ -84,7 +84,7 @@ function readableCode() {
 }
 
 /**
- * Open an invitation. Returns the code ONCE — it is never readable again.
+ * Open an invitation. Returns the code ONCE, it is never readable again.
  */
 export function inviteDevice(chapterId, { role = 'member', created_by = null, minutes = CODE_MINUTES } = {}) {
   if (!chapterId) return { error: 'no_chapter' };
@@ -118,7 +118,7 @@ export function enrolDevice(chapterId, { code, label, person_name = null } = {})
   if (!String(code ?? '').trim() || !String(label ?? '').trim()) {
     return {
       error: 'code_and_label_required',
-      message: 'Type the code from the steward\'s screen, and a name for this device — ' +
+      message: 'Type the code from the steward\'s screen, and a name for this device, ' +
                '"Maya\'s phone". The name is what makes a revocation list readable later.',
     };
   }
@@ -132,7 +132,7 @@ export function enrolDevice(chapterId, { code, label, person_name = null } = {})
   // them which half of the guess was right.
   const bad = {
     error: 'code_not_valid',
-    message: 'That code is not open. Codes last twenty minutes and work once — ask for another.',
+    message: 'That code is not open. Codes last twenty minutes and work once, ask for another.',
   };
   if (!cap) return bad;
   if (cap.revoked_at || cap.uses_left < 1 || cap.redeemed_at) return bad;
@@ -159,7 +159,7 @@ export function enrolDevice(chapterId, { code, label, person_name = null } = {})
     token,
     device: { id: device.id, label: device.label, role: device.role },
     person: person ? { id: person.id, display_name: person.display_name } : null,
-    note: 'Keep this token on the device. It is shown once and cannot be recovered — if the ' +
+    note: 'Keep this token on the device. It is shown once and cannot be recovered, if the ' +
           'device is lost, the steward revokes it and issues a new code.',
   };
 }
@@ -167,7 +167,7 @@ export function enrolDevice(chapterId, { code, label, person_name = null } = {})
 /**
  * Who this request is, if it carries a device token.
  *
- * Returns null for anything unrecognised, expired or revoked — never a reason,
+ * Returns null for anything unrecognised, expired or revoked, never a reason,
  * because the caller is either a device that works or somebody guessing.
  */
 export function deviceFor(token) {
@@ -190,7 +190,7 @@ export function touchDevice(deviceId) {
   } catch { /* a read must never fail because a timestamp would not write */ }
 }
 
-/** Every device, including the revoked ones — which is the point of the list. */
+/** Every device, including the revoked ones, which is the point of the list. */
 export function devices(chapterId) {
   if (!chapterId) return { error: 'no_chapter' };
   const rows = all(
@@ -228,11 +228,11 @@ export function revokeDevice(deviceId, { reason = null } = {}) {
   if (!d) return { error: 'not_found' };
   run(`UPDATE devices SET role='blocked', revoked_at=datetime('now'),
          label = label || ?
-        WHERE id=?`, reason ? ` — revoked: ${String(reason).trim()}` : ' — revoked', deviceId);
+        WHERE id=?`, reason ? `, revoked: ${String(reason).trim()}` : ', revoked', deviceId);
   return {
     ...one('SELECT id, label, role, revoked_at FROM devices WHERE id=?', deviceId),
     note: 'It can no longer write. It is still the author of what it filed, and it stays on the ' +
-          'list — a device that vanished would take the record of who did the work with it.',
+          'list, a device that vanished would take the record of who did the work with it.',
   };
 }
 

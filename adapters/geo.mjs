@@ -1,6 +1,6 @@
 // ── Geo import / export ───────────────────────────────────────────────────
 // Reads GeoJSON from the tools communities already use in the field:
-//   CoMapeo / Mapeo (Digital Democracy, GPL-3.0) — offline territory mapping
+//   CoMapeo / Mapeo (Digital Democracy, GPL-3.0), offline territory mapping
 //   QGIS, OpenStreetMap extracts, agency downloads
 // Exports the Living Commons Atlas back out as plain GeoJSON, with sensitive
 // layers masked rather than omitted so the omission itself stays visible.
@@ -67,7 +67,7 @@ function flatten(a) {
 
 /**
  * Export atlas + signals as GeoJSON. Anything above the caller's clearance
- * is emitted as a redaction marker with no coordinates — the map shows that
+ * is emitted as a redaction marker with no coordinates, the map shows that
  * something is being protected without revealing where.
  */
 export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
@@ -84,7 +84,7 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
     // Every row here becomes a Point, and a Point in QGIS looks equally certain
     // whether it is a gage bolted to a riverbank or a county-wide heat advisory
     // filed at the chapter's own coordinate. The geometry cannot carry that
-    // difference, so the properties have to — otherwise an export is a pile of
+    // difference, so the properties have to, otherwise an export is a pile of
     // confident points and the least certain of them look the same as the most.
     const atCentroid = atPlaceCentroid(s, places);
     if (atCentroid) borrowed++;
@@ -98,7 +98,7 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
         // Same two flags, from the same two rules, as /api/signals and the 3D map.
         human_observed: humanObserved(s.source_adapter),
         at_place_centroid: atCentroid,
-        location_precision: atCentroid ? 'filed at the place — real extent may be wider' : 'its own coordinate',
+        location_precision: atCentroid ? 'filed at the place, real extent may be wider' : 'its own coordinate',
       },
     });
   }
@@ -118,14 +118,14 @@ export function atlasGeoJSON(chapterId, { clearance = 'public' } = {}) {
       // should be told up front how much of it is approximate.
       features_at_place_centroid: borrowed,
       // This file LEAVES THE MACHINE. It carried no credit at all until now,
-      // which for an ODbL or CC-BY source is not a tidiness problem — it is the
+      // which for an ODbL or CC-BY source is not a tidiness problem, it is the
       // condition of being allowed to share it. Resolved from the registry, so
       // it cannot go stale the way retyped prose does.
       ...creditForTags(signals.map((s) => s.source_adapter), { humanTags: [...HUMAN_SOURCES, null] }),
       // A GeoJSON has no interface around it. Opened in QGIS, the seeded
       // "Unpermitted Stormwater Outfall Discharge" is a Critical finding about a
       // real creek naming a real city department, with nothing on the file
-      // saying it was invented. Only the example commons is marked — a notice on
+      // saying it was invented. Only the example commons is marked, a notice on
       // every export is noise, and noise is not read.
       ...(isDemoChapter(chapterId) ? { demonstration_data: DEMO_NOTICE } : {}),
       generated_at: new Date().toISOString(),

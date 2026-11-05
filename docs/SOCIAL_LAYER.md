@@ -1,6 +1,6 @@
 # The social layer
 
-*Research and design brief for Tier 3 of [DAILY_USE.md](DAILY_USE.md) — the card,
+*Research and design brief for Tier 3 of [DAILY_USE.md](DAILY_USE.md), the card,
 the QR at the gathering, and paper mode. **All three are now built**; this is the
 reasoning they were built from, kept so the decisions can be argued with.*
 
@@ -15,7 +15,7 @@ asks, and it tells a person what their observation turned into. All of that is
 Tier 3 is the only part of the plan that addresses the failure mode the research
 actually predicts for a tool like this. From DAILY_USE §3.7 and §3.8:
 participation is radically unequal at any size, so at twelve members there is one
-steward and eleven readers — and the eleven will not come to a localhost URL.
+steward and eleven readers, and the eleven will not come to a localhost URL.
 Terran Collective's bioregional guilds *"fizzled out within the first month"* for
 want of coordination people would keep using.
 
@@ -34,7 +34,7 @@ A new one, found while researching and worth stating before any design:
 
 > **The Clipboard API is unavailable on the LAN.** A page is a secure context
 > only over HTTPS or on `http://localhost` / `127.0.0.1`. Private-network
-> reachability *does not count* — so on `http://192.168.x.x:4180`, which is
+> reachability *does not count*, so on `http://192.168.x.x:4180`, which is
 > exactly how `npm run os -- --share` serves phones, `navigator.clipboard` is
 > **undefined**.
 > ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/clipboard))
@@ -44,7 +44,7 @@ on the steward's machine and silently does nothing on every phone in the room, w
 no error anywhere. It has to be designed for, not discovered.
 
 The other standing constraints are unchanged: no accounts, no cloud, no push, no
-public URL — which also means **no link previews**. A card cannot say "read more
+public URL, which also means **no link previews**. A card cannot say "read more
 at…", because there is no address that works for anyone not on the wifi. The card
 has to be complete in itself.
 
@@ -54,7 +54,7 @@ has to be complete in itself.
 
 ### 3.1 The group is already somewhere, and it is fragile there
 
-Studies of neighbourhood mutual aid groups find they *did* live in WhatsApp —
+Studies of neighbourhood mutual aid groups find they *did* live in WhatsApp,
 wards existed as WhatsApp groups, and that was "the heart of Mutual Aid". What
 sustained them: a division of labour between organisers and volunteers, explicit
 care for members, pre-existing ties, and **micro-groups small enough to know their
@@ -84,7 +84,7 @@ summarises what everyone already saw is a notification tax.
 
 It also argues against automating the send even if we could. A human posting at a
 moment they judge right is a different social object from a bot posting on a
-schedule — and the OS has no send capability anyway, which turns out to be the
+schedule, and the OS has no send capability anyway, which turns out to be the
 right design rather than a limitation.
 
 ### 3.3 The digest shape that works ends with one open question
@@ -95,7 +95,7 @@ anyone new, and **one unanswered question that needs more input**.
 [Hyper-local newsletter sections](https://printgoeshere.substack.com/p/hyper-local-newsletter-sections))
 
 That last element maps onto something the OS already computes exactly:
-`whats_next().first` — the one thing to do first, with the protocol rule it comes
+`whats_next().first`, the one thing to do first, with the protocol rule it comes
 from. And `intakePromise()` already knows whether anybody is waiting for an answer.
 
 **Implication:** the card is not a summary. It is a summary *ending in a specific
@@ -103,15 +103,15 @@ ask directed at people who are not the steward.*
 
 ### 3.4 QR works in the room and nowhere else
 
-Scan rates in high-intent in-person settings run **15–35%**, against **1–5%** for
+Scan rates in high-intent in-person settings run **15-35%**, against **1-5%** for
 passive placement like a poster. A specific call to action beats a generic "Scan
 me" by up to **37%**, and simplicity of the landing action is the single biggest
 lever on completion.
 ([Scan rate benchmarks](https://linkbreakers.com/help/article/qr-code-scan-rate-benchmarks-by-industry),
 [Improving scan performance](https://www.uniqode.com/blog/qr-code-marketing-tips/qr-code-campaigns-high-conversion))
 
-**Implication:** project the code *during* a gathering with a specific ask — "Scan
-to add what you noticed today", not "Scan to join the commons" — and the landing
+**Implication:** project the code *during* a gathering with a specific ask, "Scan
+to add what you noticed today", not "Scan to join the commons", and the landing
 page must be one screen with one field, not a tour of the app.
 
 ### 3.5 Paper works, if the paper carries its own identity
@@ -129,7 +129,7 @@ collect multiple kinds of data, and keep an independent permanent copy.
 
 **Implication:** a printed field sheet must be independently meaningful. Date,
 place, chapter and a short code printed *on the sheet itself*, so a sheet found in
-a coat pocket three weeks later is still transcribable — and so a person can hand
+a coat pocket three weeks later is still transcribable, and so a person can hand
 one back having never touched a screen.
 
 ### 3.6 Absence has two meanings and a card must not merge them
@@ -151,7 +151,7 @@ is omitted entirely. A heading with nothing under it is the worst of the three.
 ### 3.7 A place can be heard, but almost none of it can be redistributed
 
 Verified live rather than assumed: within 15 km of Barton Creek, iNaturalist holds
-**2,934 research-grade observations carrying sound** — birds, frogs, insects —
+**2,934 research-grade observations carrying sound**: birds, frogs, insects,
 keyless, each with a licence. Soundscape research ties acoustic richness to
 ecological integrity, and ties sound specifically to **place attachment**, with
 sound-memory association described as a spatiotemporal anchor and residents
@@ -160,7 +160,7 @@ showing markedly stronger attachment than visitors.
 [Soundscapes for urban biodiversity monitoring](https://academic.oup.com/jue/article/11/1/juaf002/8088407))
 
 That is the exact variable DAILY_USE §3.3 names as the durable motivation for
-environmental volunteers — commitment to a particular place — and every
+environmental volunteers, commitment to a particular place, and every
 bioregional tool in the survey treats a place as something you look at.
 
 **But the licence is the design.** A sample of the media licences on those
@@ -180,11 +180,11 @@ its geometry is never redistributed. Audio is that rule in different clothes.
 1. **Stream, never vendor.** Link to `static.inaturalist.org`; the OS hosts
    nothing and redistributes nothing, and a person still hears their creek.
 2. **No sound in a card, an export, or a printed sheet.** Anything that leaves
-   the machine is redistribution. A card may carry the *fact* — *"37 recordings
-   from this creek this spring, most recent a Painted Bunting on 6 May"* — which
+   the machine is redistribution. A card may carry the *fact*, *"37 recordings
+   from this creek this spring, most recent a Painted Bunting on 6 May"*, which
    is attributable, licence-free, and arguably the better line anyway.
 3. **A recording with no licence is not a free recording.** `license_code: null`
-   is absent permission, not open permission — the same shape as `'none'` being
+   is absent permission, not open permission, the same shape as `'none'` being
    read as a licence in the discovery work. Allowlist, absent branch first.
 
 ### 3.8 Elders are a participation question, not a font size
@@ -204,13 +204,13 @@ and the Exchange engine should be able to record it as such.
 
 ## 4. Designs
 
-### 4.1 `The card` — `engines/dispatch.mjs` + a button on Today
+### 4.1 `The card`: `engines/dispatch.mjs` + a button on Today
 
 **Shape**, from §3.3, in this order:
 
-1. One line of ground — the creek against its own record, or the hazard. The part
+1. One line of ground: the creek against its own record, or the hazard. The part
    nobody else in that chat has.
-2. What moved — at most two, from `whatMoved()`, naming the person.
+2. What moved: at most two, from `whatMoved()`, naming the person.
 3. The next gathering, with its care provision spelled out (meals, lift,
    childcare, step-free), because that is what decides whether somebody comes.
 4. **One ask**, directed outward: the oldest unanswered need from
@@ -223,7 +223,7 @@ published dataset whose licence nobody has read appears under stage **Map** with
 an `approve_dataset` action. *"Austin publishes Watershed Reach Integrity Scores
 for our creek and nobody has read the terms yet"* is a better ask to put in front
 of eleven readers than most of what the operator produces, because it is
-interesting before it is work — and because anyone in the group can do it, not
+interesting before it is work, and because anyone in the group can do it, not
 just the steward.
 
 **Two formats, text first.** Text is what actually survives being pasted, is
@@ -239,8 +239,8 @@ output rather than errors:
   font finishes loading, so a card exported a moment too early silently falls back
   to a system font and still looks fine.
 - Scale the backing store by `devicePixelRatio`, apply one `ctx.scale()`, then
-  draw in logical coordinates — otherwise it is soft on every Retina screen.
-- `canvas.toBlob('image/png')`, never `toDataURL` — base64 wastes about a third of
+  draw in logical coordinates, otherwise it is soft on every Retina screen.
+- `canvas.toBlob('image/png')`, never `toDataURL`: base64 wastes about a third of
   the buffer for no benefit.
 - Render preview and export on separate canvases at different scales.
   ([Canvas high-quality export](https://konvajs.org/docs/data_and_serialization/High-Quality-Export.html))
@@ -253,13 +253,13 @@ output rather than errors:
 `ClipboardItem` where available (Baseline 2024; PNG is the one image type the
 spec mandates); on Safari the async work has to happen *inside* the
 `ClipboardItem` promise, not before it, or user activation is lost. Where
-`window.isSecureContext` is false — every phone on the wifi — fall back to a
+`window.isSecureContext` is false, every phone on the wifi, fall back to a
 pre-selected `<textarea>` and a plain download link, and **say which is
 happening** rather than showing a button that does nothing.
 ([Clipboard.write](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/write),
 [Safari clipboard behaviour](https://www.clovu.me/posts/safari-clipboard-solution-en))
 
-### 4.2 `The QR at the gathering` — a `/join` route + `scripts/connect.mjs`
+### 4.2 `The QR at the gathering`: a `/join` route + `scripts/connect.mjs`
 
 `npm run connect` already renders a terminal QR, and `/api/status` already returns
 `lan_url` and a QR data URL when `--share` is on. What is missing is the thing to
@@ -267,21 +267,21 @@ project and the thing to land on.
 
 - **A project-this screen** in the app: the QR at full size, the chapter name, and
   one instruction carrying the specific ask (§3.4). Not "Scan to join".
-- **`/join`** — one screen, one field: *what did you notice?* Plus a name box, no
+- **`/join`**: one screen, one field: *what did you notice?* Plus a name box, no
   login. Optional: RSVP to the gathering that is happening, and *bring a need*,
   which is the Listen front door.
 - Writes through `add_signal` with `source: 'notice'`, so the provenance rules in
   `core/provenance.mjs` already classify it correctly, and the coordinate is the
-  place's — so the map already draws it as approximate, correctly.
+  place's, so the map already draws it as approximate, correctly.
 - Must work with no clipboard, no camera permission beyond the scan, and no app.
 
-### 4.3 `Paper mode` — print stylesheets and a field sheet
+### 4.3 `Paper mode`: print stylesheets and a field sheet
 
 There are no print styles in the app at all today.
 
-- **Print the round** (`whats_next`) and **print the card** — `@media print`
+- **Print the round** (`whats_next`) and **print the card**: `@media print`
   rules, hiding the map, the assistant and the navigation.
-- **The field sheet**: this week's prompts, ruled lines, and — per §3.5 — the
+- **The field sheet**: this week's prompts, ruled lines, and: per §3.5, the
   chapter, place, date and a short code printed on the sheet itself, so it is
   independently transcribable and so a returned sheet can never become an
   orphaned record.
@@ -306,7 +306,7 @@ those specifically rather than the happy path:
 | "Nothing here" conflated with "nowhere to look" | Both render as absence; only one of them is actionable |
 
 And the rule the same document adds: when a change is visual, open it. A card is
-entirely visual output — the tests can prove the *content* is right, but only
+entirely visual output, the tests can prove the *content* is right, but only
 looking proves it is legible on a phone.
 
 ---
@@ -316,7 +316,7 @@ looking proves it is legible on a phone.
 1. **Is the card weekly, or on demand?** The research says one a week at most, but
    it is a person's judgement when to post. Recommendation: generate on demand,
    with the heartbeat quietly noticing when a week has passed and nothing has been
-   sent — an item in the round, never a notification.
+   sent, an item in the round, never a notification.
 2. **Does the `/join` page let someone bring a *need*, or only an observation?**
    Needs are the Listen front door and the protocol's own promise, but they can be
    private, and a projected QR in a room is a public context.

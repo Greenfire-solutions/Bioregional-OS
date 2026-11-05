@@ -3,7 +3,7 @@
 //
 //   npm test
 //
-// This does not test that the code runs. It tests that the code REFUSES —
+// This does not test that the code runs. It tests that the code REFUSES,
 // every gate in the manual, exercised from the same tool registry that Claude
 // Code and the interface use.
 // Set BEFORE any import that reaches core/db.mjs. The path is resolved lazily
@@ -57,7 +57,7 @@ function check(name, condition, detail) {
  * Not applicable here, which is not the same as broken.
  *
  * A fresh clone has downloaded no optional data, so a test that needs it was
- * reporting a failure on somebody's very first `npm test` — the fourth variety
+ * reporting a failure on somebody's very first `npm test`, the fourth variety
  * in the worst possible place, since the name said "region 30c is downloaded"
  * and the truth was "this machine has not been asked to download anything".
  *
@@ -66,7 +66,7 @@ function check(name, condition, detail) {
  * part of the front door, and the front door must not open on a red line that
  * means nothing is wrong.
  */
-function skip(name, why) { skipped++; results.push(['–', name, why]); }
+function skip(name, why) { skipped++; results.push(['-', name, why]); }
 /** Force a signal's provenance, the way an adapter would, without the network. */
 function run__setSource(id, source) {
   dbRun(`UPDATE signals SET source_adapter=? WHERE id=?`, source, id);
@@ -143,8 +143,8 @@ check('opening a quest creates its gates unsatisfied',
 
 // Walk the loop to get here, rather than teleporting.
 //
-// These assertions are about DEPTH — the gates, the maintenance owner, the
-// baseline — and they used to reach `prototype` from `signal` in one call,
+// These assertions are about DEPTH, the gates, the maintenance owner, the
+// baseline, and they used to reach `prototype` from `signal` in one call,
 // because nothing enforced stage order. That hole is closed, and closing it
 // broke five tests that had been quietly depending on it. Stepping through is
 // what a chapter actually does, so the tests do it too.
@@ -180,8 +180,8 @@ check('a gate does not close on a checkbox',
   refused(await runTool('satisfy_quest_gate',
     { quest_id: q.id, gate: 'land_access', evidence: '', reviewed_by: '' }), 'evidence'));
 
-// Every gate the manual names, not a subset. Four of the nine — indigenous
-// consent, youth safeguarding, ecological assessment and data consent — were
+// Every gate the manual names, not a subset. Four of the nine, indigenous
+// consent, youth safeguarding, ecological assessment and data consent, were
 // declared in the schema and never created on any quest, so nothing was ever
 // blocked pending an ecological assessment in a bioregional OS. Read from
 // quest.mjs rather than listed here, so this can never silently fall behind
@@ -192,14 +192,14 @@ check('every gate the protocol names is created on a new quest',
 check('the ecological assessment gate is one of them',
   (await runTool('quest_gates', { quest_id: q.id })).some((g) => g.gate === 'ecological_assessment'));
 
-// A gate that does not apply still closes on a REASON and a named person —
+// A gate that does not apply still closes on a REASON and a named person,
 // which is the whole argument for requiring all nine rather than defaulting
 // the awkward four to optional. The record is of somebody having considered it.
 const NOT_APPLICABLE = {
   indigenous_consent: 'Consulted NATHPO listing; no tribal historic preservation interest recorded for this parcel.',
-  youth_safeguarding: 'Not applicable — no minors involved in a culvert survey.',
+  youth_safeguarding: 'Not applicable, no minors involved in a culvert survey.',
   ecological_assessment: 'Walked with the county ecologist 12 March; no listed species on the reach.',
-  data_consent: 'Not applicable — no personal data collected.',
+  data_consent: 'Not applicable, no personal data collected.',
 };
 for (const gate of QUEST_GATES) {
   await runTool('satisfy_quest_gate', {
@@ -223,8 +223,8 @@ const advanced = await runTool('advance_quest', { quest_id: q.id, to_stage: 'pro
 check('a fully gated, fully defined quest advances', advanced.stage === 'prototype');
 
 // The walk is checked, not discarded. And the assertion below reads `blocked`
-// rather than matching the word "baseline" against the whole serialised result
-// — because "baseline" is ALSO a stage name (STAGES[2]), and this result now
+// rather than matching the word "baseline" against the whole serialised result,
+// because "baseline" is ALSO a stage name (STAGES[2]), and this result now
 // carries `from`, `to` and `next_stage`. The day some edit walks this quest
 // past that stage, a substring match would go green while asserting nothing.
 const toTeach = await runTool('advance_quest', { quest_id: q.id, to_stage: 'teach_tell' });
@@ -325,7 +325,7 @@ check('the longest day is longer than the shortest',
   midsummer.daylight_seconds > midwinter.daylight_seconds + 3 * 3600,
   `${midsummer.daylight} vs ${midwinter.daylight}`);
 
-// Measured a month off each solstice — at the solstice itself the day-over-day
+// Measured a month off each solstice, at the solstice itself the day-over-day
 // change is a second or two either way, which is the point of a solstice.
 const shortening = skyToday(30.26, -97.79, new Date('2026-07-21T12:00:00Z'));
 const lengthening = skyToday(30.26, -97.79, new Date('2027-01-21T12:00:00Z'));
@@ -359,14 +359,14 @@ check('nothing observed is verified by writing it down',
 // The archive is honest about being young, rather than showing an empty box.
 const history = thisWeekInHistory('test');
 check('an empty archive says when it stops being empty',
-  // Asserts the meaning — nothing recorded, and the note names the year it
-  // starts filling in — rather than the sentence, which is free to be reworded.
+  // Asserts the meaning, nothing recorded, and the note names the year it
+  // starts filling in, rather than the sentence, which is free to be reworded.
   history.items.length === 0 && /\b20\d{2}\b/.test(history.note ?? ''), JSON.stringify(history));
 
 // ── No two adapters may export the same name ──────────────────────────────
 // `climateNormals` was exported by both climate.mjs and phenology.mjs, returning
 // different shapes from different upstreams. Nothing broke, because every caller
-// named its module — but the name promised the same thing from both, and the
+// named its module, but the name promised the same thing from both, and the
 // trap was waiting for whoever imported the one they did not mean. This asserts
 // the whole adapter surface rather than that one case, so the next collision
 // fails here instead of somewhere downstream.
@@ -389,7 +389,7 @@ check('no two adapters export the same name for different things',
 
 // ── A quiet heartbeat is not a dead one ──────────────────────────────────
 // The log only records ticks that produced a result, so a task running every
-// half hour and correctly finding nothing to do never appeared in it — and
+// half hour and correctly finding nothing to do never appeared in it, and
 // status() reported `last: null`, which is exactly what a task that has never
 // fired at all looks like. A silent success and a dead timer were one value, in
 // the file whose header says a scheduler that fails silently is worse than none.
@@ -407,20 +407,20 @@ check('no two adapters export the same name for different things',
     taskState(true, { had_result: true }) === 'ran, had something to report');
   check('a task that threw is not reported as merely quiet',
     taskState(true, { had_result: false, error: 'boom' }) === 'failed on its last tick');
-  check('all four outcomes are distinct — none collapses into another',
+  check('all four outcomes are distinct, none collapses into another',
     new Set([taskState(false, null), taskState(true, null),
              taskState(true, { had_result: false }), taskState(true, { had_result: true }),
              taskState(true, { error: 'x' })]).size === 5);
 }
 
 // ── An artifact that travels says what it is ─────────────────────────────
-// The seeded commons reads like real reporting — "Unpermitted Stormwater
+// The seeded commons reads like real reporting, "Unpermitted Stormwater
 // Outfall Discharge", Critical, naming a real creek and a real city department.
 // In the app that sits under an example-data banner. In a GeoJSON opened in
 // QGIS, or a bundle landed in a stranger's commons, there is no banner at all.
 //
 // The direction that matters is the SECOND one: a notice that fires on
-// everything is noise, and noise is not read — which leaves a real chapter's
+// everything is noise, and noise is not read, which leaves a real chapter's
 // export carrying a claim that it is fictional.
 {
   const { isDemoChapter, DEMO_CHAPTER_ID, DEMO_NOTICE } = await import('../core/seedData.js');
@@ -451,7 +451,7 @@ check('no two adapters export the same name for different things',
   }
   // Assert the STRUCTURE, not the sentences. The marker makes two claims that
   // must stay apart: the commons is invented, the readings are not. A single
-  // blanket denial was the first version and it was false — the demo export is
+  // blanket denial was the first version and it was false, the demo export is
   // 67 real features to 6 invented ones, and telling a reader to distrust a live
   // hazard alert is worse than telling them nothing.
   check('the marker keeps the two claims apart rather than denying everything',
@@ -461,14 +461,14 @@ check('no two adapters export the same name for different things',
     DEMO_NOTICE.label === 'DEMONSTRATION DATA');
   check('the invented half is named as invented',
     /invent|fiction/i.test(DEMO_NOTICE.commons));
-  check('and the measured half is NOT — a real reading must not be disclaimed',
+  check('and the measured half is NOT, a real reading must not be disclaimed',
     /not invented|are real|real measurement/i.test(DEMO_NOTICE.land) &&
     !/nothing here is real/i.test(DEMO_NOTICE.land));
 }
 
 // ── The upstream registry: one declaration, no second copy ────────────────
 // Assert the property, not a proxy for it. An earlier version of this used
-// `length > 3` as a stand-in for "has a licence" and failed on "CC0" — which is
+// `length > 3` as a stand-in for "has a licence" and failed on "CC0", which is
 // a complete, valid licence identifier three characters long.
 const PLACEHOLDER = /^(tbd|todo|unknown|none|n\/a|\?+)$/i;
 check('every declared source carries a real licence, not a placeholder',
@@ -491,12 +491,12 @@ const coverage = registry.layerCoverage('test');
 check('the Atlas gap report covers all twelve layers', coverage.length === 12);
 // Assert the PROPERTY, not the sentence about it. The note can be reworded; the
 // fact that nothing upstream fills layer 12 is what the note is describing.
-check('layer 12 is the chapter\'s own work — nothing upstream fills it',
+check('layer 12 is the chapter\'s own work, nothing upstream fills it',
   registry.sourcesForLayer(12).length === 0 && !!coverage[11].note,
   registry.sourcesForLayer(12).map((x) => x.id).join(', '));
 
 // Asking a land question without saying where must work, because ground_today
-// already does — a caller should not have to learn which tools need an argument.
+// already does, a caller should not have to learn which tools need an argument.
 for (const t of ['soil_at', 'life_here', 'hazards_at']) {
   const r = await runTool(t, {});
   check(`${t} refuses cleanly, and namely, when the chapter has nowhere located yet`,
@@ -506,8 +506,8 @@ for (const t of ['soil_at', 'life_here', 'hazards_at']) {
 
 // Coordinate provenance: the question a map pin answers is "is this where it
 // is?", which is NOT the same question as "did a person put it here". Splitting
-// by observer gets both cases backwards — the gage goes vague, the note goes
-// precise — so the rule is asserted in both directions.
+// by observer gets both cases backwards, the gage goes vague, the note goes
+// precise, so the rule is asserted in both directions.
 const { atPlaceCentroid } = await import('../core/provenance.mjs');
 const chapterPlaces = [{ lat: 30.261, lng: -97.794 }];
 check('an automated reading with its own coordinate is not at the place centroid',
@@ -525,7 +525,7 @@ check('a GeoJSON export tells QGIS how much of it is approximate',
   typeof exported.bros.features_at_place_centroid === 'number');
 
 // This file LEAVES THE MACHINE. For an ODbL or CC-BY source, credit is not
-// tidiness — it is the condition of being allowed to share it at all. It
+// tidiness, it is the condition of being allowed to share it at all. It
 // carried none until a sibling session found the same class of bug in a
 // first-run string: a licence moved out of adapter prose into the registry is
 // only safe once every surface that PRINTED the prose resolves it instead.
@@ -533,7 +533,7 @@ check('an export always carries an attribution block',
   Array.isArray(exported.bros.attribution), JSON.stringify(exported.bros).slice(0, 120));
 check('an export states its terms rather than leaving them to be assumed',
   typeof exported.bros.notice === 'string' && exported.bros.notice.length > 20);
-// A source nobody can resolve must be NAMED, never quietly dropped — an export
+// A source nobody can resolve must be NAMED, never quietly dropped, an export
 // missing one credit is indistinguishable from an export that needed none.
 dbRun(`INSERT INTO signals (id, chapter_id, title, category, lat, lng, source_adapter)
        VALUES ('sig-unmapped','test','From somewhere unrecognised','Ecological',30.2,-97.7,'mystery-feed')`);
@@ -541,7 +541,7 @@ const withUnknown = atlasGeoJSON('test', { clearance: 'council' });
 check('an unresolvable source is named in the export, not silently omitted',
   (withUnknown.bros.unresolved_sources ?? []).includes('mystery-feed'),
   JSON.stringify(withUnknown.bros.unresolved_sources));
-// Assert what the notice has to MEAN, not how it is worded — an earlier version
+// Assert what the notice has to MEAN, not how it is worded, an earlier version
 // pinned the exact sentence and broke the moment the wording was shared between
 // two callers, which is a test failing for the wrong reason.
 check('and the notice tells the reader to check those terms before passing it on',
@@ -549,12 +549,12 @@ check('and the notice tells the reader to check those terms before passing it on
   withUnknown.bros.notice.includes('mystery-feed'),
   withUnknown.bros.notice);
 
-// A knowledge bundle travels FURTHEST — it is designed to land in another
+// A knowledge bundle travels FURTHEST, it is designed to land in another
 // commons, so an uncredited one becomes somebody else's problem rather than
 // stopping at one group chat.
 const { bundle } = await import('../adapters/koi.mjs');
 // Deliberately a PUBLIC one. The first attempt at this test grabbed whatever
-// signal came first and got a `sacred` one, which bundle() refused outright —
+// signal came first and got a `sacred` one, which bundle() refused outright,
 // the gate doing its job and the test asking the wrong question.
 const sigRid = one(`SELECT rid FROM rids WHERE object_type='signal' AND chapter_id='test'
                       AND sensitivity='public' LIMIT 1`)?.rid;
@@ -574,7 +574,7 @@ dbRun(`DELETE FROM signals WHERE id='sig-unmapped'`);
 // ── Layer 3: never average across units ───────────────────────────────────
 // Nitrate arrives in the same WQP result set as both mg/L as N and mg/L as NO3,
 // twenty samples each, on scales differing by about 4.4x. Medianing across them
-// gave 2.39 — the median of neither group, corresponding to no real
+// gave 2.39, the median of neither group, corresponding to no real
 // measurement, printed with one of the two unit labels attached. A quotable,
 // plausible, wrong number about whether water is safe to be in.
 const { groupByUnit } = await import('../adapters/hydrology.mjs');
@@ -634,7 +634,7 @@ check('every media rights answer explains itself',
 // or a caller prints "Malvaviscus arboreus" into a sentence written for "Turk's
 // Cap" and nothing anywhere can tell that it happened. Same fix as `at_is`.
 // (The first version of this test asserted an inline lambda rather than the
-// adapter — a tautology that could never fail. A test that cannot fail is worse
+// adapter, a tautology that could never fail. A test that cannot fail is worse
 // than no test, because it occupies the space where a real one would go.)
 const { displayName } = await import('../adapters/life.mjs');
 check('a taxon with a common name reports it as common',
@@ -651,7 +651,7 @@ check('the display name never silently differs from both real names',
 // An archive is indexed on what things were called; a place row is named for
 // the people who use it. Searching "Barton Creek Greenbelt Reach" found nothing
 // in a century of newspapers that hold 1,566 pages about "Barton Creek". The
-// widening is allowed — but which term actually matched has to come back, or a
+// widening is allowed, but which term actually matched has to come back, or a
 // result about the whole creek reads as a result about one reach of it.
 const { searchTerms } = await import('../adapters/culture.mjs');
 check('a place name is widened toward what an archive would have indexed',
@@ -667,7 +667,7 @@ check('an empty name yields no search at all rather than a blank query',
 // ── Layers 7-10: what a tag actually means ────────────────────────────────
 // amenity=shelter is a bus shelter. Around Barton Creek it matches 135 objects
 // and not one is a refuge. Mapping it to care would claim 135 shelters where
-// there are none — confident, plausible, wrong.
+// there are none, confident, plausible, wrong.
 const { CATEGORIES } = await import('../adapters/community.mjs');
 const refuge = CATEGORIES.find((c) => c.key === 'refuge');
 check('a bus shelter is never counted as a refuge',
@@ -681,7 +681,7 @@ check('every community category names a real Atlas layer',
 // Each category carries TWO forms of one rule: the Overpass `selector` that asks
 // the server for objects, and the `match` predicate that sorts the answers. Only
 // `match` was tested, which is the same gap as an SQL rule whose in-memory twin
-// is covered and whose SQL form is not — and the untested form is the one the
+// is covered and whose SQL form is not, and the untested form is the one the
 // server actually runs. If they disagree, the query fetches objects nothing
 // claims and they vanish into `uncategorised`, or a matcher claims objects the
 // query never asked for. Both are silent.
@@ -740,7 +740,7 @@ const baseFirst = bioEngine.setBaseline(baseInd.id, {
   source: 'USGS NWIS daily statistics', licence: 'Public domain (US Government)',
 });
 check('a first baseline is accepted without ceremony', baseFirst.indicator?.baseline_value === 1.2);
-// The method must carry the SOURCE it was given — that is input echoed back,
+// The method must carry the SOURCE it was given, that is input echoed back,
 // which survives any rewording of the surrounding sentence.
 check('a baseline from public record carries the source it came from',
   (baseFirst.indicator?.method ?? '').includes('USGS NWIS daily statistics') &&
@@ -773,13 +773,13 @@ check('an unambiguous public-domain dedication approves itself',
 
 // The single most dangerous misreading available here. ArcGIS Hub returns the
 // literal string 'none' for most of its catalogue, and it means "nobody filled
-// this in" — absent a licence the default is all rights reserved.
+// this in", absent a licence the default is all rights reserved.
 check('"none" is an absent licence, not a permissive one', auto('none') === false,
   JSON.stringify(classifyLicense('none')));
 check('an empty licence is never auto-approved',
   [null, undefined, '', '   ', 'unknown', 'custom', 'other', 'N/A'].every((l) => !auto(l)));
 // The allowlist would refuse these anyway, so the absent-branch is belt and
-// braces — but it is the branch that produces the RIGHT explanation, and a
+// braces, but it is the branch that produces the RIGHT explanation, and a
 // person deciding whether to approve reads the explanation. Pin the class, or
 // removing the branch silently downgrades "nobody recorded a licence" to
 // "we did not recognise this licence", which are different problems.
@@ -799,7 +799,7 @@ check('an unreadable licence is held, and says it was not understood',
 check('every held licence explains itself in words',
   ['none', '', 'CC-BY-4.0', 'See Terms of Use'].every((l) => (classifyLicense(l).why ?? '').length > 20));
 
-// The layer a candidate lands on must come from the DATASET, not the search —
+// The layer a candidate lands on must come from the DATASET, not the search,
 // or searching for "creek" files library figures as a water layer, and being
 // public domain it would auto-approve onto the map.
 check('a candidate takes its layer from its own title, not from the query',
@@ -813,7 +813,7 @@ check('a dataset naming nothing recognisable gets no layer, so it is never mappe
 // A catalogue ranks by its own relevance, not ours. Asking ArcGIS for "trees
 // Asheville North Carolina" returns anything about North Carolina, and keeping
 // those would tell somebody their city publishes eight datasets about trees when
-// it publishes none — a confident answer to a question nobody answered.
+// it publishes none, a confident answer to a question nobody answered.
 check('a result is kept when it shares the subject\'s layer without using its word',
   layerFor('creek', 'Waterway Setbacks', '').layer === layerFor('creek', 'creek', '').layer);
 check('a subject with no recognisable layer cannot silently match everything',
@@ -859,7 +859,7 @@ check('every probe resolves to a callable request',
 // "Needs a key" and "we forgot" look identical in a report that only shows absence.
 // A source cannot both have a health check and a reason it has none. I added
 // exactly that contradiction while reclassifying one, and `probes()` silently
-// preferred the probe and never showed the reason — a conflict that resolves
+// preferred the probe and never showed the reason, a conflict that resolves
 // itself is a conflict nobody finds.
 check('no source declares both a probe and a reason it cannot be probed',
   registry.SOURCES.every((x) => !(x.probe && x.no_probe)),
@@ -926,7 +926,7 @@ check('drought at D4 raises Critical, D2 raises Watch, D1 does not',
 // must never become a 0 that renders as an all-clear.
 const { droughtClass: __test_droughtClass, droughtCoverage } = await import('../adapters/hazards.mjs');
 // Assert the thing that DIFFERS. An earlier version of this checked that an
-// all-blank row classified as null — which is true whether the blank-versus-zero
+// all-blank row classified as null, which is true whether the blank-versus-zero
 // guard works or not, because all-zero also classifies as null. It tested the
 // right function and still could not fail. Mutation-testing found it: breaking
 // the guard left the suite green twice over.
@@ -942,7 +942,7 @@ check('an all-blank row classifies as no-data rather than as no-drought',
 check('a real drought figure still resolves to its class',
   __test_droughtClass({ d0: 100, d1: 78.31, d2: 35.17, d3: 0, d4: 0 }) === 'D2');
 // The figures are cumulative, so a county wholly in D0 with only a tenth in D1
-// is abnormally dry — not moderate drought, and not nothing.
+// is abnormally dry, not moderate drought, and not nothing.
 check('cumulative coverage resolves to the worst class that clears a quarter',
   __test_droughtClass({ d0: 100, d1: 10, d2: 0, d3: 0, d4: 0 }) === 'D0');
 check('a county with no class over a quarter gets no class',
@@ -989,7 +989,7 @@ check('a chapter cannot be founded twice in the same slug',
   })).error === 'exists');
 
 // ── NWIS statistics: the two silent ways this parser breaks ───────────────
-// A tab-delimited fixture, exactly as waterservices.usgs.gov answers it —
+// A tab-delimited fixture, exactly as waterservices.usgs.gov answers it,
 // header, the 5s/15s type row, one full row and one with the 90th percentile
 // missing, which is the common case for a site with a short record.
 const RDB = [
@@ -1049,7 +1049,7 @@ check('a project started by an automated alert credits nobody',
 check('the chain names what the observation became',
   moved.items.find((i) => i.person === 'S. Chen')?.became.some((b) => b.kind === 'quest'));
 
-// The intake promise — the protocol's own measure of the front door.
+// The intake promise, the protocol's own measure of the front door.
 const promise = intakePromise('test');
 check('the intake promise counts what was brought and what was answered',
   promise.brought >= 1 && promise.answered >= 1, JSON.stringify(promise));
@@ -1059,7 +1059,7 @@ check('the intake promise states itself in words a person can read',
 // ── What is being carried, and what that must never turn into ─────────────
 // §6 refuses leaderboards of people, and a care ledger is one keystroke away
 // from being exactly that. The property that keeps them apart is not the
-// wording — it is that ONLY OPEN OBLIGATIONS COUNT. A number that falls when
+// wording, it is that ONLY OPEN OBLIGATIONS COUNT. A number that falls when
 // work finishes is a warning; a number that rises is a score. So the first
 // thing asserted here is that finishing something REMOVES it.
 {
@@ -1104,7 +1104,7 @@ check('the intake promise states itself in words a person can read',
     !c2.overloaded.length, JSON.stringify(c2.overloaded));
 
   // A registered organisation is the only thing allowed to suppress the
-  // warning, because a committee cannot be exhausted. It still shows its load —
+  // warning, because a committee cannot be exhausted. It still shows its load,
   // hiding it would make every share in the chapter wrong.
   const ORG = await newChapter('carry-org');
   create('agents', 'agent', ORG, {
@@ -1152,7 +1152,7 @@ check('the intake promise states itself in words a person can read',
 // YYYY-MM-DD and defaults to today, so a before-and-after pair from one field
 // morning ties and SQLite returns whichever row it likes. There were six copies
 // of that clause. The failure is silent and it points in every direction at
-// once — the sign of a change reverses in a season report, the wrong person is
+// once, the sign of a change reverses in a season report, the wrong person is
 // named as still reading an indicator, and in the two places where latest_value
 // and latest_at were SEPARATE subqueries one reading's value could be paired
 // with another reading's date.
@@ -1164,7 +1164,7 @@ check('the intake promise states itself in words a person can read',
   const loose = [...src.matchAll(/ORDER BY\s+(?:\w+\.)?measured_at\s+DESC(?!\s*,\s*(?:\w+\.)?rowid)/gi)];
   check('no query picks the latest reading without a deterministic tiebreak',
     loose.length === 0,
-    `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak — ties resolve arbitrarily`);
+    `${loose.length} ORDER BY measured_at DESC with no rowid tiebreak, ties resolve arbitrarily`);
 }
 
 // ── A field the form cannot render is a field that arrives wrong ──────────
@@ -1192,7 +1192,7 @@ check('the intake promise states itself in words a person can read',
     JSON.stringify(typed.priorities));
 
   // Corrected in runTool rather than in the form, because the form is not the
-  // only caller that gets this wrong — MCP clients enforce a schema's types no
+  // only caller that gets this wrong, MCP clients enforce a schema's types no
   // more than they enforce `required`.
   const viaMcp = await runTool('open_season',
     { chapter_id: 'no-such-chapter-for-lists', name: 'x', priorities: 'a\nb\nc' });
@@ -1209,7 +1209,7 @@ check('the intake promise states itself in words a person can read',
 
   // The same field was parsed for closed seasons and returned raw for the open
   // one, so it was an array in one half of the answer and a JSON string in the
-  // other — and the open season is the half anything would try to render.
+  // other, and the open season is the half anything would try to render.
   const listed = await runTool('seasons', { chapter_id: seasonChapter });
   check('the open season reports its priorities the same way a closed one does',
     Array.isArray(listed.open?.priorities),
@@ -1228,8 +1228,8 @@ check('the intake promise states itself in words a person can read',
   check('and the sentence explains what to do instead',
     /full path/.test(missing.message ?? ''), missing.message);
 
-  // Two genuinely different problems with different fixes — a path that does
-  // not exist is a typo, a file that will not parse is the wrong export — so
+  // Two genuinely different problems with different fixes, a path that does
+  // not exist is a typo, a file that will not parse is the wrong export, so
   // they must not collapse into one string.
   const { writeFileSync: wf } = await import('node:fs');
   const bad = `${process.env.BROS_DB}.notgeojson`;
@@ -1246,7 +1246,7 @@ check('the intake promise states itself in words a person can read',
 // Three components each kept their own tool→label map. By the time anybody
 // compared them, eight of twenty had drifted: "Respond" and "Answer", "Open a
 // project" and "Start a project", "Resolve flag" and "Resolve the flag".
-// Nothing broke — the same button just said different things depending on
+// Nothing broke, the same button just said different things depending on
 // which screen you were standing on, which is how an interface stops feeling
 // like one thing.
 {
@@ -1295,7 +1295,7 @@ check('the intake promise states itself in words a person can read',
     'a second gathering was created');
   check('and it actually records the care', upd.care_provided === 2, JSON.stringify(upd.care_provided));
   // An update that wrote every column would blank what the caller did not
-  // mention — "add care" must not mean "delete the description".
+  // mention, "add care" must not mean "delete the description".
   check('an update leaves the fields it was not given alone',
     one('SELECT description FROM gatherings WHERE id=?', g.id).description === 'By the falls');
   check('an update with nothing to change says so',
@@ -1313,8 +1313,8 @@ check('the intake promise states itself in words a person can read',
 }
 
 // ── The map, and what it is honest about ──────────────────────────────────
-// The map drew places, hubs and signals. Everything a commons actually DOES —
-// the projects, the needs, the gatherings — lived only in lists, so the one
+// The map drew places, hubs and signals. Everything a commons actually DOES,
+// the projects, the needs, the gatherings, lived only in lists, so the one
 // view that is about a place could not show what was happening in it.
 {
   const { mapFeatures, MAP_KINDS } = await import('../engines/mapboard.mjs');
@@ -1333,7 +1333,7 @@ check('the intake promise states itself in words a person can read',
     drawn.every((k) => ordered.includes(`'${k}'`))
       && ordered.split(',').length === drawn.length, ordered);
 
-  // Shape AND colour, never colour alone — roughly one man in twelve cannot
+  // Shape AND colour, never colour alone, roughly one man in twelve cannot
   // separate the reds from the greens, and this map uses both to mean opposite
   // things (a blocked project and a running one).
   check('kinds are told apart by shape as well as colour',
@@ -1378,8 +1378,8 @@ check('the intake promise states itself in words a person can read',
   // All four were invisible from a screenshot, which is why they survived one.
 
   // A layer added without removing the one it replaces leaves a map that looks
-  // finished. Places, hubs and signals were each drawn TWICE — once by the new
-  // key-driven layer and once by the layer it was meant to replace — so
+  // finished. Places, hubs and signals were each drawn TWICE, once by the new
+  // key-driven layer and once by the layer it was meant to replace, so
   // switching "Instrument readings" off changed nothing on screen, because
   // sixty-eight gage columns were coming from a layer with no switch at all.
   const map3dSrc = readFileSync(new URL('../app/src/components/Map3D.jsx', import.meta.url), 'utf8');
@@ -1389,7 +1389,7 @@ check('the intake promise states itself in words a person can read',
       !layerIds.includes(gone),
       `${gone} is still drawn by a layer the key cannot switch off`);
   }
-  // The property, not a list of names — a list of layer ids goes stale the
+  // The property, not a list of names, a list of layer ids goes stale the
   // first time one is renamed and then asserts nothing while still passing.
   // What must hold is that everything drawing features is gated on the key.
   const markers = readFileSync(new URL('../app/src/components/MapMarkers.jsx', import.meta.url), 'utf8');
@@ -1404,7 +1404,7 @@ check('the intake promise states itself in words a person can read',
   check('no dead toggle state is left behind',
     !/showSignals/.test(map3dSrc), 'a state that can never change is a switch that is not there');
 
-  // A latitude with no longitude is a row that exists — both columns are
+  // A latitude with no longitude is a row that exists, both columns are
   // independently nullable and add_place takes them as separate optional
   // numbers. Testing only lat let one through as precise with lng null, which
   // deck.gl draws at [null, lat] and the panel renders with .toFixed on null.
@@ -1423,7 +1423,7 @@ check('the intake promise states itself in words a person can read',
     !half.features.some((f) => f.borrowed_from === 'Half place'));
 
   // The predicate for "still in the way" existed in four hand-written copies
-  // and two of them forgot that a gate can be passed with a reason — so the
+  // and two of them forgot that a gate can be passed with a reason, so the
   // same project read as clear on one screen and blocked on another.
   const { openGatesSql } = await import('../engines/quest.mjs');
   check('one predicate decides what is still in the way',
@@ -1452,7 +1452,7 @@ check('the intake promise states itself in words a person can read',
 
 // ── An action has to look like a thing you press ──────────────────────────
 // "Propose to council" is the entire point of the council page, and it lived in
-// the tab strip pushed to the far right as a small outlined pill — styled as
+// the tab strip pushed to the far right as a small outlined pill, styled as
 // navigation, outside the column the eye reads, at the size of a label. The
 // per-item actions were worse: 11px underlined text under a rule at the bottom
 // of a card, which reads as a footnote, and a footnote is not where anybody
@@ -1493,7 +1493,7 @@ check('the intake promise states itself in words a person can read',
 
 // ── The board, and the question it is arranged around ─────────────────────
 // The front of this app was fifteen tabs named after the protocol's stages.
-// That is the system's filing cabinet — complete, correct, and navigable only
+// That is the system's filing cabinet, complete, correct, and navigable only
 // by somebody who already knows the twelve-stage loop. The person who designed
 // it could not tell where to click.
 {
@@ -1511,7 +1511,7 @@ check('the intake promise states itself in words a person can read',
     JSON.stringify(Object.keys(b)));
 
   // The land leads. A page that only ever hands somebody their own debts does
-  // not get opened twice — that is the argument of the whole daily-use spec,
+  // not get opened twice, that is the argument of the whole daily-use spec,
   // and the headline is where it either holds or quietly stops holding.
   check('the headline is about the ground, not about what you owe',
     typeof b.headline === 'string' && b.headline.length > 10
@@ -1524,7 +1524,7 @@ check('the intake promise states itself in words a person can read',
   check('and cites the rule it comes from',
     b.todo.every((t) => typeof t.why === 'string' || t.why === null));
 
-  // Five, not thirty — and the shortening is stated rather than silent.
+  // Five, not thirty, and the shortening is stated rather than silent.
   check('it shows a few things and says how many it is not showing',
     b.todo.length <= 5 && typeof b.todo_total === 'number' && b.todo_total >= b.todo.length,
     `${b.todo.length} of ${b.todo_total}`);
@@ -1542,7 +1542,7 @@ check('the intake promise states itself in words a person can read',
     'the first screen would hang whenever an upstream is slow');
 
   // Every action the board offers must be a tool that exists, or the button
-  // does nothing — the failure that is invisible because the screen does not
+  // does nothing, the failure that is invisible because the screen does not
   // change.
   const { TOOLS: T2 } = await import('../ai/tools.mjs');
   const names = new Set(T2.map((t) => t.name));
@@ -1552,11 +1552,11 @@ check('the intake promise states itself in words a person can read',
 }
 
 // ── A gate you can pass, on your name, with a reason ──────────────────────
-// Binary refusal with no arena is the design–reality gap in code: the tool that
+// Binary refusal with no arena is the design-reality gap in code: the tool that
 // cannot be got past at nine on a Sunday is the tool that stops being used, and
 // nobody ever says why. Ostrom's fifth principle is graduated sanctions.
 //
-// So most gates graduate — a named person, a written reason, both kept forever.
+// So most gates graduate, a named person, a written reason, both kept forever.
 // Three do not, and the test of the line is whether the person clicking could
 // be the person the gate protects. If not, it does not graduate.
 {
@@ -1575,7 +1575,7 @@ check('the intake promise states itself in words a person can read',
       r.error === 'cannot_be_overridden', JSON.stringify(r.error));
   }
   // The refusal has to carry the REASON, not just the rule. A generic "must be
-  // one of" names the allowed values and not why these are not among them —
+  // one of" names the allowed values and not why these are not among them,
   // and why is the entire content of this particular refusal.
   const indig = await runTool('override_gate',
     { quest_id: oq.id, gate: 'indigenous_consent', reason: 'deadline', overridden_by: 'M' });
@@ -1622,7 +1622,7 @@ check('the intake promise states itself in words a person can read',
 
 // ── A deputy, named in advance, who has actually agreed ───────────────────
 // "Can the group continue if one founder steps away?" used to pass on "more
-// than one person has served the Land Seat" — which a chapter satisfies by
+// than one person has served the Land Seat", which a chapter satisfies by
 // having had a busy month. Community networks have gone dark for months over
 // one person's computer, and that failure looks technical and is entirely
 // governance.
@@ -1642,7 +1642,7 @@ check('the intake promise states itself in words a person can read',
       === 'same_person');
 
   // The one that matters. Recording somebody without asking is how a chapter
-  // discovers it has no deputy on the day it needs one — and that is the day
+  // discovers it has no deputy on the day it needs one, and that is the day
   // nobody can ask.
   const unasked = await runTool('name_deputy',
     { chapter_id: CH, steward: 'Maya R.', deputy: 'T. Okonkwo' });
@@ -1662,7 +1662,7 @@ check('the intake promise states itself in words a person can read',
 }
 
 // ── The assistant knows where it is standing ──────────────────────────────
-// The prompt used to carry one fact about the place — the chapter's name — and
+// The prompt used to carry one fact about the place, the chapter's name, and
 // several hundred words about the protocol. So the one surface that people
 // actually talk to was the one that answered about watersheds in general.
 {
@@ -1773,7 +1773,7 @@ check('the intake promise states itself in words a person can read',
 //
 // The shape is the same as the licence check and the count-drift check: a rule
 // stated in two places will eventually be stated differently, and the failure
-// is silent in the direction that flatters — the document still says the
+// is silent in the direction that flatters, the document still says the
 // control exists.
 {
   const schema = readFileSync(new URL('../core/schema.sql', import.meta.url), 'utf8');
@@ -1795,7 +1795,7 @@ check('the intake promise states itself in words a person can read',
 
   // "AI may not decide" is a list in the manual and a list in the code. If they
   // drift, the code enforces a shorter one and the document still promises the
-  // longer — which is the worst available direction for this particular list.
+  // longer, which is the worst available direction for this particular list.
   const section = protocol.slice(protocol.indexOf('### AI may not decide'));
   const forbidden = [...section.slice(0, section.indexOf('\n\n', 40) + 400)
     .matchAll(/^- (.+)$/gm)].map((m) => m[1].trim().toLowerCase());
@@ -1817,7 +1817,7 @@ check('the intake promise states itself in words a person can read',
 // ── The land, at the council table ────────────────────────────────────────
 // Every agenda item has always required a Land Seat report, and the report has
 // always been free text validated for non-emptiness. The OS held the gage
-// reading, the hazard alerts and the season, and none of it reached the field —
+// reading, the hazard alerts and the season, and none of it reached the field,
 // so a steward wrote the report from memory while the machine beside them held
 // the measurements.
 {
@@ -1866,7 +1866,7 @@ check('the intake promise states itself in words a person can read',
 }
 
 // ── Stage 6: a score that cannot override what it is not allowed to ───────
-// The manual refers to a "project score" exactly once — in the sentence saying
+// The manual refers to a "project score" exactly once, in the sentence saying
 // a high one never overrides a red flag. The rule was enforced and the score
 // never existed, so the safeguard guarded nothing.
 {
@@ -1899,7 +1899,7 @@ check('the intake promise states itself in words a person can read',
   check('the score names its own weakest part rather than one number',
     ['urgent', 'regenerative', 'feasible', 'maintainable'].includes(open.weakest));
 
-  // Nothing here may be self-assessed — there is no input a person fills in to
+  // Nothing here may be self-assessed, there is no input a person fills in to
   // make their project look urgent.
   const { TOOLS: ALL_TOOLS } = await import('../ai/tools.mjs');
   const scoreTool = ALL_TOOLS.find((t) => t.name === 'quest_score');
@@ -1915,7 +1915,7 @@ check('the intake promise states itself in words a person can read',
 // ── The AI logs itself, rather than being asked to volunteer ──────────────
 // The manual: log whenever AI materially shapes a public report, map, plan,
 // match or recommendation. That was implemented as a tool the assistant had to
-// choose to call ON ITSELF — so the register existed, the operator counted
+// choose to call ON ITSELF, so the register existed, the operator counted
 // unreviewed rows, and an assistant could open projects, close gates and
 // propose decisions without ever writing one.
 {
@@ -1938,7 +1938,7 @@ check('the intake promise states itself in words a person can read',
   check('an action the gates refused is not recorded as an action', n() === before + 1);
 
   // The row is written with NO reviewer on purpose, which is what turns it into
-  // blocking work in the operator — a check that until now could only be zero.
+  // blocking work in the operator, a check that until now could only be zero.
   const row = one(
     `SELECT tool, human_reviewer, correction_path FROM ai_log WHERE chapter_id='test'
       ORDER BY created_at DESC, rowid DESC LIMIT 1`);
@@ -1955,7 +1955,7 @@ check('the intake promise states itself in words a person can read',
 // forward forever. The whole design rests on one refusal: the machine computes
 // what changed and will not close a season until a person has answered what did
 // NOT change, what unintended effects appeared, and whose experience is missing.
-// Those three are the value of a review — a report made only of what moved is a
+// Those three are the value of a review, a report made only of what moved is a
 // progress report, and nothing has ever gone wrong in one.
 {
   const CH = 'season-test';
@@ -2073,9 +2073,9 @@ check('the intake promise states itself in words a person can read',
   });
 
   // Discovery used to file EVERY node the index returned as a `chapter`. The
-  // index answers a geographic query with whatever is near the point — asked
+  // index answers a geographic query with whatever is near the point, asked
   // around Austin it returns a taxi co-operative, a web host, a copywriting
-  // agency and an individual researcher — so the federation table asserted
+  // agency and an individual researcher, so the federation table asserted
   // something the data never said, and the panel repeated it to a person as
   // fact. A peer's kind may only come from what that peer itself published.
   check('a co-operative near here is not a bioregional chapter',
@@ -2184,7 +2184,7 @@ check('the intake promise states itself in words a person can read',
   });
 
   // A brand new commons. Every measure must be honest that it has nothing to
-  // measure — a chapter that has held no gatherings has NO care score, it does
+  // measure, a chapter that has held no gatherings has NO care score, it does
   // not have a care score of nought. Reporting the second turns "we have not
   // started" into "we are failing", on the one screen meant to tell somebody
   // whether to keep going.
@@ -2235,7 +2235,7 @@ check('the intake promise states itself in words a person can read',
   // somebody tidied a reply.
   const stampedAt = one('SELECT responded_at FROM intake WHERE id=?', timed.id).responded_at;
   await runTool('respond_to_intake',
-    { intake_id: timed.id, response: 'Key is with the steward — ask at the shed.', status: 'acknowledged' });
+    { intake_id: timed.id, response: 'Key is with the steward, ask at the shed.', status: 'acknowledged' });
   check('rewording an answer does not reset how long the person waited',
     one('SELECT responded_at FROM intake WHERE id=?', timed.id).responded_at === stampedAt);
 
@@ -2258,7 +2258,7 @@ check('the intake promise states itself in words a person can read',
 // The same trap core/provenance.mjs exists for, arriving through a different
 // door and pointing the wrong way round. A creek with a USGS gage on it files
 // a reading every three hours forever. Count those as attention and the most
-// neglected place in the chapter reports as the best attended one — and says
+// neglected place in the chapter reports as the best attended one, and says
 // so with a straight face, because nothing about the screen looks wrong.
 {
   const CH = 'attend';
@@ -2367,7 +2367,7 @@ markCardSent('test');
 check('a card that was produced can be remembered', daysSinceLastCard('test') === 0);
 
 // ── And where that memory lives ─────────────────────────────────────────
-// It is a file, not a column, which is right — but it was a file at a FIXED
+// It is a file, not a column, which is right, but it was a file at a FIXED
 // path, so it did not follow BROS_DB. `npm run prove` builds a throwaway
 // commons precisely so it can press every button safely, and `mark_card_sent`
 // wrote the real file on every run: the prover reported itself read-only while
@@ -2381,7 +2381,7 @@ check('a card that was produced can be remembered', daysSinceLastCard('test') ==
   check('the card mark is written beside the commons that is open, not a fixed path',
     existsSync(here), here);
   // The property, stated the way it will be needed for the next file that lives
-  // outside the database — audio, photographs, anything with bytes. The
+  // outside the database, audio, photographs, anything with bytes. The
   // directory is not enough: the suite opens a fresh database every run in a
   // SHARED folder, so the mark has to be a sidecar of the file.
   check('and so a throwaway commons cannot write the real one',
@@ -2389,9 +2389,9 @@ check('a card that was produced can be remembered', daysSinceLastCard('test') ==
 }
 
 // ── A long silence is an item in the round, never a notification ────────
-// The card is the highest-leverage mechanism in the system — the group is
+// The card is the highest-leverage mechanism in the system, the group is
 // already in a chat and zero of 29 mutual aid groups studied adopted a
-// purpose-built tool — and `daysSinceLastCard()` was written to drive this,
+// purpose-built tool, and `daysSinceLastCard()` was written to drive this,
 // documented as driving it, tested, and called by nothing at all.
 {
   const { whatsNext } = await import('../engines/operator.mjs');
@@ -2407,7 +2407,7 @@ check('a card that was produced can be remembered', daysSinceLastCard('test') ==
   const item = cardItem('quiet');
   check('a commons that has heard something, and never posted, is asked to',
     item?.kind === 'gap' && /never had a card/.test(item.title), JSON.stringify(item?.title));
-  check('and it is a gap, not a slip — nothing here is overdue',
+  check('and it is a gap, not a slip, nothing here is overdue',
     item?.kind === 'gap' && item?.stage === 'Teach & Tell');
 
   markCardSent('quiet');
@@ -2442,7 +2442,7 @@ check('SQL: a signal surveyed elsewhere keeps its own coordinate',
   flagOf(own_.id) === 0, JSON.stringify(flagged_));
 
 // 2. What may leave the machine. The old test asserted the finished card had no
-//    URL in it — true, but true whether the guard existed or not, because the
+//    URL in it, true, but true whether the guard existed or not, because the
 //    upstream sentence never contains one. It could not fail.
 check('a sentence with no address may travel',
   safeToSend('2934 field recordings from within 15 km, most recently Common Raven on 2026-09-03'));
@@ -2466,14 +2466,14 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
   // ── Where am I, versus what should I download ──────────────────────────
   //
   // These are different questions and one function was answering both. The
-  // board took `myRegions(...).level4[0]` — the arbitrary first BOUNDING-BOX
-  // hit — and named it as the chapter's ecoregion. Measured on real points, it
+  // board took `myRegions(...).level4[0]`, the arbitrary first BOUNDING-BOX
+  // hit, and named it as the chapter's ecoregion. Measured on real points, it
   // was wrong for Bend, Asheville and Missoula and right for Barton Creek,
   // which is the seeded demo and the only place anybody looked.
   //
   // The polygon answer has always been on the place row. These assert that it
   // is what wins, that a bbox-only answer is LABELLED as a guess rather than
-  // presented as a fact, and — the one that actually catches a regression —
+  // presented as a fact, and, the one that actually catches a regression,
   // that the header and the ground line cannot disagree.
   {
     const bendBbox = lib.regionsAt(44.0582, -121.3153).level4;
@@ -2481,7 +2481,7 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
       bendBbox.length > 1 && bendBbox[0].code !== '9d', bendBbox.map((r) => r.code).join(','));
 
     // Its own chapter, so this does not depend on which place the test chapter
-    // happens to carry or in what order — homeRegion picks one located place,
+    // happens to carry or in what order, homeRegion picks one located place,
     // and borrowing a populated chapter would make the assertion about rowid
     // order rather than about the polygon.
     dbRun(`INSERT INTO chapters (id, name, scale, steward) VALUES ('bend','Bend','watershed','T')`);
@@ -2527,7 +2527,7 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
         .culture.status === 'not_downloaded_by_design');
   } else {
     skip('the offline region library',
-      'no region downloaded on this machine yet — run: npm run data -- --region 30c');
+      'no region downloaded on this machine yet, run: npm run data -- --region 30c');
   }
 
   const stale = lib.staleSections(null);
@@ -2595,7 +2595,7 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
         /another process/.test((a.skipped ?? b.skipped) ?? ''));
     }
     // A leaked lock is one nobody is holding. This used to assert that NO lock
-    // file existed, which fails whenever `npm run data -- --all` is running —
+    // file existed, which fails whenever `npm run data -- --all` is running,
     // that is, whenever the lock is doing its job. It caught a live 13-second-old
     // lock belonging to a healthy download and called it a leak, which is the
     // kind of red that gets a working guard "fixed".
@@ -2615,7 +2615,7 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
   }
 
   // A section that fails must not take the region with it, and the record it
-  // leaves must name the section and the upstreams — an unlabelled error in a
+  // leaves must name the section and the upstreams, an unlabelled error in a
   // 1052-region run is a rumour, not a diagnosis.
   {
     const D = await import('../adapters/dossier.mjs');
@@ -2644,8 +2644,8 @@ check('nothing to say is not something to send', !safeToSend('') && !safeToSend(
 }
 
 // ── Every artifact that leaves the machine carries its credit ─────────────
-// A screen missing a credit is a bug a reader could notice. An artifact — a card
-// pasted into a group chat, a printed sheet — is already in somebody else's
+// A screen missing a credit is a bug a reader could notice. An artifact, a card
+// pasted into a group chat, a printed sheet, is already in somebody else's
 // hands by the time anyone checks, and for a CC-BY source attribution is the
 // condition of being allowed to share it at all.
 //
@@ -2677,7 +2677,7 @@ check('whatever the card resolved appears in the text somebody pastes',
   `${credited.sources.length} sources · credit in text: ${credited.credit ? credited.text.includes(credited.credit) : 'n/a'}`);
 
 // ── Prose that states a count is prose that will be wrong ────────────────
-// Four documents claimed a tool count — 59, 49, 48 and 23 — while the registry
+// Four documents claimed a tool count, 59, 49, 48 and 23, while the registry
 // held 77. Nobody lied; each number was true when it was typed. Same failure as
 // a licence written into an adapter instead of resolved from the registry, and
 // as a coverage note describing a layer instead of asserting it: PROSE ABOUT
@@ -2685,10 +2685,10 @@ check('whatever the card resolved appears in the text somebody pastes',
 //
 // Two kinds of number, and they need opposite rules:
 //
-//   RESOLVABLE — tools, sources. The registry knows the true value, so a stated
+//   RESOLVABLE, tools, sources. The registry knows the true value, so a stated
 //   number must equal it. Assert.
 //
-//   UNRESOLVABLE — tests. Nothing can know the count of tests while the tests
+//   UNRESOLVABLE, tests. Nothing can know the count of tests while the tests
 //   are running, so a stated number can never be checked and will drift the
 //   moment anyone adds one. Refuse it outright.
 //
@@ -2703,7 +2703,7 @@ check('whatever the card resolved appears in the text somebody pastes',
   const truth = { tools: TOOLS.length, sources: SOURCES.length };
 
   // Where this looks is the second half of the guard, and the half that was
-  // wrong for longer. It read README, docs/ and scripts/ only — so
+  // wrong for longer. It read README, docs/ and scripts/ only, so
   // `server/routes/claude.mjs` explained the CLI bridge in terms of "77 tools"
   // twice, in a comment somebody reads while working out why the bridge exists,
   // and no check could see it. A count is a count wherever it is typed.
@@ -2712,7 +2712,7 @@ check('whatever the card resolved appears in the text somebody pastes',
   // as the hardcoded list of adjectives this guard used to carry: it needs a new
   // entry forever, and the entry nobody adds is the one that goes unchecked. The
   // EXCLUSIONS are listed instead, because those are few, stable, and each has a
-  // reason — vendored code, build output, regenerable data, and this file, which
+  // reason, vendored code, build output, regenerable data, and this file, which
   // quotes stale counts above by way of explanation and is the one place a wrong
   // number is the point.
   const SKIP_DIR = new Set(['node_modules', '.git', 'dist', 'dossiers', 'upstream', 'backups', 'worktrees']);
@@ -2737,7 +2737,7 @@ check('whatever the card resolved appears in the text somebody pastes',
     //
     // Version one required the number to sit directly beside the noun, and
     // "509 protocol tests" walked through it. Version two listed the adjectives
-    // that were allowed in between — which is a denylist wearing an allowlist's
+    // that were allowed in between, which is a denylist wearing an allowlist's
     // clothes: "509 integration tests" and "12 of the 17 declared sources" both
     // walked through THAT, and the second one was live in DATA_SOURCES.md.
     //
@@ -2762,12 +2762,12 @@ check('whatever the card resolved appears in the text somebody pastes',
 // ── The front door names every room ──────────────────────────────────────
 // The README's tab table is transcribed from GROUPS in App.jsx, and a
 // transcription is a copy. Generating it was the obvious fix and the wrong one:
-// the descriptions are editorial — "a good idea never overrides a red flag" has
+// the descriptions are editorial, "a good idea never overrides a red flag" has
 // to be written by somebody with a view, not exported from a component.
 //
 // So assert the SET and leave the prose. Add or rename a tab without saying so
 // in the README and this goes red; reword any description freely and it does
-// not. App.jsx is JSX and cannot be imported here, so the ids are read as text —
+// not. App.jsx is JSX and cannot be imported here, so the ids are read as text,
 // which is the honest shape for a check that is comparing two documents.
 {
   const { readFileSync } = await import('node:fs');
@@ -2776,8 +2776,8 @@ check('whatever the card resolved appears in the text somebody pastes',
   // The parse is checked before it is trusted, and separately, so a failure
   // names its own cause. The first version guarded only against finding too
   // FEW ids: rename the closing anchor and indexOf returns -1, slice(start, -1)
-  // runs to the end of the file, and the block goes from 1.5k to 13k characters
-  // — the whole component. `ids.length >= 13` is satisfied by parsing too much
+  // runs to the end of the file, and the block goes from 1.5k to 13k characters,
+  // the whole component. `ids.length >= 13` is satisfied by parsing too much
   // just as happily as by parsing correctly, so the check silently became
   // "does the README mention every label anywhere in App.jsx", a weaker
   // assertion wearing a stronger name. A guard against parsing too little and
@@ -2785,7 +2785,7 @@ check('whatever the card resolved appears in the text somebody pastes',
   const start = app.indexOf('const GROUPS');
   const end = app.indexOf('const TABS');
   check('the GROUPS block can still be found in App.jsx',
-    start >= 0 && end > start, `start ${start}, end ${end} — an anchor was renamed`);
+    start >= 0 && end > start, `start ${start}, end ${end}, an anchor was renamed`);
 
   const groups = start >= 0 && end > start ? app.slice(start, end) : '';
   const ids = [...groups.matchAll(/id:\s*'([a-z]+)'/g)].map((m) => m[1]);
@@ -2803,8 +2803,8 @@ check('whatever the card resolved appears in the text somebody pastes',
 // An artifact built from the demonstration commons says so ────────────────
 // The seeded data reads like real reporting: a Critical signal describing an
 // unpermitted stormwater discharge, naming a real creek and a real city
-// department. On screen it sits under an "example data" banner. A card does not
-// — it arrives in a group chat with no context around it, and the repository is
+// department. On screen it sits under an "example data" banner. A card does not,
+// it arrives in a group chat with no context around it, and the repository is
 // public. Same rule as attribution: an artifact that travels declares what it is.
 const demoCard = await cardForTheWeek('test');
 check('a card from a real chapter does not cry wolf about being an example',
@@ -2812,7 +2812,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   `is_example=${demoCard.is_example}`);
 
 // The notice is two separate claims and must stay two. The first version said
-// "nothing above is a real observation", which was false — the hazard alert, the
+// "nothing above is a real observation", which was false, the hazard alert, the
 // gage reading and the recording count are live public data. A marker that
 // over-claims teaches a reader to distrust the authoritative half, and a heat
 // advisory is the worst thing in the card to make somebody doubt. Asserted as
@@ -2846,7 +2846,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // ── The interface can tell what it is showing ────────────────────────────
 // The on-screen marker was gated on the example being the ONLY chapter, so it
 // vanished the moment somebody founded their own and clicked back to the
-// example — second chapter exists, banner gone, invented discharge report on
+// example, second chapter exists, banner gone, invented discharge report on
 // screen with nothing saying so. It is keyed on the ACTIVE chapter now, which
 // means the browser has to be told which id is the demonstration one. If that
 // ever stops being served the marker silently never shows again, and nothing
@@ -2868,7 +2868,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // stand between that and the world, and both failed once already:
 //
 //   1. The tool check must be an ALLOWLIST. It began as a denylist, and a
-//      denylist fails OPEN — the global MCP config quietly added 501 tools
+//      denylist fails OPEN, the global MCP config quietly added 501 tools
 //      including Gmail, Slack, Drive and QuickBooks, and every name on the
 //      denylist was still absent, so a denylist would have passed it.
 //   2. The route must be loopback-only. `--share` binds 0.0.0.0 and there is
@@ -2897,7 +2897,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     isPermitted('mcp__bioregional-os__whats_next') && isPermitted('mcp__bioregional-os__propose_decision'));
 
   // A denylist alone would pass the leak. This asserts the two are not the
-  // same test wearing different names — if someone "simplifies" the check back
+  // same test wearing different names, if someone "simplifies" the check back
   // into a denylist, this fails.
   const deniedOnly = (t) => !DENIED.includes(t);
   check('the check is stricter than the flag it backs up',
@@ -2918,7 +2918,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // Both flags, doing opposite jobs. With only the denylist every commons call
   // stopped at a permission prompt and the assistant reported that the PROTOCOL
-  // had refused it — a refusal that was not the real refusal, which is worse
+  // had refused it, a refusal that was not the real refusal, which is worse
   // than an error because it teaches a rule that does not exist.
   const src = readFileSync('server/routes/claude.mjs', 'utf8');
   check('the CLI is given both the grant and the denial',
@@ -2934,7 +2934,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 
 // ── compile() has four outcomes, and every caller must know all four ─────
 // This was found twice. Fixed once in scripts/data.mjs, and the identical line
-// was still sitting in engines/heartbeat.mjs — same field, same missing guard.
+// was still sitting in engines/heartbeat.mjs, same field, same missing guard.
 //
 // The outcome both missed is `skipped`: the region is locked because something
 // else is already writing it. That is not a rare race. dossier.mjs takes the
@@ -2967,7 +2967,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     !r.error, 'lock contention is being reported as a failure');
 
   // Both consumers, enumerated. A third copy has to be added here, which is the
-  // point — the bug was two copies drifting, not one line being wrong.
+  // point, the bug was two copies drifting, not one line being wrong.
   const callers = [
     ['scripts/data.mjs', readFileSync('scripts/data.mjs', 'utf8')],
     ['engines/heartbeat.mjs', readFileSync('engines/heartbeat.mjs', 'utf8')],
@@ -2991,7 +2991,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // ── A refusal a person can act on ──────────────────────────────────────────
 // Every enum below is ALSO a CHECK constraint in schema.sql, so an unlisted value
 // was always refused. It was refused by SQLite: `CHECK constraint failed: kind IN
-// (...)` — naming a column, from a layer the caller does not know exists. The right
+// (...)`, naming a column, from a layer the caller does not know exists. The right
 // answer wearing the wrong face.
 //
 // This matters most for the AI callers, which are first-class here. Handing Claude
@@ -3016,13 +3016,13 @@ check('a card from a real chapter does not cry wolf about being an example',
     cased.error === 'not_allowed_value' && /"critical"/.test(cased.message ?? '') && /Critical/.test(cased.message ?? ''),
     cased.message);
 
-  // The guard must not fire on the valid path — the cry-wolf direction.
+  // The guard must not fire on the valid path, the cry-wolf direction.
   const good = await runTool('add_signal',
     { chapter_id: 'test', title: 'Enum guard: valid value', severity: 'Watch' });
   check('a listed value is not refused by the enum guard', good.error !== 'not_allowed_value',
     good.error ?? 'accepted');
 
-  // An absent optional enum is absent, not invalid — the falsiness trap this repo
+  // An absent optional enum is absent, not invalid, the falsiness trap this repo
   // has already been bitten by once.
   const omitted = await runTool('add_signal', { chapter_id: 'test', title: 'Enum guard: omitted' });
   check('an omitted optional enum is not treated as an invalid one',
@@ -3038,7 +3038,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // ── A second person can write, and it is not a sign-in ────────────────────
 // Everyone using this OS was the steward. A phone on the wifi could bring a
 // need through /join and nothing else, so a chapter was one person typing while
-// everyone else submitted to them — which is a chapter that stops when that
+// everyone else submitted to them, which is a chapter that stops when that
 // person is ill.
 //
 // Device enrolment is deliberately not accounts: no password, nothing to
@@ -3075,7 +3075,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // THE PROPERTY THAT MATTERS MOST. This project tells people to back up and
   // move commons.db. If the token were in it, the backup would be the key.
-  check('the token is never stored — only a hash of it',
+  check('the token is never stored, only a hash of it',
     !JSON.stringify(all('SELECT * FROM devices')).includes(got.token),
     'a copy of the database would let its reader impersonate a device');
   check('and neither is the invitation code',
@@ -3109,7 +3109,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('the steward at the machine still gets everything',
     clearanceFor({ socket: { remoteAddress: '127.0.0.1' }, headers: {} }) === 'sacred');
 
-  // The token must never travel where a URL goes — logs, history, Referer.
+  // The token must never travel where a URL goes, logs, history, Referer.
   const cl = readFileSync(new URL('../server/clearance.mjs', import.meta.url), 'utf8');
   check('a device is read from a header, never from the query string',
     /headers\?\.\['x-bros-device'\]/.test(cl) && !/searchParams.*device/i.test(cl));
@@ -3126,7 +3126,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('the list says how many can write, not how many exist',
     /1 device can write/.test(listed.sentence), listed.sentence);
 
-  // Revocation is enforced twice over, and each half is tested alone —
+  // Revocation is enforced twice over, and each half is tested alone,
   // otherwise a mutation that breaks one passes because the other caught it,
   // which is how defence in depth turns into one defence nobody has checked.
   //
@@ -3169,7 +3169,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // level was chosen. Three routes read it from the query string, so
 // `GET /api/export/koi?clearance=sacred` returned every restricted and sacred
 // object and the bundle route returned their contents. The gate function was
-// never wrong — it was asked to open by the person standing outside it. With
+// never wrong, it was asked to open by the person standing outside it. With
 // --share binding 0.0.0.0 and the connect QR handing out the LAN address, that
 // was reachable by anyone on the gathering wifi.
 {
@@ -3227,7 +3227,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // ── A private need does not go to an index that cannot take it back ────────
 // `intake.private` is honoured in the listing route, in the tool that reads
 // intake, and in the sensitivity the row is filed at. It was not honoured in
-// the one function that publishes an intake item to a public global index —
+// the one function that publishes an intake item to a public global index,
 // which is unauthenticated, indexes geolocation, and whose removal is
 // best-effort because aggregators may already hold a copy. Federation is
 // one-way with respect to erasure.
@@ -3251,9 +3251,9 @@ check('a card from a real chapter does not cry wolf about being an example',
 // ── A CHECK that was widened, on a commons that already existed ────────────
 // `federation_peers.kind` allowed only chapter/network/registry/index, and
 // discovery filed EVERY node the Murmurations index returned as a chapter. The
-// index answers a geographic query with whatever is near the point — asked
+// index answers a geographic query with whatever is near the point, asked
 // around Austin it returns a taxi co-operative, a web host, a copywriting
-// agency and an individual researcher — so the table asserted something the
+// agency and an individual researcher, so the table asserted something the
 // data never said and the panel repeated it to a person as fact.
 //
 // SQLite cannot ALTER a CHECK, so widening it means rebuilding the table, and a
@@ -3330,7 +3330,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // The docs said "copy data/commons.db and you have a complete backup". In WAL
 // mode that is false, and it fails in the worst available way: the copy exists,
 // opens, and looks entirely normal while being short by whatever had not been
-// checkpointed. Found by accident — a chapter was deleted, the file was copied,
+// checkpointed. Found by accident, a chapter was deleted, the file was copied,
 // and the deleted chapter was still in the copy.
 //
 // Restoring a backup is the only way anyone ever finds out a backup does not
@@ -3369,7 +3369,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('the backup contains rows a plain file copy can miss', n === 2, `${n} of 2 rows, wal present=${walHeld}`);
 
   // The bug this file exists to stop repeating: erase, pointed at one database,
-  // deleted ANOTHER commons's backups — because the backups directory came from
+  // deleted ANOTHER commons's backups, because the backups directory came from
   // the project root rather than from the database being erased. It was found by
   // running it: a throwaway erase reported "1 backup will also go", and the real
   // one was gone. Assert the project's own backups survive an erase elsewhere.
@@ -3412,14 +3412,14 @@ check('a card from a real chapter does not cry wolf about being an example',
   const CH = one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id;
 
   // The policy names only tools that exist. A renamed tool would otherwise
-  // silently fall back to the keyboard — the safe direction, but a stale name
+  // silently fall back to the keyboard, the safe direction, but a stale name
   // is still a lie in the policy.
   // ── The day clock is for anyone, and it hands over nothing else ────────
   //
   // The public tier was four tools and all four were WRITES: a stranger could
   // contribute to a commons they were not allowed to look at. That is inverted
-  // from how people use community software — the 90 in 90-9-1 participate by
-  // READING — and DAILY_USE.md §4 had already specified the day clock as
+  // from how people use community software, the 90 in 90-9-1 participate by
+  // READING, and DAILY_USE.md §4 had already specified the day clock as
   // "60 seconds, ANYONE, gives before it asks".
   //
   // These assert the two halves: a stranger CAN read the land, and the reading
@@ -3478,7 +3478,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   // ── Sharing is a decision about a room, made at the machine ────────────
   //
   // It was a start-up flag, so turning it on meant quitting the OS and using a
-  // terminal — and a chapter that installs by double-clicking never passes any
+  // terminal, and a chapter that installs by double-clicking never passes any
   // flag at all, so it was on 127.0.0.1 permanently. That put a command line in
   // front of the second person, the QR at a gathering and the join page: every
   // social thing this project is for.
@@ -3497,8 +3497,8 @@ check('a card from a real chapter does not cry wolf about being an example',
 
     const sh = await import('../server/share.mjs');
 
-    // The consent gate REFUSES rather than warns — a warning above a running
-    // server is a warning nobody reads — and it hands back WHAT is held, so the
+    // The consent gate REFUSES rather than warns, a warning above a running
+    // server is a warning nobody reads, and it hands back WHAT is held, so the
     // decision is made by somebody looking at it rather than at a number.
     dbRun(`UPDATE rids SET sensitivity='sacred' WHERE rowid IN (SELECT rowid FROM rids LIMIT 1)`);
     const refused = await sh.startSharing({});
@@ -3532,7 +3532,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   // one that happened to be written first. MATERIAL_TOOLS sat ten lines from
   // this check for as long as it existed and was never covered by it: it named
   // `set_baseline` and `publish_to_murmurations`, neither of which is a tool.
-  // The consequence was not cosmetic — MATERIAL_TOOLS is what decides whether
+  // The consequence was not cosmetic, MATERIAL_TOOLS is what decides whether
   // an AI caller's write reaches the transparency register, so setting an
   // indicator baseline, and PUBLISHING THIS CHAPTER TO THE FEDERATION, were
   // both unlogged. That is ARCHITECTURE.md's "a log that depended on the logged
@@ -3611,10 +3611,10 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // ── withhold: nothing above the clearance leaves ────────────────────────
   const sacred = create('signals', 'signal', CH,
-    { chapter_id: CH, title: 'Access test — sacred site', category: 'Cultural', severity: 'Info', source_adapter: 'test', sensitivity: 'sacred' },
+    { chapter_id: CH, title: 'Access test, sacred site', category: 'Cultural', severity: 'Info', source_adapter: 'test', sensitivity: 'sacred' },
     'sacred');
   const pub = create('signals', 'signal', CH,
-    { chapter_id: CH, title: 'Access test — public creek', category: 'Ecological', severity: 'Info', source_adapter: 'test' },
+    { chapter_id: CH, title: 'Access test, public creek', category: 'Ecological', severity: 'Info', source_adapter: 'test' },
     'public');
   const asMember = await post('list_signals', {}, mh);
   const rows = Array.isArray(asMember) ? asMember : (asMember?.signals ?? []);
@@ -3701,8 +3701,8 @@ check('a card from a real chapter does not cry wolf about being an example',
 // §4 of DAILY_USE.md specifies the week clock as "capped, deferrable, and
 // capable of being FINISHED", with the reward written down as "the list
 // empties". It did not empty: the board recomputed the top five every time it
-// was asked, so closing a consent gate — an evening of door-knocking, evidence
-// written, a reviewer named — moved one digit while the next identical line
+// was asked, so closing a consent gate, an evening of door-knocking, evidence
+// written, a reviewer named, moved one digit while the next identical line
 // stepped into the slot. The five lines were the same the following week.
 //
 // A list that does not change teaches a steward that their work does not move
@@ -3783,7 +3783,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('and it is capped', first.size <= 5, String(first.size));
 
   // The key has to survive the work being done to it. "2 projects are waiting
-  // on gates — 17 between them" changes its title the moment a gate closes,
+  // on gates, 17 between them" changes its title the moment a gate closes,
   // which is exactly when the round must not lose track of it.
   const gateItem = whatsNext(C).items.find((i) => i.action?.tool === 'satisfy_quest_gate');
   if (gateItem) {
@@ -3811,7 +3811,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     // The work itself is untouched. Setting aside is about the WEEK, not about
     // the commons, and a round that could quietly close work would be a way of
     // marking things done without doing them.
-    check('the work is still there — a round holds a week, not the commons',
+    check('the work is still there, a round holds a week, not the commons',
       whatsNext(C).items.some((i) => R.itemKey(i) === key));
   }
 
@@ -3870,7 +3870,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   // ── One open round per chapter, enforced by the database ─────────────
   // `theRound()` reads for an open round and inserts one if there is none, and
   // those are two statements. Four processes asked at once on a throwaway and
-  // two rounds came back open — one of them invisible from then on, holding
+  // two rounds came back open, one of them invisible from then on, holding
   // items that would never clear. Structurally impossible beats unlikely.
   {
     R.theRound(C);
@@ -3892,7 +3892,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   }
 
   // A writer that meets another writer waits instead of throwing. `busy_timeout`
-  // defaults to 0 and, unlike journal_mode, does not persist in the file — so
+  // defaults to 0 and, unlike journal_mode, does not persist in the file, so
   // the launcher's heartbeat and any command a person types were one collision
   // away from SQLite's vocabulary appearing in a terminal.
   check('a busy database is waited for, not given up on',
@@ -3905,8 +3905,8 @@ check('a card from a real chapter does not cry wolf about being an example',
 }
 
 // ── A chapter's coordinates are not part of saying hello ──────────────────
-// `forAStranger()` strips lat/lng from the day clock on a stated principle — a
-// name is a fact about the land, a coordinate is a direction to it — and
+// `forAStranger()` strips lat/lng from the day clock on a stated principle, a
+// name is a fact about the land, a coordinate is a direction to it, and
 // /api/status handed the same numbers to the same stranger one call away,
 // because it predates the principle.
 {
@@ -3946,7 +3946,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     [...actions.GO_TO.keys()].filter((t) => !names.has(t)).join(', '));
 
   // A tool cannot be both, and the order in actionKind() would silently pick
-  // one — the same shape as a tool listed in two clearance tiers.
+  // one, the same shape as a tool listed in two clearance tiers.
   const both = [...actions.GO_TO.keys()].filter((t) => actions.DIRECT.has(t));
   check('no tool is both a direct run and a screen', both.length === 0, both.join(', '));
 
@@ -3957,7 +3957,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     missing.length === 0, missing.join(', '));
 
   // The one that started it: the round asks for the card, so pressing it has to
-  // reach the card SCREEN — the one with copy-as-text, print, and the button
+  // reach the card SCREEN, the one with copy-as-text, print, and the button
   // that marks it sent. A generated form asked "how far back does this week
   // reach", recorded nothing, and left the item to be asked again next week.
   check('asking for the card opens the card, not a form about the card',
@@ -3977,7 +3977,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 // `String.replace(' ', 'T')` replaces the FIRST space only. Eleven copies of
 // that line existed. It is fine for "2026-09-21 14:00", which the database
 // writes, and wrong for "2026-09-20 10:00 AM", which is what add_gathering
-// stores when a person types it and what this project's own seed writes — the
+// stores when a person types it and what this project's own seed writes, the
 // second space survives, the Date is Invalid, and every comparison against it
 // is quietly false. The join page picks the next gathering that way, so a
 // person at the creek clean-up scanned the QR and was offered the next day's
@@ -4023,7 +4023,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   const { mayRun } = await import('../ai/access.mjs');
   const C = 'test';
 
-  // A person waiting outranks paperwork. It was `open` — the LOWEST weight —
+  // A person waiting outranks paperwork. It was `open`, the LOWEST weight,
   // until fourteen days had passed, so "Ana brought a need and has had no
   // answer" sat at position 16 of 18, below three notes about projects not
   // being fully defined, under a rule that reads "a person must be able to
@@ -4064,8 +4064,8 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('at the keyboard nothing is held back',
     board(C).for_the_council === 0);
   // A member sees HER PART of the chapter's round, and is told the size of the
-  // rest. This assertion used to require a full board — the slots refilled from
-  // the live ranking — and that stopped being right when the round arrived: the
+  // rest. This assertion used to require a full board, the slots refilled from
+  // the live ranking, and that stopped being right when the round arrived: the
   // five are the chapter's five, picked once, and if four of them are council
   // work then four of them are council work. Refilling from elsewhere would
   // give a member a different week from her steward's, which is a stranger
@@ -4082,13 +4082,13 @@ check('a card from a real chapter does not cry wolf about being an example',
 
 // ── Over a real socket ────────────────────────────────────────────────────
 //
-// Everything above calls `api()` in process, and so does `npm run prove` —
+// Everything above calls `api()` in process, and so does `npm run prove`,
 // `new URL('http://localhost/api/...')` handed straight to the route. Neither
 // ever reaches `send()` in server/index.mjs, and that is where a live bug sat:
 // an intake row has `status: 'received'` and `body: '...'`, the response wrapper
 // tested for those KEYS, and `writeHead('received')` threw. A neighbour bringing
 // a need through the join page got HTTP 500 and the words "Invalid status code:
-// received", while the row was written — so they pressed again, and again.
+// received", while the row was written, so they pressed again, and again.
 //
 // Every in-process assertion in this file was green over it. Some things are
 // only true down a socket, and the front door of this commons is one of them.
@@ -4176,7 +4176,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     // ── Traversal, sent the way it would actually be sent ────────────────
     // `fetch` collapses `../` in a URL BEFORE the request leaves, so a probe
     // written as `/api/media/../../package.json` never reaches this route at
-    // all — it arrives as `/package.json` and is answered by the static
+    // all, it arrives as `/package.json` and is answered by the static
     // handler. A test written with fetch therefore proves nothing about the
     // media store while appearing to, which is the worse half of the problem.
     //
@@ -4202,7 +4202,7 @@ check('a card from a real chapter does not cry wolf about being an example',
       const leaked = /PRAGMA|CREATE TABLE|"dependencies"|ANTHROPIC/.test(raw);
       check(`a hand-written request cannot walk out of the media store (${probe.slice(11, 30)})`,
         !leaked && (status === 400 || status === 404 || status === 200),
-        `HTTP ${status}${leaked ? ' — CONTENT LEAKED' : ''}`);
+        `HTTP ${status}${leaked ? ', CONTENT LEAKED' : ''}`);
     }
 
     const gone = await fetch(`http://127.0.0.1:${port}/api/media/med_deadbeef`);
@@ -4290,13 +4290,13 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // A refusal is only a refusal if its own schema can reach it. reviewProof
   // compares the checker against `submitted_by`, so a proof filed with no name
-  // is one that rule can never fire on — and the person it exists to stop is
+  // is one that rule can never fire on, and the person it exists to stop is
   // exactly the person who would know to leave the field blank.
   check('evidence filed with no name at all is refused, because the self-check rule needs one',
     refused(submitProof(task.id,
       { before_media_id: before.id, after_media_id: after.id }), 'name_required'));
 
-  check('a proof made of one photograph is refused — the claim is comparative',
+  check('a proof made of one photograph is refused, the claim is comparative',
     refused(await runTool('submit_proof',
       { task_id: task.id, before_media_id: before.id, after_media_id: '' }), 'required'));
   check('the same photograph used twice is refused',
@@ -4312,14 +4312,14 @@ check('a card from a real chapter does not cry wolf about being an example',
   check('the person who did the work cannot check their own',
     refused(reviewProof(filed.id, { decision: 'verified', reviewed_by: 'R. Alvarez' }),
       'cannot_check_own_work'));
-  check('rejecting without a reason is refused — the doer has to know what to fix',
+  check('rejecting without a reason is refused, the doer has to know what to fix',
     refused(reviewProof(filed.id, { decision: 'rejected', reviewed_by: 'M. Okafor' }), 'reason'));
 
   // Evidence filed, not yet checked: the task closes, because waiting on a
   // reviewer to close your own finished work is how a board fills with lies.
   // WITH a note, deliberately. Both lines in this engine that append to a
-  // description were written with `""` — a zero-length IDENTIFIER in SQLite,
-  // not an empty string — and threw `no such column: ""`. Nothing caught it,
+  // description were written with `""`, a zero-length IDENTIFIER in SQLite,
+  // not an empty string, and threw `no such column: ""`. Nothing caught it,
   // because no test and no end-to-end run had ever passed a note, so neither
   // line had ever run. A branch nothing exercises is a branch nothing tests.
   const closed = await runTool('complete_task',
@@ -4347,7 +4347,7 @@ check('a card from a real chapter does not cry wolf about being an example',
     catch { return true; }
   })());
 
-  // Editing, moving and dropping — the other half of a map you can use.
+  // Editing, moving and dropping, the other half of a map you can use.
   const borrowed_probe = await runTool('add_task', { quest_id: proj.id, title: 'Edit me' });
   const edited = await runTool('update_task', { task_id: borrowed_probe.id, title: 'Renamed' });
   check('a task can be corrected after it is written down', edited?.title === 'Renamed');
@@ -4433,7 +4433,7 @@ check('a card from a real chapter does not cry wolf about being an example',
   });
 
   // The two failures are one refusal, because telling them apart enumerates
-  // who is in a commons — on a shared wifi, that is the list of people present.
+  // who is in a commons, on a shared wifi, that is the list of people present.
   const wrongUser = acc.signIn('test', { username: 'nobody', password: 'correct horse battery staple' });
   const wrongPass = acc.signIn('test', { username: 'ana', password: 'not the password' });
   check('a wrong username and a wrong password fail identically',
@@ -4450,7 +4450,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   check('at the keyboard, signed in as a member, the connection is a member',
     clearanceFor(req({ cookie: bo.token })) === 'members');
-  check('signing in NARROWS and never widens — a member at the keyboard is not the steward',
+  check('signing in NARROWS and never widens, a member at the keyboard is not the steward',
     clearanceFor(req({ cookie: bo.token })) !== 'sacred');
   check('at the keyboard with no session, nothing changes from before',
     clearanceFor(req()) === 'sacred');
@@ -4504,7 +4504,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // The bug that only a signed-in MEMBER could have found. An account's RID is
   // `council`, the clearance is computed before the route runs, and `withhold()`
-  // walks the answer removing anything above the caller — so a member asking
+  // walks the answer removing anything above the caller, so a member asking
   // who they were had their own account stripped out of the reply and the
   // interface showed them signed out while they were signed in. Sign-in had it
   // too, for one request: the clearance is worked out before the sign-in
@@ -4650,7 +4650,7 @@ check('a card from a real chapter does not cry wolf about being an example',
 
   // A proof nobody has looked at yet, made here rather than hoped for. The
   // first version of this looked for one lying about in the fixture and
-  // SKIPPED when it found none — which is what happened, because the only
+  // SKIPPED when it found none, which is what happened, because the only
   // proof in the suite had already been checked two hundred lines earlier. A
   // test that quietly does not run is the thing this project keeps finding.
   {
@@ -4676,11 +4676,11 @@ check('a card from a real chapter does not cry wolf about being an example',
   // ── A pool: what the units are actually for ───────────────────────────
   // Two layers refuse this, and they are tested separately on purpose. The
   // tool's schema lists `decided_by` as required, so the registry stops it
-  // first and the form marks the field — and the ENGINE refuses too, with the
+  // first and the form marks the field, and the ENGINE refuses too, with the
   // sentence that explains why an economy is not a setting. Testing only
   // through the tool would leave the engine's gate unproven for every other
   // caller, which is how a rule comes to exist in one path and not the rest.
-  check('a pool cannot be opened without a decision — the tool refuses',
+  check('a pool cannot be opened without a decision, the tool refuses',
     refused(await runTool('open_pool',
       { currency_id: seeds.id, name: 'Seed library', holds: '60 kg garlic' })));
   check('and the engine refuses it too, saying why',
@@ -4732,7 +4732,7 @@ console.log(`\n  Protocol tests\n  ${'─'.repeat(58)}`);
 for (const [mark, name, detail] of results) {
   // A skip shown in red is still a red line to anyone glancing at it, which is
   // the whole thing this was meant to stop.
-  const col = mark === '✓' ? c.g : mark === '–' ? c.d : c.r;
+  const col = mark === '✓' ? c.g : mark === '-' ? c.d : c.r;
   console.log(`  ${col}${mark}${c.x} ${name}`);
   if (detail) console.log(`      ${c.d}${detail}${c.x}`);
 }

@@ -17,7 +17,7 @@ const ADAPTERS = join(ROOT, 'adapters');
 // The `i` is the whole check.
 //
 // Without it this pattern matched "Public domain" and every adapter in the repo
-// writes "(public domain)" in lower case — so for as long as this file has
+// writes "(public domain)" in lower case, so for as long as this file has
 // existed it printed "No adapter duplicates a licence the registry already
 // declares" while twenty-two attribution fields carried licence text. It was
 // written after fourteen real duplications and it never saw the next twenty-two.
@@ -28,7 +28,7 @@ const ADAPTERS = join(ROOT, 'adapters');
 const LICENCE = /CC[\s-]?BY[A-Za-z0-9.\s\-]*|CC0[A-Za-z0-9.\-]*|\bODb?C?-?BY?\b[A-Za-z0-9.\-]*|Public domain|Open Government Licence|GPL-[0-9.]+|Apache-[0-9.]+/i;
 
 /**
- * Only attribution FIELDS are checked — the machine-readable ones that travel
+ * Only attribution FIELDS are checked, the machine-readable ones that travel
  * into a file or a UI. Explaining an upstream's licence to a person in prose is
  * not a declaration and is often the right thing to do; culture.mjs telling a
  * steward why recordings are linked rather than copied is an example.
@@ -37,8 +37,8 @@ const ATTRIBUTION_FIELD = /\b(source|attribution|licen[cs]e)\s*:/;
 
 /**
  * Two files are allowed to name licences in code, for opposite reasons.
- *   registry.mjs  — it IS the declaration. Everywhere else reads from it.
- *   discover.mjs  — classifyLicense() parses licence text found on third-party
+ *   registry.mjs, it IS the declaration. Everywhere else reads from it.
+ *   discover.mjs, classifyLicense() parses licence text found on third-party
  *                   portals into a code. It consumes licences; it declares none.
  */
 export const ALLOWED = new Set([
@@ -66,7 +66,7 @@ function executableLines(src) {
 }
 
 /**
- * Where a licence could be written down. NOT just adapters/ — that scope was
+ * Where a licence could be written down. NOT just adapters/, that scope was
  * itself the bug.
  *
  * `scripts/build-index.mjs` baked "EPA Ecoregions Level III & IV (public
@@ -99,7 +99,7 @@ export function findDuplications() {
       if (!(ext ?? /\.mjs$/).test(f)) continue;
       const raw = readFileSync(join(dir, f), 'utf8');
       // JSON has no comments to strip, and every string in it is data that
-      // travels — so every line of it is checked, not only assignments.
+      // travels, so every line of it is checked, not only assignments.
       const lines = isJson ? raw.split('\n') : executableLines(raw);
       lines.forEach((line, i) => {
         if ((isJson || ATTRIBUTION_FIELD.test(line)) && LICENCE.test(line)) {

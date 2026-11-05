@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ── MCP server ────────────────────────────────────────────────────────────
 // Exposes the whole BioRegional OS to Claude Code as tools, over stdio.
-// Hand-rolled JSON-RPC 2.0 — zero dependencies, so this runs anywhere Node does.
+// Hand-rolled JSON-RPC 2.0, zero dependencies, so this runs anywhere Node does.
 //
 // Registered via .mcp.json in the project root; Claude Code picks it up when
 // you open this folder. Then: "what's the state of the commons?"
@@ -39,7 +39,7 @@ async function handle(line) {
           capabilities: { tools: {} },
           serverInfo: { name: 'bioregional-os', version: '1.0.0' },
           instructions:
-            'BioRegional OS — a local commons running the BioRegional Commons protocol. ' +
+            'BioRegional OS, a local commons running the BioRegional Commons protocol. ' +
             'Start with chapter_status. The tools enforce the protocol: consent gates, ' +
             'Land Seat reports and work-terms acknowledgement cannot be bypassed, and ' +
             'AI may not decide legitimacy, rights, funding, care or cultural permission. ' +

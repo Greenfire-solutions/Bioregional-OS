@@ -1,4 +1,4 @@
-// Reference Identifiers (RIDs) — KOI-net inspired.
+// Reference Identifiers (RIDs), KOI-net inspired.
 // A RID names an object so a label can travel between chapters while the
 // material itself stays where it was created. See docs/INTEROP.md.
 import { randomUUID } from 'node:crypto';

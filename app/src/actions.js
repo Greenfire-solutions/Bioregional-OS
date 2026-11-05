@@ -1,8 +1,8 @@
 // ── How an action on a list gets carried out ──────────────────────────────
 //
 // One home, because there were two and they had already drifted: Commons.jsx
-// knew six tools needed no form, Today.jsx knew three. So the same item —
-// "who is carrying what" — ran instantly on the board and, on Today, opened a
+// knew six tools needed no form, Today.jsx knew three. So the same item,
+// "who is carrying what", ran instantly on the board and, on Today, opened a
 // modal titled `carrying` with NO FIELDS AT ALL and a Save button, because
 // `carrying`'s schema has no properties. Same list, same action, two behaviours.
 //
@@ -18,7 +18,7 @@
 export const DIRECT = new Set([
   'locate_place', 'ingest_water_data', 'council_agenda',
   'carrying', 'place_attention',
-  // `refresh_library` was here and is not a tool — the nearest real one is
+  // `refresh_library` was here and is not a tool, the nearest real one is
   // `download_region`, which takes a region code and therefore wants a form.
   // A ghost in a list like this is silent: the name simply never matches, so
   // the tool that WAS meant falls through to the generated form and nobody
@@ -31,10 +31,10 @@ export const DIRECT = new Set([
  * Tools whose real surface is a SCREEN, not a generated form.
  *
  * The operator asks for the weekly card, and "Write to the group" opened a
- * ToolForm whose one question was `days — how far back "this week" reaches`.
+ * ToolForm whose one question was `days, how far back "this week" reaches`.
  * Nobody wants to answer that. Running it gave a green tick and a collapsed
  * disclosure triangle labelled "what was recorded", containing raw JSON, for a
- * tool that recorded nothing — while the real card screen, with copy-as-text,
+ * tool that recorded nothing, while the real card screen, with copy-as-text,
  * copy-as-image, print, and the button that marks it sent, sat one tab away.
  *
  * The item also never cleared, because `mark_card_sent` is only called from

@@ -9,7 +9,7 @@ import { KIND, KIND_ORDER, markerSVG, needsAttention } from '../mapKinds.js';
 import MapMarkers from './MapMarkers.jsx';
 import { callTool } from '../api.js';
 
-// Carto's Positron — an open basemap style that needs no API key.
+// Carto's Positron, an open basemap style that needs no API key.
 // Dark Matter, not Positron. The Atlas is the hero of this interface and a
 // white rectangle sitting inside a dark console reads as a hole in it. Same
 // open CARTO tiles, same no-key requirement, and extruded ecoregions lit
@@ -17,11 +17,11 @@ import { callTool } from '../api.js';
 const BASEMAP = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
 
-/** Stable colour per ecoregion name — the same region is the same colour every load. */
+/** Stable colour per ecoregion name, the same region is the same colour every load. */
 function colorFor(name = '') {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  // Lifted in saturation and lightness for a dark basemap — the previous
+  // Lifted in saturation and lightness for a dark basemap, the previous
   // values were tuned against white and go to mud against black.
   return hsl(h % 360, 46 + (h % 18), 46 + ((h >> 3) % 14));
 }
@@ -59,7 +59,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     return () => ro.disconnect();
   }, []);
   // Instrument readings are OFF by default. There are 68 of them against 5
-  // observations in the example commons — a map showing both at once is a map
+  // observations in the example commons, a map showing both at once is a map
   // of the gage, and what a person noticed disappears underneath what a machine
   // reported. Everything a person did is on; the machines are a toggle.
   const [kindsOn, setKindsOn] = useState(
@@ -78,14 +78,14 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   // The first version of this listened for a click that hit NO layer, which is
   // a condition that never happens. The ecoregion layer is `pickable` and
   // `filled` and tiles the entire viewport, so every press on land is answered
-  // by it — `info.layer` is always set, the handler always returned early, and
+  // by it, `info.layer` is always set, the handler always returned early, and
   // the gesture was dead from the moment it shipped. It could not be found
   // because it did not exist.
   //
   // Two presses instead of a secret one: arm it, then place it. That works over
-  // the ecoregion layer without taking the region panel away — a single click
+  // the ecoregion layer without taking the region panel away, a single click
   // still opens what is known about a region, which is the other thing this map
-  // is for — and, unlike a hidden gesture, it can be SEEN. The button is the
+  // is for, and, unlike a hidden gesture, it can be SEEN. The button is the
   // documentation.
   const [placing, setPlacing] = useState(false);
   // Moving something re-uses the placing mechanism exactly: arm, then press.
@@ -196,7 +196,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           kind: 'Ecoregion',
         } : null),
         // Every polygon already carried its own code and nothing ever asked for
-        // it. A region you can hover but not open is a map of labels — the
+        // it. A region you can hover but not open is a map of labels, the
         // dossier behind each one is the whole point of the library.
         onClick: (i) => i.object && onSelect?.({
           type: 'ecoregion',
@@ -206,7 +206,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
             name: i.object.properties.display_name,
             // The same normalised fields the hover tooltip reads. The raw
             // NA_L1NAME/NA_L2NAME are shouted upper case straight from the
-            // EPA service — adapters/layers.mjs already tidies them, and two
+            // EPA service, adapters/layers.mjs already tidies them, and two
             // parts of one map should not disagree about a region's division.
             division: i.object.properties.division ?? null,
             biome: i.object.properties.biome ?? null,
@@ -219,7 +219,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     // The signal, hub and place layers that used to live here are gone.
     //
     // They drew the same rows the commons-features layer below now draws, so
-    // every place, hub and signal was painted twice — and only the new copy
+    // every place, hub and signal was painted twice, and only the new copy
     // answered the key's switches. Turning "Instrument readings" off changed
     // nothing on screen, because sixty-eight gage columns were coming from a
     // layer with no switch at all. The map stayed a map of the gage, which is
@@ -228,7 +228,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
     //
     // Adding a layer without removing the one it replaces leaves a map that
     // looks finished, which is why it survived a screenshot. ARCHITECTURE.md
-    // records the mirror of this — an edit that deleted three map layers and
+    // records the mirror of this, an edit that deleted three map layers and
     // left something that also looked plausible.
     //
     // The place LABELS are kept, because a name beside a point is not a second
@@ -236,7 +236,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
 
     // The markers used to be drawn here, as SVG icons in the canvas with a
     // number stamped over each one. Text inside a texture cannot reflow, a
-    // shape cannot grow to fit a label, and neither can transition — so a "9"
+    // shape cannot grow to fit a label, and neither can transition, so a "9"
     // sat crammed in a diamond next to a "24" in a circle, under two permanent
     // black label boxes, and none of it responded to a pointer.
     //
@@ -287,8 +287,8 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
   }, [eco, level, relief, mode, signals, hubs, places, features, kindsOn, onSelect,
       here?.lat, here?.lng, here?.l3, here?.l4, here?.name]);
 
-  // Keyed on `version`, not on row counts. Closing a gate — the very action the
-  // panel offers — changes no count anywhere: the same quests, places and
+  // Keyed on `version`, not on row counts. Closing a gate, the very action the
+  // panel offers, changes no count anywhere: the same quests, places and
   // signals come back, so the badge stayed at eight and the diamond stayed red
   // until something unrelated was added or the page was reloaded. App bumps
   // this whenever it reloads the commons, which is after every action.
@@ -321,7 +321,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         layers={layers}
         // A press on the GROUND, meaning no layer answered for it. An
         // ecoregion click opens the region panel and a marker click opens the
-        // feature, and both of those arrive with `info.layer` set — so this
+        // feature, and both of those arrive with `info.layer` set, so this
         // fires only when somebody pressed a piece of land that has nothing on
         // it yet, which is exactly when "put something here" is the right offer.
         //
@@ -330,7 +330,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
         // wrong field.
         onClick={(info) => {
           // In placing mode the coordinate is taken WHATEVER answered for the
-          // press — the ecoregion polygon under the cursor is not a reason to
+          // press, the ecoregion polygon under the cursor is not a reason to
           // refuse a point on it. Out of placing mode nothing here fires, and
           // the layers keep their own clicks.
           if (!armed || mode !== 'terrain') return;
@@ -354,7 +354,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           view={view} width={box.width} height={box.height}
           // Selection is owned by whoever owns the panel, not by the map.
           // Two sources of truth meant closing the panel left the marker
-          // permanently expanded — it survived zooming, toggling its whole kind
+          // permanently expanded, it survived zooming, toggling its whole kind
           // off and back on, and a full drag. Only a reload cleared it.
           features={features} kindsOn={kindsOn} selectedId={selectedId}
           onPick={(f) => onSelect?.({ type: 'feature', item: f })}
@@ -396,12 +396,12 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           is the control: each row says what a symbol means AND turns it off,
           so the question "what is that shape?" and the action "stop showing
           me those" are the same click. Counts are on each row, because the
-          most useful thing about a layer is often how much of it there is —
+          most useful thing about a layer is often how much of it there is,
           sixty-eight readings against five observations is the reason the
           readings start switched off. */}
       {/* Bottom-left, and on a narrow window the credit moves ABOVE it rather
           than under it. Credit that is covered is credit not given, and the
-          ecoregion layer's licence requires it — so the two are given
+          ecoregion layer's licence requires it, so the two are given
           non-overlapping space at every width rather than only on a desktop. */}
       <div className="absolute bottom-3 left-3 z-20 max-h-[calc(100%-5rem)] overflow-y-auto rounded-lg
                       border border-[var(--line)] bg-[var(--paper)]/80 p-1.5 shadow-lg backdrop-blur-md">
@@ -451,8 +451,8 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
           <div className="mt-1.5 flex items-start gap-1.5 border-t border-[var(--line)] px-1 pt-1.5">
             <img src={markerSVG('gathering', { precise: false })} alt=""
                  className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {/* Was clipped by the viewport at 812px tall and stopped mid-sentence
-                — "drawn at the centre of" and then nothing. A footnote that
+            {/* Was clipped by the viewport at 812px tall and stopped mid-sentence,
+                "drawn at the centre of" and then nothing. A footnote that
                 cannot finish makes the whole panel read as unfinished. */}
             <span className="max-w-[9.5rem] text-[9px] leading-snug text-[var(--ink-3)]">
               Hollow: no coordinate of its own.
@@ -492,7 +492,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
             {/* Everything the schema can actually hold a coordinate for, and
                 nothing it cannot. A gathering is missing on purpose: the
                 gatherings table has no lat/lng, so offering to place one here
-                would promise a precision the row cannot keep — the same
+                would promise a precision the row cannot keep, the same
                 distinction the map already draws between its own point and a
                 borrowed one. */}
             {[
@@ -533,8 +533,8 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
                         border border-[var(--gold)] bg-[var(--paper)] px-3 py-1.5 text-[11px]
                         text-[var(--ink)] shadow-lg">
           {moving
-            ? `Press where "${truncate(moving.feature?.title, 34)}" should be — Esc to cancel`
-            : 'Press the spot on the map where it goes — Esc to cancel'}
+            ? `Press where "${truncate(moving.feature?.title, 34)}" should be, Esc to cancel`
+            : 'Press the spot on the map where it goes, Esc to cancel'}
         </div>
       )}
 
@@ -557,7 +557,7 @@ export default function Map3D({ places = [], hubs = [], signals = [], focus, onS
 
       {/* Moved out from under the key, which now occupies the bottom-left
           corner this used to have to itself. Credit that is covered up is
-          credit not given — and the licence on this layer requires it. */}
+          credit not given, and the licence on this layer requires it. */}
       <div className="pointer-events-none absolute bottom-[17rem] left-3 max-w-[calc(100%-1.5rem)]
                       rounded bg-[var(--paper)]/90 px-2 py-1 text-[10px] text-[var(--ink-3)]
                       md:bottom-6 md:left-[13.5rem]">

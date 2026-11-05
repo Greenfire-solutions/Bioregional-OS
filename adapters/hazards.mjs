@@ -85,7 +85,7 @@ export async function activeAlerts(lat, lng) {
 // ── the regulatory floodplain ──────────────────────────────────────────────
 
 /**
- * A standing condition, not an event — this belongs on the place record.
+ * A standing condition, not an event, this belongs on the place record.
  * Note what it is NOT: an absence of a mapped zone is not an absence of flood
  * risk. Huge amounts of real flooding happen outside the regulatory map, and a
  * commons reading this as "safe" is exactly the failure worth guarding against.
@@ -107,7 +107,7 @@ export async function floodZone(lat, lng) {
       available: true, zone: null, in_special_flood_hazard_area: false,
       source: 'FEMA National Flood Hazard Layer', source_id: 'fema-nfhl',
       cached: !!cached, stale: !!stale,
-      caveat: 'No mapped zone here. That is not the same as no flood risk — much flooding ' +
+      caveat: 'No mapped zone here. That is not the same as no flood risk, much flooding ' +
               'happens outside the regulatory floodplain, and some areas are simply unmapped.',
     };
   }
@@ -115,7 +115,7 @@ export async function floodZone(lat, lng) {
     available: true,
     zone: a.FLD_ZONE ?? null,
     subtype: a.ZONE_SUBTY ?? null,
-    // "T" means the point sits in a Special Flood Hazard Area — the 1%-annual-chance
+    // "T" means the point sits in a Special Flood Hazard Area, the 1%-annual-chance
     // floodplain, which is what insurance and most permitting actually turn on.
     in_special_flood_hazard_area: a.SFHA_TF === 'T',
     base_flood_elevation: a.STATIC_BFE != null && a.STATIC_BFE > -9999 ? a.STATIC_BFE : null,
@@ -137,7 +137,7 @@ const DROUGHT_LABEL = {
  * Two things about this host cost an hour to find and are worth writing down:
  * it rejects some user agents outright (curl gets nothing at all, which is how
  * it first looked unreachable), and it answers CSV unless you ask for JSON by
- * Accept header — there is no format query parameter. Its JSON field names are
+ * Accept header, there is no format query parameter. Its JSON field names are
  * lowercase (`d0`..`d4`), and the newest week comes back FIRST.
  */
 export async function droughtStatus(lat, lng) {
@@ -199,17 +199,17 @@ export async function droughtStatus(lat, lng) {
 }
 
 /**
- * The drought classifier — ONE implementation, exported, and used by the live
+ * The drought classifier, ONE implementation, exported, and used by the live
  * path above.
  *
  * It was briefly two: an inline copy in droughtStatus and a `__test_` twin for
- * the test suite. Mutation-testing found it — breaking the real one left every
+ * the test suite. Mutation-testing found it, breaking the real one left every
  * test green, because the tests were exercising the copy. A test-only duplicate
  * of a rule is not a test of that rule; it is a second place for the rule to
  * live, with the test pointed at the wrong one.
  *
  * Returns the most severe class covering at least a quarter of the county, or
- * null meaning "no class qualifies" — never "no data", which is the caller's
+ * null meaning "no class qualifies", never "no data", which is the caller's
  * separate question and is answered by droughtCoverage being all-null.
  */
 export const DROUGHT_CLASSES = ['D4', 'D3', 'D2', 'D1', 'D0'];
@@ -236,7 +236,7 @@ export function droughtClass(row = {}) {
 
 /**
  * NASA FIRMS. The one source here that needs an account, which breaks this OS's
- * no-account promise — so it degrades to a named, actionable absence rather
+ * no-account promise, so it degrades to a named, actionable absence rather
  * than an error, and never to a silent zero.
  */
 export async function activeFires(lat, lng, { radiusKm = 50, days = 1, env = process.env } = {}) {
@@ -297,7 +297,7 @@ export function worstLevel({ alerts, drought, fires }) {
  * the way it ingests gage readings.
  *
  * Only events. The flood zone and the drought class are standing conditions and
- * are deliberately absent from this list — they belong on the place record.
+ * are deliberately absent from this list, they belong on the place record.
  */
 export function hazardSignals(hazards, { lat = null, lng = null, locationName = null } = {}) {
   const out = [];
@@ -307,7 +307,7 @@ export function hazardSignals(hazards, { lat = null, lng = null, locationName = 
       category: 'Climate',
       severity: a.severity === 'Extreme' || a.severity === 'Severe' ? 'Critical'
         : a.severity === 'Moderate' ? 'Watch' : 'Info',
-      description: [a.headline, a.area].filter(Boolean).join(' — ') || null,
+      description: [a.headline, a.area].filter(Boolean).join(', ') || null,
       location_name: locationName, lat, lng,
       author: 'NOAA National Weather Service (automated)',
       verified: 1,
@@ -345,7 +345,7 @@ function readableHazards(h) {
   const a = h.alerts?.items?.[0];
   // The slice is deliberate, not lazy. NWS timestamps carry their own offset
   // (2026-09-12T19:00:00-05:00), so taking the first sixteen characters shows
-  // the time LOCAL TO THE HAZARD — which is the only time that means anything
+  // the time LOCAL TO THE HAZARD, which is the only time that means anything
   // for "until when". Running it through new Date().toLocaleString() would
   // rewrite it into whatever timezone the reader happens to be sitting in, and
   // an evacuation deadline in the wrong timezone is worse than none.
@@ -361,5 +361,5 @@ function readableHazards(h) {
       ? `No active alerts. Standing: ${h.standing.join(', ')}.`
       : 'No active alerts.';
   }
-  return 'Hazard sources could not be reached — this is not an all-clear.';
+  return 'Hazard sources could not be reached, this is not an all-clear.';
 }

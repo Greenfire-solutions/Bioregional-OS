@@ -1,8 +1,8 @@
 // ── Region dossiers ───────────────────────────────────────────────────────
-// The other adapters in this folder answer "what is HERE" — a point and a
+// The other adapters in this folder answer "what is HERE", a point and a
 // radius. That is the right shape for a chapter standing somewhere.
 //
-// This one answers "what is this ECOREGION" — all 967 of them, whether or not
+// This one answers "what is this ECOREGION", all 967 of them, whether or not
 // anybody has ever stood in one. It compiles a durable file per region so the
 // knowledge survives being offline, survives the HTTP cache being cleared, and
 // can be copied to a machine that has never had a network.
@@ -32,7 +32,7 @@ export const INDEX_PATH = join(ROOT, 'data', 'regions', 'ecoregions-epa.json');
  * noise with a timer on it.
  */
 /**
- * Which registry sources each section draws on. IDs only — a licence or an
+ * Which registry sources each section draws on. IDs only, a licence or an
  * attribution string written here would be a second place for it to live, and
  * the second place is always the one that goes stale. registry.mjs is the
  * single declaration; attributionFor() renders it at export time.
@@ -56,7 +56,7 @@ export const CADENCE_DAYS = {
   water: 30,
   resources: 60,
   hazards: 7,
-  culture: null,       // never auto-fetched — see cultureSlot()
+  culture: null,       // never auto-fetched, see cultureSlot()
 };
 
 // ── the index ─────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ export function region(code, { scheme = 'epa-l4' } = {}) {
   return regions({ scheme }).find((r) => r.code.toLowerCase() === String(code).toLowerCase()) ?? null;
 }
 
-/** Every region whose extent overlaps a point — usually one L4 and its L3. */
+/** Every region whose extent overlaps a point, usually one L4 and its L3. */
 export function regionsAt(lat, lng) {
   const hit = (r) => lng >= r.bbox[0] && lng <= r.bbox[2] && lat >= r.bbox[1] && lat <= r.bbox[3];
   return { level4: regions().filter(hit), level3: regions({ scheme: 'epa-l3' }).filter(hit) };
@@ -95,7 +95,7 @@ export function loadDossier(code, scheme = 'epa-l4') {
   try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; }
 }
 
-/** Which sections are past their cadence. Pure — never touches the network. */
+/** Which sections are past their cadence. Pure, never touches the network. */
 export function staleSections(dossier) {
   if (!dossier) return Object.keys(CADENCE_DAYS).filter((k) => CADENCE_DAYS[k] !== null);
   const out = [];
@@ -112,8 +112,8 @@ export function staleSections(dossier) {
 // ── sampling ──────────────────────────────────────────────────────────────
 /**
  * Points that are genuinely INSIDE the ecoregion, not merely inside its
- * bounding box. Ecoregions are long and crooked — the Balcones Canyonlands
- * bbox centre lands in a different ecoregion entirely — so each candidate is
+ * bounding box. Ecoregions are long and crooked, the Balcones Canyonlands
+ * bbox centre lands in a different ecoregion entirely, so each candidate is
  * checked against the authoritative boundary before it is used.
  */
 export async function samplePoints(r, { want = 3 } = {}) {
@@ -190,7 +190,7 @@ export async function lifeAcross(bbox, { perGroup = 40 } = {}) {
       { ttlMs: 1000 * 60 * 60 * 24 * 30, timeout: 60000 });
     out.threatened = {
       sensitivity: 'restricted',
-      note: 'Names and status only. Locations are deliberately not stored — the protocol ' +
+      note: 'Names and status only. Locations are deliberately not stored, the protocol ' +
             'forbids publishing sensitive species locations without permission.',
       count: data?.total_results ?? 0,
       species: (data?.results ?? []).map((x) => ({
@@ -223,17 +223,17 @@ export function cultureSlot(r) {
     why: 'Cultural knowledge and Indigenous knowledge are not open data. They belong to ' +
          'people, who decide what may be recorded, shared or kept private.',
     before_you_record_anything: [
-      'Identify the Indigenous nations whose territory this is, from them — not from a map.',
+      'Identify the Indigenous nations whose territory this is, from them, not from a map.',
       'Contact the Tribal Historic Preservation Office, not a website.',
       'Relationship before request. Clear invitation. Informed consent. Fair compensation.',
       'Agree what may be recorded, what may be shared, and what must never leave the place.',
       'Agree benefit sharing before, not after.',
     ],
     where_to_start: [
-      { name: 'NATHPO — Tribal Historic Preservation Officers directory', url: 'https://www.nathpo.org/thpos/' },
-      { name: 'Native Land Digital — a starting point for conversation, explicitly not authoritative',
+      { name: 'NATHPO, Tribal Historic Preservation Officers directory', url: 'https://www.nathpo.org/thpos/' },
+      { name: 'Native Land Digital, a starting point for conversation, explicitly not authoritative',
         url: 'https://native-land.ca/' },
-      { name: 'US Bureau of Indian Affairs — tribal leaders directory',
+      { name: 'US Bureau of Indian Affairs, tribal leaders directory',
         url: 'https://www.bia.gov/service/tribal-leaders-directory' },
     ],
     recorded_with_permission: [],
@@ -362,7 +362,7 @@ function writeDossier(r, scheme, d) {
   return path;
 }
 
-/** Exclusive create — atomic on every filesystem this runs on. */
+/** Exclusive create, atomic on every filesystem this runs on. */
 function acquire(code, scheme, { staleMs = 15 * 60 * 1000 } = {}) {
   const path = join(DOSSIER_DIR, scheme, `${code.toLowerCase()}.lock`);
   mkdirSync(dirname(path), { recursive: true });

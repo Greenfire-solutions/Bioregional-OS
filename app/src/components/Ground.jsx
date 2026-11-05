@@ -5,7 +5,7 @@ import {
 import { callTool } from '../api.js';
 
 /**
- * The land today — the part of the screen that gives before anything is asked.
+ * The land today, the part of the screen that gives before anything is asked.
  *
  * Deliberately absent: any count of what *you* did, any streak, any badge.
  * The only number about a person here is the one they choose to write down.
@@ -84,7 +84,7 @@ export default function Ground({ onNoticed }) {
                   {w.years_of_record ? ` · ${w.years_of_record} yr record` : ''}
                 </Sub>
               )}
-              {w.stale && <Sub warn>last known reading — offline</Sub>}
+              {w.stale && <Sub warn>last known reading, offline</Sub>}
             </>
           ) : (
             <Sub>No gage resolved yet. Add a place with coordinates and the water finds you.</Sub>
@@ -99,7 +99,7 @@ export default function Ground({ onNoticed }) {
                   ? `${Math.round(g.weather.current.temperature_f)}°F`
                   : g.weather.forecast?.temperature != null
                     ? `${g.weather.forecast.temperature}°${g.weather.forecast.unit}`
-                    : '—'}
+                    : '-'}
               </Value>
               <Sub>{g.weather.current?.summary ?? g.weather.forecast?.summary}</Sub>
               {g.weather.forecast && (
@@ -110,7 +110,7 @@ export default function Ground({ onNoticed }) {
                     : ''}
                 </Sub>
               )}
-              {g.weather.stale && <Sub warn>last known forecast — offline</Sub>}
+              {g.weather.stale && <Sub warn>last known forecast, offline</Sub>}
             </>
           ) : (
             <Sub>{g.weather?.reason ?? 'No weather upstream here.'}</Sub>
@@ -133,7 +133,7 @@ export default function Ground({ onNoticed }) {
         </Cell>
       </div>
 
-      {/* What this place sounds like. A fact only — the recordings are streamed
+      {/* What this place sounds like. A fact only, the recordings are streamed
           from iNaturalist and never copied, because nearly all of them are
           NonCommercial and this project redistributes none of it. */}
       {g.heard?.fact && (
@@ -241,10 +241,10 @@ const Sub = ({ children, warn }) => (
 );
 
 const fmt = (n) =>
-  n == null ? '—' : n >= 100 ? Math.round(n).toLocaleString() : String(Math.round(n * 10) / 10);
+  n == null ? '-' : n >= 100 ? Math.round(n).toLocaleString() : String(Math.round(n * 10) / 10);
 const time = (iso) => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   try { return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
-  catch { return '—'; }
+  catch { return '-'; }
 };
 const year = (at) => String(at ?? '').slice(0, 4);

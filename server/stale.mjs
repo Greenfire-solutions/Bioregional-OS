@@ -1,14 +1,14 @@
 // ── Is the running OS older than the code on disk? ────────────────────────
 // Node reads every route and engine into memory once, at boot. So after an
-// update — `npm run update`, a git pull, or somebody building a feature — the
+// update, `npm run update`, a git pull, or somebody building a feature, the
 // process that is still running is the OLD program, and no amount of reloading
 // the browser changes that.
 //
 // The way this fails is the worst available: the interface is served from
 // app/dist on disk, so it updates instantly and shows the new screens, while
 // the routes behind them are the old ones and answer 404. The person sees a
-// feature that looks present and does nothing, and the true sentence — "the
-// thing serving this started before that code existed" — is not one anybody
+// feature that looks present and does nothing, and the true sentence, "the
+// thing serving this started before that code existed", is not one anybody
 // would guess.
 //
 // It cost a real afternoon twice in one day: a tab that was there but unreachable,
@@ -72,7 +72,7 @@ function newestIn(dir, depth) {
  * Has the code changed since this process read it?
  *
  * A margin of five seconds, because a file written moments before the server
- * started is not a reason to tell somebody to restart it — that is simply how
+ * started is not a reason to tell somebody to restart it, that is simply how
  * `npm run setup && npm run os` looks from here.
  */
 export function isStale() {
@@ -89,7 +89,7 @@ export function staleness() {
     code_changed_at: changed ? new Date(changed).toISOString() : null,
     stale,
     message: stale
-      ? 'This OS has been updated since it was started. What is running is the older version — ' +
+      ? 'This OS has been updated since it was started. What is running is the older version, ' +
         'the screens come from disk and update straight away, but the engine behind them does ' +
         'not. Stop it and start it again.'
       : null,

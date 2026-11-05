@@ -9,13 +9,13 @@
 // one file and you have a complete backup". That is false, and it fails in the
 // worst way available: the copy exists, opens, and looks entirely normal, while
 // being stale by however much had not been checkpointed. It was found by
-// accident — a chapter was deleted, the file was copied, and the copy still had
+// accident, a chapter was deleted, the file was copied, and the copy still had
 // the chapter in it. Nothing warned anybody.
 //
 // `VACUUM INTO` is the fix rather than "stop the OS and copy three files",
 // because a backup procedure a community will not follow is not a backup. It
 // takes a consistent snapshot through SQLite itself, WAL included, into a single
-// file — with the OS still running and people still using it.
+// file, with the OS still running and people still using it.
 import { existsSync, mkdirSync, statSync, cpSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -33,7 +33,7 @@ import { mediaDir } from '../engines/proof.mjs';
 //
 // So the media travels with the backup, in a folder beside it named after it,
 // and the wording below no longer says "one file" when there is more than one.
-// Restoring is then two moves rather than one, which is worse — and a backup
+// Restoring is then two moves rather than one, which is worse, and a backup
 // that quietly drops the evidence behind the work is worse than that.
 function backUpMedia(target) {
   const from = mediaDir();
@@ -78,7 +78,7 @@ if (verifyAt) {
   if (!existsSync(file)) { warn(`No file at ${file}`); process.exit(1); }
   const { rows, integrity } = describe(file);
   if (integrity !== 'ok') { warn(`SQLite reports: ${integrity}`); process.exit(1); }
-  ok(`Readable and internally consistent — ${human(statSync(file).size)}`);
+  ok(`Readable and internally consistent, ${human(statSync(file).size)}`);
   for (const [k, v] of Object.entries(rows)) if (v !== null && v > 0) info(`${String(v).padStart(5)}  ${k}`);
 
   // A backup holding media rows and no media folder is the failure mode this
@@ -90,7 +90,7 @@ if (verifyAt) {
     const there = existsSync(folder) ? readdirSync(folder).filter((f) => !f.startsWith('.')).length : 0;
     if (!there) {
       warn(`This backup names ${rows.media} file${rows.media === 1 ? '' : 's'} and none of them is here.`);
-      info(`The photographs live beside it, in ${basename(folder)}/ — copy that folder too.`);
+      info(`The photographs live beside it, in ${basename(folder)}/, copy that folder too.`);
       process.exit(1);
     }
     ok(`${there} stored file${there === 1 ? '' : 's'} alongside it in ${basename(folder)}/`);
@@ -104,20 +104,20 @@ title('Backing up your commons');
 
 const source = dbPath();
 if (!existsSync(source)) {
-  warn('There is no commons yet — nothing to back up.');
+  warn('There is no commons yet, nothing to back up.');
   cmd('npm run setup');
   process.exit(1);
 }
 
 const stamp = new Date().toISOString().slice(0, 19).replaceAll(':', '-');
-// Beside the database being backed up, not beside the project — so BROS_DB
+// Beside the database being backed up, not beside the project, so BROS_DB
 // pointing elsewhere writes its backup there too, and never into the real one.
 const target = resolve(args.find((a) => !a.startsWith('--')) ?? join(dirname(source), 'backups', `commons-${stamp}.db`));
 if (existsSync(target)) {
   // VACUUM INTO refuses an existing file. Say so in words rather than letting
   // SQLite's message be the thing a person has to interpret.
   warn(`Something is already at ${target}`);
-  info('Backups are never overwritten — move it, or choose another name.');
+  info('Backups are never overwritten, move it, or choose another name.');
   process.exit(1);
 }
 mkdirSync(dirname(target), { recursive: true });
@@ -139,19 +139,19 @@ const media = backUpMedia(target);
 
 ok(`Written to ${target}`);
 info(media
-  ? `${human(statSync(target).size)} — complete, and safe to copy with the folder beside it`
-  : `${human(statSync(target).size)} — one file, complete, safe to copy anywhere`);
+  ? `${human(statSync(target).size)}, complete, and safe to copy with the folder beside it`
+  : `${human(statSync(target).size)}, one file, complete, safe to copy anywhere`);
 if (media) {
-  ok(`${media.count} stored file${media.count === 1 ? '' : 's'} copied to ${basename(media.to)}/ — ${human(media.bytes)}`);
+  ok(`${media.count} stored file${media.count === 1 ? '' : 's'} copied to ${basename(media.to)}/, ${human(media.bytes)}`);
   info('The photographs are not inside the database. Keep the folder with the file.');
 }
 if (integrity !== 'ok') { warn(`SQLite reports: ${integrity}`); process.exit(1); }
-ok('Opened and checked — it is internally consistent');
+ok('Opened and checked, it is internally consistent');
 for (const [k, v] of Object.entries(rows)) if (v !== null && v > 0) info(`${String(v).padStart(5)}  ${k}`);
 
 if (walSize > 0) {
   console.log(`\n  ${c.dim}${human(walSize)} of your commons was sitting in the write-ahead log and not in`);
-  console.log(`  commons.db itself. Copying that one file by hand would have missed it —`);
+  console.log(`  commons.db itself. Copying that one file by hand would have missed it , `);
   console.log(`  this backup has it.${c.reset}`);
 }
 

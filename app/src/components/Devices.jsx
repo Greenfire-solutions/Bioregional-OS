@@ -11,8 +11,8 @@ import { verb } from '../verbs.js';
  * reachable only by calling a tool, which made the feature real and unusable
  * by anybody who is not comfortable doing that. This is the screen.
  *
- * What it is NOT is sign-in. The thing enrolled is a browser on a device — a
- * laptop on the wifi, a phone, a tablet — and the thing shown is a code read
+ * What it is NOT is sign-in. The thing enrolled is a browser on a device, a
+ * laptop on the wifi, a phone, a tablet, and the thing shown is a code read
  * off this screen, which is single-use, lasts twenty minutes, and grants only
  * the right to ask. There is no password because there is nothing to
  * remember, and no account because there is nothing to recover.
@@ -21,7 +21,7 @@ import { verb } from '../verbs.js';
  *
  *   • Whether other devices can reach this one at all. Enrolment is pointless
  *     if nothing else can get here, so the page checks and says so before a
- *     code is minted into the void — and then offers the button that fixes it,
+ *     code is minted into the void, and then offers the button that fixes it,
  *     rather than the terminal command it used to print.
  *
  *   • That a revoked device stays on the list. It is still the recorded author
@@ -135,7 +135,7 @@ export default function Devices() {
           non-technical steward, and it sat in front of everything social in the
           project: the second person, the QR at a gathering, the join page.
           Sharing is a button now. The refusal it can return is not an error to
-          swallow — it is the consent gate, and it comes back with the list of
+          swallow, it is the consent gate, and it comes back with the list of
           what is held, so the decision is made by somebody looking at it.
         */}
         {!sharing && (
@@ -164,7 +164,7 @@ export default function Devices() {
               <button type="button" disabled={busyShare}
                 onClick={() => share(!!held)}
                 className="rounded bg-[var(--moss)] px-3 py-1.5 text-[11px] font-medium text-white disabled:opacity-50">
-                {busyShare ? 'Opening…' : held ? 'Share anyway — they have said yes' : 'Let this wifi reach the OS'}
+                {busyShare ? 'Opening…' : held ? 'Share anyway, they have said yes' : 'Let this wifi reach the OS'}
               </button>
               {shareError && <span className="text-[11px] text-[var(--clay)]">{shareError}</span>}
             </div>
@@ -190,8 +190,8 @@ export default function Devices() {
               <span className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">Enrol as</span>
               <select id="devices-role" value={role} onChange={(e) => setRole(e.target.value)}
                 className="mt-1 block rounded border border-[var(--line)] bg-[var(--paper)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--moss)]">
-                <option value="member">member — reads members-only, does field work</option>
-                <option value="coordinator">coordinator — also does council work</option>
+                <option value="member">member, reads members-only, does field work</option>
+                <option value="coordinator">coordinator, also does council work</option>
               </select>
             </label>
             <label className="block">
@@ -219,7 +219,7 @@ export default function Devices() {
                    className="h-44 w-44 rounded border border-[var(--line)] bg-white p-1" />
             ) : (
               <div className="flex h-44 w-44 items-center justify-center rounded border border-dashed border-[var(--line)] text-center text-[11px] text-[var(--ink-3)]">
-                no QR — read the code aloud instead
+                no QR, read the code aloud instead
               </div>
             )}
             <div className="min-w-0">
@@ -235,7 +235,7 @@ export default function Devices() {
               <p className="mt-1.5 text-[11px] text-[var(--ink-3)]">{invite.note}</p>
               <button onClick={() => setInvite(null)}
                 className="mt-3 rounded border border-[var(--line)] bg-[var(--paper)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--ink-2)] hover:border-[var(--moss)] hover:text-[var(--moss)]">
-                Done — make another
+                Done, make another
               </button>
             </div>
           </div>

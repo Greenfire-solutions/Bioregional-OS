@@ -1,5 +1,5 @@
 // ── Sky ───────────────────────────────────────────────────────────────────
-// Sun and moon, computed on this machine. No network, no key, no upstream —
+// Sun and moon, computed on this machine. No network, no key, no upstream,
 // which means this is the one part of "the land today" that can never be
 // stale, rate-limited, or unavailable in a valley with no signal.
 //
@@ -26,7 +26,7 @@ function julian(date) {
 /**
  * Solar position terms for an instant.
  * Returns declination (°), the equation of time (minutes) and the sun's
- * apparent ecliptic longitude (°) — the last is what dates the solstices.
+ * apparent ecliptic longitude (°), the last is what dates the solstices.
  */
 function solar(date) {
   const t = (julian(date) - 2451545.0) / 36525;              // Julian centuries since J2000
@@ -57,7 +57,7 @@ function solar(date) {
 /**
  * Sunrise, solar noon and sunset for the solar day containing `date`.
  * Returns Date objects, or nulls above the arctic/antarctic circles where the
- * sun does not cross the horizon that day — which is a real answer, not a bug.
+ * sun does not cross the horizon that day, which is a real answer, not a bug.
  */
 export function sunTimes(date, lat, lng) {
   // Work on the *solar* day at this longitude, not the UTC day, so places a
@@ -96,7 +96,7 @@ export function daylightSeconds(date, lat, lng) {
 
 /**
  * Moon age, illuminated fraction and phase name.
- * Mean-phase approximation — within a few hours of the true new moon, which is
+ * Mean-phase approximation, within a few hours of the true new moon, which is
  * plenty for "waxing gibbous, 71% lit".
  */
 export function moon(date) {
@@ -167,7 +167,7 @@ export function skyToday(lat, lng, now = new Date()) {
     daylight_change: `${delta >= 0 ? 'gaining' : 'losing'} ${hms(Math.abs(delta), true)} a day`,
     moon: moon(now),
     next_turn: nextSolarEvent(now),
-    computed: 'locally — NOAA solar equations, no network',
+    computed: 'locally, NOAA solar equations, no network',
   };
 }
 

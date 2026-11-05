@@ -2,13 +2,13 @@
 // Atlas layer 4. What the ground under a place actually is.
 //
 // Three upstreams, all open, and all resolved ONCE per place and then never
-// again — soil does not change on a heartbeat, and a scheduler that re-asks a
+// again, soil does not change on a heartbeat, and a scheduler that re-asks a
 // question whose answer is fixed is just noise with a timer on it.
 //
-//   1. USDA SSURGO via Soil Data Access — the authoritative US soil survey.
+//   1. USDA SSURGO via Soil Data Access: the authoritative US soil survey.
 //      POST only, raw SQL, longitude first, errors as OGC XML. All three of
 //      those are handled in postJSON and in the query below.
-//   2. ISRIC SoilGrids v2 (CC-BY-4.0) — the same questions answered anywhere on
+//   2. ISRIC SoilGrids v2 (CC-BY-4.0): the same questions answered anywhere on
 //      Earth at 250m, so a chapter outside the US is not left with nothing.
 //   3. USGS 3DEP for elevation, MRLC NLCD for land cover.
 //
@@ -44,7 +44,7 @@ export async function resolveSoil(lat, lng) {
   try {
     const us = await ssurgo(lat, lng);
     if (us) return us;
-  } catch { /* fall through — a survey gap is not an error worth failing on */ }
+  } catch { /* fall through, a survey gap is not an error worth failing on */ }
   return soilGrids(lat, lng);
 }
 
@@ -152,7 +152,7 @@ async function soilGrids(lat, lng) {
     source: 'ISRIC SoilGrids 2.0', source_id: 'isric-soilgrids',
     source_id: 'isric-soilgrids',
     cached: !!cached, stale: !!stale,
-    resolution: '250 m modelled — not a field survey',
+    resolution: '250 m modelled, not a field survey',
     series: null, map_unit: null, drainage: null, hydric: null,
     rooting_zone: rooting,
     properties: out,
@@ -199,7 +199,7 @@ function readableSoil({ series, muname, order, drainage, rooting, modelled = fal
   if (rooting?.organic_matter_pct != null) chem.push(`${rooting.organic_matter_pct}% organic matter`);
   if (rooting?.clay_pct != null) chem.push(`${Math.round(rooting.clay_pct)}% clay`);
   const head = bits.join(', ');
-  const tail = chem.length ? ` — ${chem.join(', ')} in the top 30 cm` : '';
+  const tail = chem.length ? `, ${chem.join(', ')} in the top 30 cm` : '';
   return (head + tail) || null;
 }
 
@@ -236,7 +236,7 @@ export async function resolveElevation(lat, lng) {
 
 /**
  * NLCD classes. GetFeatureInfo answers with PALETTE_INDEX, which IS the NLCD
- * class code — but only if you know that, which is why the table lives here and
+ * class code, but only if you know that, which is why the table lives here and
  * not in a comment on a magic number.
  */
 export const NLCD_CLASSES = {

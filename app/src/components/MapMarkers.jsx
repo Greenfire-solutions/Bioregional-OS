@@ -15,13 +15,13 @@ import { KIND, needsAttention } from '../mapKinds.js';
  * Canvas icons could not fix that. Text inside a texture cannot reflow, a shape
  * cannot grow to fit a label, and neither can transition. So the markers are
  * HTML positioned over the deck.gl canvas, projected through the same viewport
- * deck is rendering with — which is cheap here because everything a person put
+ * deck is rendering with, which is cheap here because everything a person put
  * on the map is a handful of rows, not a tile layer.
  *
  * Three rules give it the hierarchy the icons never had:
  *
  *   NOT EVERYTHING SHOUTS. A place is the ground the chapter stewards, so it
- *   carries its name — where there is room for it, and see the collision pass
+ *   carries its name, where there is room for it, and see the collision pass
  *   below. A project, need or gathering shows a compact pill with its count.
  *   An observation or a reading is a dot. Three weights, and the eye lands on
  *   the anchor first.
@@ -32,7 +32,7 @@ import { KIND, needsAttention } from '../mapKinds.js';
  *   and only the second needs the words.
  *
  *   WHAT IS WRONG IS WHAT IS LOUD. A blocked project is the one thing worth
- *   seeing from across the map, so it is the only marker that pulses — slowly,
+ *   seeing from across the map, so it is the only marker that pulses, slowly,
  *   once every few seconds, and never more than one kind at a time. If
  *   everything moved, nothing would be moving.
  */
@@ -63,7 +63,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
    * Two things a kilometre apart are one pixel at a regional zoom, and thirteen
    * markers were arriving as two visible pills with eleven stacked underneath.
    * Worse than hidden: a place's dot sat exactly over the "2" of a gathering's
-   * "24", so the map read "4" — confidently, and wrong, which is the failure
+   * "24", so the map read "4", confidently, and wrong, which is the failure
    * this whole project treats as the serious one.
    *
    * A short outward spiral from the true point, in screen space, on collision
@@ -100,7 +100,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
    *
    * Two places two kilometres apart are the same pixel at a regional zoom, so
    * their labels sat on top of each other and the project pills landed on top
-   * of both — the wall of text this rewrite was meant to remove, rebuilt out of
+   * of both, the wall of text this rewrite was meant to remove, rebuilt out of
    * nicer parts. Labels are laid out from the most important down, and one that
    * would land on a box already taken keeps its dot and loses its words.
    *
@@ -116,7 +116,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
     if ((view?.zoom ?? 0) < 8.5) return keep;
 
     // Every marker's own footprint is reserved first, each tagged with whose it
-    // is — because a label grows out of its OWN marker and would otherwise be
+    // is, because a label grows out of its OWN marker and would otherwise be
     // tested against it. That was the bug: a place's label box started at
     // f.x + 8 while its own footprint ran to f.x + 11, so every place name
     // collided with the dot it belonged to and NO place name was ever drawn.
@@ -194,7 +194,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
               //
               // Centring the whole element meant that the moment a label
               // appeared the pill grew and the dot slid sideways off the point
-              // it marks — the marker walking away from its own coordinate at
+              // it marks, the marker walking away from its own coordinate at
               // the exact moment somebody reached for it. The glyph now sits on
               // the point and the label grows rightwards out of it, so hovering
               // lifts the marker toward the reader and moves nothing on the
@@ -228,7 +228,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
                   height: weight === 'dot' ? 8 : 12,
                   background: borrowed ? 'transparent' : rgb,
                   border: borrowed ? `2px dashed ${rgb}` : `2px solid ${rgb}`,
-                  // The pulse used to live here, on the 12px dot — inside the
+                  // The pulse used to live here, on the 12px dot, inside the
                   // pill's own 2px stroke, which painted over most of the ring.
                   // Two frames a second and a half apart were indistinguishable
                   // at 2x magnification. It is on the pill now.
@@ -243,7 +243,7 @@ export default function MapMarkers({ view, width, height, features, kindsOn, sel
                 </span>
               )}
 
-              {/* The name. Always for a place, on approach for everything else —
+              {/* The name. Always for a place, on approach for everything else,
                   two permanent labels were what made the middle of the map a
                   wall of black boxes. */}
               {(named || isOn) && (

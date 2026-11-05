@@ -3,7 +3,7 @@
 //
 // The twelve-stage loop only turns if somebody knows where it has stalled.
 // This walks every stage, collects what is blocked or slipped, and ranks it.
-// Nothing here invents priorities — each item cites the protocol rule it comes
+// Nothing here invents priorities, each item cites the protocol rule it comes
 // from, so a steward can argue with it.
 import { all, one } from '../core/db.mjs';
 import { parseStamp } from '../core/time.mjs';
@@ -11,15 +11,15 @@ import { carrying, placeAttention } from './attention.mjs';
 import { priorities, openGatesSql } from './quest.mjs';
 import { daysSinceLastCard } from './dispatch.mjs';
 
-// blocking  — other work cannot proceed until this moves
-// slipped   — a commitment already made has passed its date
-// waiting   — a PERSON is waiting on this commons to answer them
-// open      — waiting, but nothing is stuck behind it
-// gap       — something the protocol expects to exist and does not
+// blocking, other work cannot proceed until this moves
+// slipped, a commitment already made has passed its date
+// waiting, a PERSON is waiting on this commons to answer them
+// open, waiting, but nothing is stuck behind it
+// gap, something the protocol expects to exist and does not
 //
 // `waiting` exists because the ranking was wrong in a way that mattered. A need
 // brought yesterday was `open`, the LOWEST weight, and only became `slipped`
-// after fourteen days — so on a loaded commons the line "Ana brought a need and
+// after fourteen days, so on a loaded commons the line "Ana brought a need and
 // has had no answer" sat at position 16 of 18, below three notes about projects
 // not being fully defined. Its own cited rule is "a person must be able to
 // submit a need, receive a response, and appeal", which is one of the
@@ -35,7 +35,7 @@ export function whatsNext(chapterId) {
   const items = [];
   const add = (o) => items.push(o);
 
-  // ── Stage 2: Listen — someone is waiting for an answer ──────────────────
+  // ── Stage 2: Listen, someone is waiting for an answer ──────────────────
   for (const r of all(
     `SELECT * FROM intake WHERE chapter_id=? AND status='received' ORDER BY created_at`, chapterId)) {
     const days = daysSince(r.created_at);
@@ -50,7 +50,7 @@ export function whatsNext(chapterId) {
     });
   }
 
-  // ── Stage 9: Teach & Tell — the group has not heard from the commons ────
+  // ── Stage 9: Teach & Tell, the group has not heard from the commons ────
   //
   // The card is the highest-leverage thing in this whole system and nothing
   // ever asked for it.
@@ -58,9 +58,9 @@ export function whatsNext(chapterId) {
   // SOCIAL_LAYER.md §3.1: the group is already somewhere, it is fragile there,
   // and members report feeling "really disconnected" from digital-only groups.
   // COMMUNICATIONS.md §3: across 29 UK mutual aid groups and 32 organiser
-  // interviews, ZERO adopted any purpose-built tool. So the card — a weekly
+  // interviews, ZERO adopted any purpose-built tool. So the card, a weekly
   // paste-ready text a human posts under their own name, in the chat they
-  // already use — is the mechanism, and `engines/dispatch.mjs` has built it
+  // already use, is the mechanism, and `engines/dispatch.mjs` has built it
   // since it was written. `daysSinceLastCard()` was written to drive this,
   // carries a comment saying "the operator turns a long silence into an item in
   // the round", is covered by the suite, and was called by NOTHING.
@@ -73,7 +73,7 @@ export function whatsNext(chapterId) {
   //
   // Deliberately NOT automated. A human posting at a moment they judge right is
   // a different social object from a bot posting on a schedule, and the OS has
-  // no send capability at all — which §3.2 concludes is the right design rather
+  // no send capability at all, which §3.2 concludes is the right design rather
   // than a limitation.
   {
     const since = daysSinceLastCard(chapterId);
@@ -97,7 +97,7 @@ export function whatsNext(chapterId) {
     }
   }
 
-  // ── Stage 4: Map — a discovered dataset nobody has read the terms of ────
+  // ── Stage 4: Map, a discovered dataset nobody has read the terms of ────
   // These sit here rather than approving themselves because accepting somebody
   // else's licence on behalf of a commons is a decision a person has to make.
   // Public-domain datasets never reach this list; they approve on their licence.
@@ -107,13 +107,13 @@ export function whatsNext(chapterId) {
     items.push({
       kind: 'gap', stage: 'Map',
       title: `"${truncate(d.title, 60)}" is published locally but nobody has read its licence`,
-      detail: `${d.publisher || d.portal || 'A local portal'} — ${d.license_note}`,
+      detail: `${d.publisher || d.portal || 'A local portal'}, ${d.license_note}`,
       rule: 'Sensitive and third-party material is only published under terms someone has accepted.',
       action: { tool: 'approve_dataset', input: { dataset_id: d.id } },
     });
   }
 
-  // ── Stage 1: Locate — a place with no ecological ground ─────────────────
+  // ── Stage 1: Locate, a place with no ecological ground ─────────────────
   for (const p of all(
     `SELECT * FROM places WHERE chapter_id=? AND (watershed_huc IS NULL OR ecoregion_name IS NULL)`,
     chapterId)) {
@@ -126,7 +126,7 @@ export function whatsNext(chapterId) {
     });
   }
 
-  // ── Stage 3: Observe — critical signals and stale water ─────────────────
+  // ── Stage 3: Observe, critical signals and stale water ─────────────────
   for (const s of all(
     `SELECT * FROM signals WHERE chapter_id=? AND severity='Critical'
        AND id NOT IN (SELECT signal_id FROM quests WHERE signal_id IS NOT NULL)`, chapterId)) {
@@ -161,13 +161,13 @@ export function whatsNext(chapterId) {
     });
   }
 
-  // ── Stages 7-8: Design & Build — gates and definitions ──────────────────
+  // ── Stages 7-8: Design & Build, gates and definitions ──────────────────
   //
   // Gated projects are collected and emitted as ONE item when there is more
   // than one, rather than one line each.
   //
   // Not tidiness. The board shows five things, and on an ordinary commons three
-  // of those five were this same line about different projects — same verb,
+  // of those five were this same line about different projects, same verb,
   // same council-only clearance, all saying a number is too high. Everything a
   // person would actually act on was below the fold: the card, an unverified
   // observation, and somebody waiting for an answer. One new signal was enough
@@ -208,7 +208,7 @@ export function whatsNext(chapterId) {
   // ── Stage 8: work that was done and nobody has looked at ───────────────
   // `waiting`, in the same sense the intake items use it: a PERSON is waiting
   // on this commons. Somebody went out, did the work, photographed it before
-  // and after, and filed it — and the last step is one other person spending a
+  // and after, and filed it, and the last step is one other person spending a
   // minute looking. Unsurfaced, that minute never happens, and the lesson a
   // commons learns is that filing evidence leads nowhere.
   //
@@ -230,7 +230,7 @@ export function whatsNext(chapterId) {
       age_days: oldest,
       rule: 'The person who did the work is never the person who checks it.',
       // One identity for checking work, whether there is one or five, so
-      // clearing them empties the slot rather than refilling it — the same
+      // clearing them empties the slot rather than refilling it, the same
       // reason the gate items carry one.
       about: 'unchecked-evidence',
       action: { tool: 'review_proof', input: { proof_id: unchecked[0].id } },
@@ -238,7 +238,7 @@ export function whatsNext(chapterId) {
   }
 
   // Work written down that nobody has taken on. A `gap` rather than anything
-  // heavier: nothing is stuck behind it and nobody is waiting on an answer —
+  // heavier: nothing is stuck behind it and nobody is waiting on an answer,
   // but a task list that only the person who wrote it can see is a to-do list,
   // not a commons.
   const unclaimed = all(
@@ -251,7 +251,7 @@ export function whatsNext(chapterId) {
     add({
       kind: 'gap', stage: 'Prototype',
       title: unclaimed.length === 1
-        ? `"${truncate(unclaimed[0].title, 60)}" — nobody has picked this up`
+        ? `"${truncate(unclaimed[0].title, 60)}", nobody has picked this up`
         : `${unclaimed.length} tasks nobody has picked up`,
       detail: unclaimed.slice(0, 4).map((t) => t.title).join(' · ')
         + (unclaimed.length > 4 ? ` · and ${unclaimed.length - 4} more` : ''),
@@ -269,7 +269,7 @@ export function whatsNext(chapterId) {
     const { quest: q, gates } = gated[0];
     add({
       kind: 'blocking', stage: 'Design',
-      title: `${q.title} cannot be built — ${gates.length} gate${gates.length === 1 ? '' : 's'} open`,
+      title: `${q.title} cannot be built, ${gates.length} gate${gates.length === 1 ? '' : 's'} open`,
       detail: gates.map((g) => g.gate.replace(/_/g, ' ')).join(', '),
       rule: 'A high project score never overrides a red flag, missing consent, or an absent maintenance owner.',
       // See the note on the folded item below: ONE identity for gate work,
@@ -281,7 +281,7 @@ export function whatsNext(chapterId) {
     const total = gated.reduce((n, g) => n + g.gates.length, 0);
     add({
       kind: 'blocking', stage: 'Design',
-      title: `${gated.length} projects are waiting on gates — ${total} between them`,
+      title: `${gated.length} projects are waiting on gates, ${total} between them`,
       // Named, not counted. A steward has to be able to tell whether the
       // project they care about is in here without opening anything.
       detail: gated.map(({ quest, gates }) => `${quest.title} (${gates.length})`).join(' · '),
@@ -289,11 +289,11 @@ export function whatsNext(chapterId) {
       // ONE identity for gate work, and it does not move.
       //
       // The key was derived from the action, and the action points at whichever
-      // project has the fewest gates left — recomputed every call. So closing a
+      // project has the fewest gates left, recomputed every call. So closing a
       // single gate could change which project that is, the key would change,
       // and a held round would count the item DONE with seventeen of eighteen
       // gates still open: the slot emptied, and the same sentence reappeared
-      // below as newly arrived. The inverse was worse — somebody OPENING a
+      // below as newly arrived. The inverse was worse, somebody OPENING a
       // project with fewer gates cleared a slot with nothing done at all.
       //
       // Keying on the set of gated projects has the same fault one step out: a
@@ -302,7 +302,7 @@ export function whatsNext(chapterId) {
       // anywhere is gated, which is the only moment the work is actually done.
       about: 'open-gates',
       // The action still goes to the project with the fewest gates left, which
-      // is the one closest to being buildable — that is a good default for the
+      // is the one closest to being buildable, that is a good default for the
       // button, and it is no longer what identifies the item.
       action: (() => {
         const nearest = [...gated].sort((a, b) => a.gates.length - b.gates.length
@@ -316,7 +316,7 @@ export function whatsNext(chapterId) {
   // ── Stage 6: Prioritize ─────────────────────────────────────────────────
   // The only stage of the twelve that never appeared in this list. Its required
   // output is a seasonal priority list, and a chapter carrying several open
-  // projects with no stated order is not neutral between them — it is deciding
+  // projects with no stated order is not neutral between them, it is deciding
   // by whoever asks loudest, which is the thing a priority list exists to stop.
   try {
     const pri = priorities(chapterId);
@@ -336,7 +336,7 @@ export function whatsNext(chapterId) {
     }
   } catch { /* no quests yet */ }
 
-  // ── Stage 5: Convene — decisions due, red flags open ────────────────────
+  // ── Stage 5: Convene, decisions due, red flags open ────────────────────
   for (const d of all(
     `SELECT * FROM decisions WHERE chapter_id=? AND status='decided'
        AND review_date IS NOT NULL AND date(review_date) <= date('now')`, chapterId)) {
@@ -372,7 +372,7 @@ export function whatsNext(chapterId) {
     });
   }
 
-  // ── Stage 11: Measure — indicators nobody reads ─────────────────────────
+  // ── Stage 11: Measure, indicators nobody reads ─────────────────────────
   for (const ind of all(
     `SELECT i.*, (SELECT MAX(measured_at) FROM measurements m WHERE m.indicator_id=i.id) last_at
        FROM indicators i WHERE i.chapter_id=?`, chapterId)) {
@@ -415,7 +415,7 @@ export function whatsNext(chapterId) {
     add({
       kind: 'gap', stage: 'Exchange',
       title: `${g.title} has almost no care provision`,
-      detail: 'Meals, transport, childcare, accessibility — fewer than two of four.',
+      detail: 'Meals, transport, childcare, accessibility, fewer than two of four.',
       rule: 'Ecological work fails when people are exhausted, excluded, unpaid, unsafe or unsupported.',
       about: g.id,
       action: { tool: 'add_gathering', input: { title: g.title } },
@@ -423,7 +423,7 @@ export function whatsNext(chapterId) {
   }
 
   // A person carrying most of the open work is a blocking item, and the stage
-  // it belongs to is Exchange & Care — the same mandate as unpaid hours and
+  // it belongs to is Exchange & Care, the same mandate as unpaid hours and
   // missing childcare, arriving through a different column. It is blocking
   // rather than open because everything that person holds is queued behind one
   // human's remaining capacity, which is the definition the top of this file
@@ -438,7 +438,7 @@ export function whatsNext(chapterId) {
       add({
         kind: 'blocking', stage: 'Exchange',
         title: `${p.name} is named on ${p.holding} of ${care.total_open} open responsibilities`,
-        detail: `Longest held: ${p.longest_held?.of ?? '—'}, ${p.longest_held_days} days. ` +
+        detail: `Longest held: ${p.longest_held?.of ?? '-'}, ${p.longest_held_days} days. ` +
                 'Somebody else has to offer to take one.',
         age_days: p.longest_held_days,
         rule: 'Exhaustion is a failure of the commons, not of the person carrying it.',
@@ -487,7 +487,7 @@ export function whatsNext(chapterId) {
           : `Nobody has been to ${n.name} in ${n.days_since} days`,
         detail: n.open_work
           ? `${n.open_work} open project${n.open_work === 1 ? '' : 's'} there.`
-          : 'Gage readings are not visits — only what a person recorded counts here.',
+          : 'Gage readings are not visits, only what a person recorded counts here.',
         age_days: n.days_since ?? n.added_days_ago,
         rule: 'Observation must lead somewhere, or it is surveillance of a place nobody is helping.',
         about: `neglected:${n.id ?? n.name}`,

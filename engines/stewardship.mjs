@@ -37,7 +37,7 @@ export function logAI(chapterId, entry) {
  * or recommendation, the chapter should log the tool, purpose, data class,
  * human reviewer, known limits, and correction path."
  *
- * That was implemented as `logAI` — a tool the assistant had to choose to call
+ * That was implemented as `logAI`, a tool the assistant had to choose to call
  * ON ITSELF. So the register existed, the operator counted unreviewed entries,
  * the Minimum Viable Chapter Test checked it, and an assistant could open
  * projects, close gates and propose decisions without ever writing a row. A
@@ -47,7 +47,7 @@ export function logAI(chapterId, entry) {
  * reviewer, and that is the point rather than an omission. The reviewer is a
  * person confirming afterwards that the AI's work was sound, and at the moment
  * of the action no such person exists. engines/operator.mjs already treats an
- * ai_log row without a reviewer as blocking work — which until now could only
+ * ai_log row without a reviewer as blocking work, which until now could only
  * ever be zero. This is what makes that check mean something.
  *
  * The forbidden-purpose guard does NOT apply here. logAI refuses to record a
@@ -70,7 +70,7 @@ export function recordAIAction(chapterId, { tool, purpose, data_class, affected_
       correction_path: 'Any steward may reverse or amend the affected record, and should note why.',
     });
   } catch {
-    // A failure to write the log must never fail the action it is logging —
+    // A failure to write the log must never fail the action it is logging,
     // that would make the safest configuration the one where nothing works.
     return null;
   }

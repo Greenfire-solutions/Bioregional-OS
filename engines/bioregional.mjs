@@ -12,9 +12,9 @@ import { discover as discoverUpstream, classifyLicense } from '../adapters/disco
 import { humanObservedSql, automatedSql, humanObserved as humanSource } from '../core/provenance.mjs';
 
 /**
- * Stage 1 — Locate. Resolve a place against open reference data.
+ * Stage 1, Locate. Resolve a place against open reference data.
  *
- * Atlas layers 1, 2, 4 and the standing half of 6, in one pass — and this pass
+ * Atlas layers 1, 2, 4 and the standing half of 6, in one pass, and this pass
  * runs ONCE per place and then never again. Ecoregion boundaries, watershed
  * lines, soil series, elevation and the regulatory floodplain do not change on
  * any schedule a heartbeat could usefully track. Everything that DOES change
@@ -81,7 +81,7 @@ export async function locate(placeId, { refresh = false } = {}) {
     soil: profile?.soil ?? null, elevation: profile?.elevation ?? null,
     land_cover: profile?.land_cover ?? null, flood: flood ?? null,
     // Naming what did not answer is the difference between "nothing here" and
-    // "we could not ask" — the operator needs to tell those apart.
+    // "we could not ask", the operator needs to tell those apart.
     missing: [
       !eco && 'ecoregion', !wshed && 'watershed',
       profile && !soil && 'soil', profile && !elev && 'elevation',
@@ -96,7 +96,7 @@ async function floodOnly(lat, lng) {
 }
 
 /**
- * Atlas layer 5 — what lives here.
+ * Atlas layer 5, what lives here.
  *
  * Read-through, not ingested: species lists are upstream facts about the
  * bioregion, not observations this chapter made, and filing them as signals
@@ -115,7 +115,7 @@ export async function lifeHere(placeId, { radiusKm = 10, limit = 20 } = {}) {
 }
 
 /**
- * Atlas layer 6 — hazards, and the one upstream allowed to raise a Watch or a
+ * Atlas layer 6, hazards, and the one upstream allowed to raise a Watch or a
  * Critical without a human. Events become signals; standing conditions do not.
  *
  * Deduped on the alert's own stable id, so re-reading the feed every hour
@@ -155,7 +155,7 @@ export async function hazards(placeId, { ingest = true } = {}) {
   return { place: { id: p.id, name: p.name }, ...h, signals: { added, updated } };
 }
 
-/** Stage 3 — Observe. Pull live public-domain gage data in as signals. */
+/** Stage 3, Observe. Pull live public-domain gage data in as signals. */
 export async function ingestWater(placeId) {
   const p = one('SELECT * FROM places WHERE id = ?', placeId);
   if (!p?.lat) return { error: 'no_coordinates' };
@@ -180,7 +180,7 @@ export async function ingestWater(placeId) {
 }
 
 /**
- * The seasonal dashboard. Not a vanity metric — it is the Land Seat's
+ * The seasonal dashboard. Not a vanity metric, it is the Land Seat's
  * briefing material, so it leads with what is unresolved.
  */
 export function dashboard(chapterId) {
@@ -193,7 +193,7 @@ export function dashboard(chapterId) {
   // Now an automated upstream can too, and the two need different responses:
   // an unverified human observation wants corroborating, an unconfirmed
   // satellite detection wants someone to go and look. Counting them together
-  // produces a number that means neither — so they are counted apart, through
+  // produces a number that means neither, so they are counted apart, through
   // the one shared rule in core/provenance.mjs rather than a predicate invented
   // here that could drift away from it.
   const unverified = one(
@@ -217,7 +217,7 @@ export function dashboard(chapterId) {
     unlocated: unlocated.map((p) => ({ id: p.id, name: p.name })),
     critical, watch,
     // The Land Seat is briefed on hazards whoever reported them, so neither list
-    // is filtered — but it should be able to see at a glance how much of this is
+    // is filtered, but it should be able to see at a glance how much of this is
     // the land reporting itself and how much is people noticing.
     reported_by: {
       people: critical.concat(watch).filter((s) => humanSource(s.source_adapter)).length,
@@ -235,12 +235,12 @@ export function dashboard(chapterId) {
 
 /**
  * Collect every registry id a result mentions and render the credit from the
- * registry — so the line a PERSON reads comes from the same declaration the
+ * registry, so the line a PERSON reads comes from the same declaration the
  * export does, rather than being retyped in a component.
  *
  * The interface was carrying five hardcoded licence strings. The adapters had
  * already been corrected to point at `source_id`, which meant the code was
- * right and the sentence on screen could still go stale — and the sentence is
+ * right and the sentence on screen could still go stale, and the sentence is
  * the half with legal weight, because it is the one somebody quotes.
  */
 export function withAttribution(result) {
@@ -255,7 +255,7 @@ export function withAttribution(result) {
   return { ...result, attribution: attributionFor([...ids]) };
 }
 
-// ── Stage 4: Map — what this locality already publishes ───────────────────
+// ── Stage 4: Map, what this locality already publishes ───────────────────
 
 /**
  * Discover datasets a chapter's own city or county publishes, and file them as
@@ -263,7 +263,7 @@ export function withAttribution(result) {
  *
  * The protocol rule this implements is the one the upstream registry exists for:
  * no unreviewed licence reaches an export. So the gate is narrow and it is the
- * licence, not the usefulness — an unambiguous public-domain dedication approves
+ * licence, not the usefulness, an unambiguous public-domain dedication approves
  * itself, and every other licence, including every open-with-conditions one,
  * waits for a named person. Attribution and share-alike are obligations somebody
  * has to accept ON BEHALF OF the commons, and a machine cannot accept an
@@ -283,7 +283,7 @@ export async function discoverData(chapterId, { subject, locality = null, region
   let approved = 0, held = 0, already = 0, unaddressable = 0;
   const filed = [];
   for (const c of found.candidates) {
-    // No stable URL means nothing to dedupe on, link to, or come back for — but
+    // No stable URL means nothing to dedupe on, link to, or come back for, but
     // it gets COUNTED, because a candidate that vanishes between the total and
     // the breakdown is the kind of gap that reads as a rounding error.
     if (!c.source_url) { unaddressable++; continue; }
@@ -304,7 +304,7 @@ export async function discoverData(chapterId, { subject, locality = null, region
       license_note: c.license.why,
       status: auto ? 'approved' : 'candidate',
       // Auto-approval is still a review, and it says so rather than leaving the
-      // reviewer blank — a blank reviewer reads as "nobody checked", and here
+      // reviewer blank, a blank reviewer reads as "nobody checked", and here
       // something did check, by a rule anyone can go and read.
       reviewed_by: auto ? `automatic (${c.license.matched})` : null,
       reviewed_at: auto ? new Date().toISOString() : null,
@@ -312,7 +312,7 @@ export async function discoverData(chapterId, { subject, locality = null, region
     }, auto ? 'public' : 'members');
 
     // Public domain approves the DATASET. It only reaches the map if the dataset
-    // itself says what it is about — licence and relevance are separate gates.
+    // itself says what it is about, licence and relevance are separate gates.
     if (auto && c.atlas_layer) registerDiscovered(chapterId, { ...row, layer_match: c.layer_match }, { sensitivity: 'public' });
     if (auto) approved++; else held++;
     filed.push({ id: row.id, title: row.title, status: row.status, license: c.license });
@@ -380,7 +380,7 @@ export function approveDataset(id, { reviewed_by = null, note = null, sensitivit
   return {
     dataset: updated, atlas_layer: layer,
     note: updated.atlas_layer ? null
-      : 'Approved, but filed against no Atlas layer — set atlas_layer to put it on the map.',
+      : 'Approved, but filed against no Atlas layer, set atlas_layer to put it on the map.',
   };
 }
 
@@ -396,7 +396,7 @@ export function declineDataset(id, { reviewed_by = null, reason = null } = {}) {
   return { dataset: one('SELECT * FROM discovered_datasets WHERE id=?', id) };
 }
 
-// ── Stage 11: Measure — a baseline from public record ─────────────────────
+// ── Stage 11: Measure, a baseline from public record ─────────────────────
 
 /**
  * Offer a defensible baseline for an indicator, from open data.
@@ -407,7 +407,7 @@ export function declineDataset(id, { reviewed_by = null, reason = null } = {}) {
  * `decision_trigger` set against a guess cannot honestly fire. The rule exists
  * on paper only.
  *
- * Public record fixes that — creek discharge against its own thirty-year
+ * Public record fixes that, creek discharge against its own thirty-year
  * median, soil organic matter from the survey, canopy from land cover, leaf-out
  * against the normal. Each answer carries its source, its licence and its
  * method, so the number is arguable rather than asserted, and a trigger set
@@ -423,7 +423,7 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
   const match = (...words) => words.some((w) => want.includes(w));
 
   // Whether anything open measures this is a fact about the indicator, not about
-  // where you are standing — so it is answered first. Asking for a place and
+  // where you are standing, so it is answered first. Asking for a place and
   // THEN saying "nothing measures that anyway" wastes the person's time and
   // hides the real answer behind a different problem.
   const MEASURABLE = [
@@ -452,17 +452,17 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
     const site = one(
       `SELECT source_ref FROM signals WHERE chapter_id=? AND source_adapter='usgs' AND source_ref IS NOT NULL LIMIT 1`,
       chapterId)?.source_ref;
-    if (!site) return unmeasurable(indicator, 'no USGS gage has been ingested for this chapter yet — run ingest_water_data first');
+    if (!site) return unmeasurable(indicator, 'no USGS gage has been ingested for this chapter yet, run ingest_water_data first');
     const g = await gageContext(site).catch(() => null);
     // Named exactly, with no fallback. An earlier version read `day_median`,
-    // which does not exist, and `??` fell through to the SEVEN-DAY median — a
+    // which does not exist, and `??` fell through to the SEVEN-DAY median, a
     // different statistic answering a different question. Both were 0 that day,
     // so it read as correct. A fallback between two statistics is not a safety
     // net, it is a way to be wrong quietly.
     const median = g?.day_of_year_median ?? null;
     if (median == null) {
       return unmeasurable(indicator,
-        'the gage answered but carries no approved median for this calendar day — USGS statistics ' +
+        'the gage answered but carries no approved median for this calendar day, USGS statistics ' +
         'cover approved data only, so recent years can be missing');
     }
     return baseline({
@@ -479,7 +479,7 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
   // ── soil ──
   if (match('organic matter', 'soil carbon', 'soil organic')) {
     return place.soil_organic_matter == null
-      ? unmeasurable(indicator, 'this place has no soil survey result yet — run soil_at first')
+      ? unmeasurable(indicator, 'this place has no soil survey result yet, run soil_at first')
       : baseline({ value: place.soil_organic_matter, unit: '%',
           method: 'Depth-weighted mean over the top 30 cm of the dominant soil component',
           source: place.soil_source === 'usda-ssurgo' ? 'USDA SSURGO' : 'ISRIC SoilGrids',
@@ -487,7 +487,7 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
   }
   if (match('soil ph', 'ph')) {
     return place.soil_ph == null
-      ? unmeasurable(indicator, 'this place has no soil survey result yet — run soil_at first')
+      ? unmeasurable(indicator, 'this place has no soil survey result yet, run soil_at first')
       : baseline({ value: place.soil_ph, unit: 'pH',
           method: 'Depth-weighted mean over the top 30 cm',
           source: place.soil_source === 'usda-ssurgo' ? 'USDA SSURGO' : 'ISRIC SoilGrids',
@@ -497,11 +497,11 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
   // ── living cover ──
   if (match('canopy', 'tree cover', 'forest cover', 'land cover', 'impervious')) {
     return place.land_cover == null
-      ? unmeasurable(indicator, 'this place has no land cover result yet — run soil_at first')
+      ? unmeasurable(indicator, 'this place has no land cover result yet, run soil_at first')
       : baseline({ value: place.land_cover_code, unit: 'NLCD class',
-          method: `Land cover class at this point is "${place.land_cover}". A percentage baseline needs a boundary, not a point — draw one and measure it in QGIS from the same NLCD raster.`,
+          method: `Land cover class at this point is "${place.land_cover}". A percentage baseline needs a boundary, not a point, draw one and measure it in QGIS from the same NLCD raster.`,
           source: 'USGS National Land Cover Database', source_id: 'mrlc-nlcd',
-          note: 'Recorded as a class, not a percentage — say so rather than implying a precision this does not have.' });
+          note: 'Recorded as a class, not a percentage, say so rather than implying a precision this does not have.' });
   }
   if (match('species', 'biodiversity', 'richness')) {
     const { speciesHere } = await import('../adapters/life.mjs');
@@ -510,7 +510,7 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
       ? baseline({ value: s.total_species, unit: 'species',
           method: 'Distinct research-grade species recorded within 5 km on iNaturalist',
           source: 'iNaturalist', source_id: 'inaturalist',
-          note: 'Recording effort, not abundance — a rise may mean more observers rather than more life. Compare like season with like season.' })
+          note: 'Recording effort, not abundance, a rise may mean more observers rather than more life. Compare like season with like season.' })
       : unmeasurable(indicator, 'iNaturalist did not answer');
   }
 
@@ -539,7 +539,7 @@ export async function proposeBaseline(chapterId, { indicator, place_id = null } 
         ? `Forty-year monthly normals; wettest ${n.wettest_month}, driest ${n.driest_month}`
         : 'Forty-year annual mean air temperature at 2 m',
       source: 'NASA POWER', source_id: 'nasa-power',
-      note: rain ? 'Monthly, not annual — an annual rainfall figure hides the thing that matters here.' : null,
+      note: rain ? 'Monthly, not annual, an annual rainfall figure hides the thing that matters here.' : null,
       detail: rain ? n.monthly : null,
     });
   }
@@ -562,7 +562,7 @@ function baseline({ value, unit, method, source, source_id, note = null, detail 
 }
 
 // Statically imported. An earlier version used require() here, which does not
-// exist in an ES module — it threw, the catch swallowed it, and every baseline
+// exist in an ES module, it threw, the catch swallowed it, and every baseline
 // came back with a null licence. Nothing looked wrong: a missing licence renders
 // as a missing licence.
 const registrySourceLicence = (id) => registrySource(id)?.license ?? null;
@@ -570,7 +570,7 @@ const registrySourceLicence = (id) => registrySource(id)?.license ?? null;
 const unmeasurable = (indicator, why) => ({
   proposed: false,
   error: 'no_baseline',
-  message: `Nothing open measures "${indicator}" here — ${why}.`,
+  message: `Nothing open measures "${indicator}" here, ${why}.`,
   // Refusing is the point. A wrong baseline makes a decision look evidenced.
   guidance: 'Measure it yourself and record the method. An indicator with a baseline somebody ' +
             'actually took is worth more than one with a number nobody can defend.',
@@ -578,7 +578,7 @@ const unmeasurable = (indicator, why) => ({
 
 // ── Stages 7-11: the people, the memory, the growing year ─────────────────
 
-/** Atlas layers 7-10 — what is already here, and registers the layers it finds. */
+/** Atlas layers 7-10, what is already here, and registers the layers it finds. */
 export async function communityAt(placeId, { radiusKm = 3 } = {}) {
   const p = one('SELECT * FROM places WHERE id=?', placeId);
   if (!p) return { error: 'not_found' };
@@ -586,14 +586,14 @@ export async function communityAt(placeId, { radiusKm = 3 } = {}) {
   const { communityHere, layersCovered } = await import('../adapters/community.mjs');
   const r = await communityHere(p.lat, p.lng, { radiusKm });
   // One source fills four layers, so it registers once per layer it actually
-  // found something in — an honest coverage report, not a blanket claim.
+  // found something in, an honest coverage report, not a blanket claim.
   if (r.available) {
     for (const n of layersCovered(r)) registerLayer(p.chapter_id, 'openstreetmap', { layer: n });
   }
   return withAttribution({ place: { id: p.id, name: p.name }, ...r });
 }
 
-/** Atlas layer 11 — culture, memory, and the sound of the place. */
+/** Atlas layer 11, culture, memory, and the sound of the place. */
 export async function cultureAt(placeId, { radiusKm = 5 } = {}) {
   const p = one('SELECT * FROM places WHERE id=?', placeId);
   if (!p) return { error: 'not_found' };
@@ -618,7 +618,7 @@ export async function growingYearAt(placeId, { zip = null } = {}) {
   return withAttribution({ place: { id: p.id, name: p.name }, ...r });
 }
 
-/** Atlas layers 2 and 3 — what is in the water, and where it goes. */
+/** Atlas layers 2 and 3, what is in the water, and where it goes. */
 export async function hydrologyAt(placeId, { radiusKm = 5, sinceYears = 3 } = {}) {
   const p = one('SELECT * FROM places WHERE id=?', placeId);
   if (!p) return { error: 'not_found' };
@@ -654,7 +654,7 @@ export function setBaseline(indicatorId, { value, unit = null, method = null, so
     return {
       error: 'baseline_already_set',
       message: `"${n.name}" already has a baseline of ${n.baseline_value}${n.unit ? ' ' + n.unit : ''}. ` +
-               'Changing it rewrites the meaning of every reading taken since — say why.',
+               'Changing it rewrites the meaning of every reading taken since, say why.',
       current: { value: n.baseline_value, unit: n.unit, at: n.baseline_at, method: n.method },
     };
   }
@@ -663,7 +663,7 @@ export function setBaseline(indicatorId, { value, unit = null, method = null, so
     method,
     source ? `Source: ${source}${licence ? ` (${licence})` : ''}` : null,
     source ? 'Baseline from public record, not a reading somebody took.' : null,
-    n.baseline_value != null ? `Replaced ${n.baseline_value}${n.unit ? ' ' + n.unit : ''} — ${String(reason).trim()}` : null,
+    n.baseline_value != null ? `Replaced ${n.baseline_value}${n.unit ? ' ' + n.unit : ''}, ${String(reason).trim()}` : null,
   ].filter(Boolean).join(' · ');
 
   run(`UPDATE indicators SET baseline_value=?, baseline_at=?, unit=COALESCE(?,unit),

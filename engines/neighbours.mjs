@@ -1,5 +1,5 @@
 // ── The neighbours ────────────────────────────────────────────────────────
-// §5.12. Once a week, what the neighbours published — one line each.
+// §5.12. Once a week, what the neighbours published, one line each.
 //
 // "Neighbours" rather than "chapters", and that wording is load-bearing. The
 // Murmurations index answers a geographic query with every organisation near
@@ -7,14 +7,14 @@
 // copywriting agency and an individual researcher. Only a peer whose OWN
 // published tags claim to be a bioregional commons is counted as a chapter.
 // Both are worth knowing about, they are not the same thing, and the panel
-// says which is which — see classifyPeer() in adapters/murmurations.mjs.
+// says which is which, see classifyPeer() in adapters/murmurations.mjs.
 //
 // §3.3 is the reason it exists: belonging to something larger is what sustains
 // volunteer groups, and a bioregional commons that believes it is the only one
 // is a lonely and short-lived thing. §3.9 is the reason it looks the way it
 // does: peripheral awareness, not a feed.
 //
-// The whole design problem is §3.6 — the Nextdoor failure mode. A list of what
+// The whole design problem is §3.6, the Nextdoor failure mode. A list of what
 // other people are doing, refreshed often enough, IS a feed, and a feed in a
 // neighbourhood context reliably becomes a complaint engine. So four rules,
 // and every one of them is a refusal:
@@ -35,7 +35,7 @@
 //
 //   NOTHING FROM A NEIGHBOUR IS EVER A SIGNAL. Their text is displayed as
 //   theirs, never written into this commons' own tables. A neighbour publishing
-//   "creek contaminated" must not become an observation here — the observation
+//   "creek contaminated" must not become an observation here, the observation
 //   belongs to them, about their ground, and the provenance rules everywhere
 //   else in this project exist precisely so that stream stays clean.
 import { all, one, run } from '../core/db.mjs';
@@ -99,7 +99,7 @@ export function neighbours(chapterId, { limit = 8 } = {}) {
     obligation: 'None. Nothing here needs answering, and nobody is told whether you read it.',
     chapters: items.filter((i) => i.is_chapter).length,
     sentence: !peers.length
-      ? 'Nobody else known yet. Federation is a discovery step, not a requirement — ' +
+      ? 'Nobody else known yet. Federation is a discovery step, not a requirement, ' +
         'a commons works perfectly well with no neighbours at all.'
       : !items.length
         ? `${peers.length} neighbour${peers.length === 1 ? '' : 's'} known, none of them ` +
@@ -110,8 +110,8 @@ export function neighbours(chapterId, { limit = 8 } = {}) {
 
 /**
  * The count of actual chapters is stated separately from the count of
- * neighbours, because they answer different questions — "is anyone else doing
- * this?" and "who else is around?" — and rolling them together answers the
+ * neighbours, because they answer different questions, "is anyone else doing
+ * this?" and "who else is around?", and rolling them together answers the
  * first one flatteringly.
  */
 function neighbourSentence(items, peers, last) {

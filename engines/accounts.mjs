@@ -2,7 +2,7 @@
 // A name and a password, for the people who sit down at a screen.
 //
 // This does NOT replace device enrolment and is not meant to. A phone at a
-// creek should be enrolled with a code handed over in a room — the argument for
+// creek should be enrolled with a code handed over in a room, the argument for
 // that is in core/schema.sql and it has not changed. What device enrolment
 // could not do is tell two coordinators apart: every override, every closed
 // gate and every answered need was attributed to a free-text name somebody
@@ -47,7 +47,7 @@ function hmacKey() {
 const hashToken = (t) => createHmac('sha256', hmacKey()).update(String(t)).digest('hex');
 
 /**
- * scrypt, from node's own crypto — no dependency, and deliberately slow.
+ * scrypt, from node's own crypto, no dependency, and deliberately slow.
  *
  * The parameters are stored WITH the hash rather than as constants in this
  * file. Raising the cost later is then a change that applies to new passwords
@@ -84,7 +84,7 @@ const normalise = (u) => String(u ?? '').trim().toLowerCase();
  * How many passwords this refuses, and why it is not more.
  *
  * Long enough that it is not guessed; nothing else. No character classes, no
- * forced rotation — both are documented to push people towards `Spring2026!`
+ * forced rotation, both are documented to push people towards `Spring2026!`
  * and a sticky note, and a commons whose steward keeps their password on the
  * monitor is worse off than one with a long plain passphrase.
  */
@@ -114,7 +114,7 @@ export function anyAccounts(chapterId) {
  * and a website. A commons is a group of people who know each other; somebody
  * who can reach the port is not a member because they filled in a form. Who may
  * call this is decided in ai/access.mjs, where it sits at the keyboard and with
- * coordinators — exactly where inviting a device sits.
+ * coordinators, exactly where inviting a device sits.
  *
  * The one exception is the FIRST account, which nobody can be invited to make
  * because there is nobody to do the inviting. That is allowed only from the
@@ -130,7 +130,7 @@ export function createAccount(chapterId, {
   if (!/^[a-z0-9._-]{2,40}$/.test(u)) {
     return {
       error: 'bad_username',
-      message: 'A username is 2–40 characters: letters, numbers, dot, dash or underscore.',
+      message: 'A username is 2-40 characters: letters, numbers, dot, dash or underscore.',
     };
   }
   const bad = checkPassword(password);
@@ -228,7 +228,7 @@ export function accountForSession(token) {
   return publicAccount(s);
 }
 
-/** Last seen, updated cheaply — the same courtesy touchDevice does. */
+/** Last seen, updated cheaply, the same courtesy touchDevice does. */
 export function touchSession(token) {
   if (!token) return;
   run(`UPDATE sessions SET last_seen=datetime('now') WHERE token_hash=?`, hashToken(token));
@@ -252,7 +252,7 @@ export function signOutEverywhere(accountId) {
  * Change a password.
  *
  * Changing your OWN needs the current one. Setting somebody ELSE's is a
- * different act — it is a steward helping a person who is locked out, it does
+ * different act, it is a steward helping a person who is locked out, it does
  * not need their old password, and it forces a change at next sign-in so the
  * steward does not keep a password that is not theirs. The caller says which
  * this is; ai/access.mjs says who may do the second.
@@ -296,7 +296,7 @@ export function setRole(accountId, role) {
     if (!others) {
       return {
         error: 'last_steward',
-        message: 'That is the only steward. Make somebody else a steward first — a commons with ' +
+        message: 'That is the only steward. Make somebody else a steward first, a commons with ' +
                  'nobody who can act for it is one laptop away from being nobody\'s.',
       };
     }
@@ -306,7 +306,7 @@ export function setRole(accountId, role) {
 }
 
 /**
- * Suspend or restore. There is no delete — the same rule as people, devices and
+ * Suspend or restore. There is no delete, the same rule as people, devices and
  * media: an account is the author of what it did.
  */
 export function setStatus(accountId, status, { reason = null } = {}) {
@@ -331,7 +331,7 @@ export function setStatus(accountId, status, { reason = null } = {}) {
     note: status === 'active'
       ? 'Active again. They will need to sign in.'
       : 'They can no longer sign in. They are still the author of everything they did, and the ' +
-        'account stays on the list — an account that vanished would take that record with it.',
+        'account stays on the list, an account that vanished would take that record with it.',
     reason: reason ? String(reason).trim() : null,
   };
 }

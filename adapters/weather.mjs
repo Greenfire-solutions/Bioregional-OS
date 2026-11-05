@@ -2,16 +2,16 @@
 // What the sky is actually doing, and what it is about to do.
 //
 // Two upstreams, in this order:
-//   1. NWS / api.weather.gov — US federal, public domain, no key, no account.
+//   1. NWS / api.weather.gov: US federal, public domain, no key, no account.
 //      Also the only one of the two that carries official hazard alerts.
-//   2. Open-Meteo — global coverage, no key, no account (CC-BY-4.0). Used
+//   2. Open-Meteo: global coverage, no key, no account (CC-BY-4.0). Used
 //      wherever the NWS has none, because a bioregional OS that only works
 //      inside one country is not a bioregional OS.
 //
 // Official hazard alerts are NOT parsed here. They belong to adapters/hazards.mjs
 // (Atlas layer 6), which reads the same NWS endpoint; two parsers of one payload
 // is exactly the drift the upstream registry exists to prevent. This file calls
-// that one and passes its answer through — including its answer when the feed
+// that one and passes its answer through, including its answer when the feed
 // could not be reached, because silence is never an all-clear.
 //
 // Neither is stored beyond the shared on-disk cache, and nothing about the
@@ -21,7 +21,7 @@ import { activeAlerts } from './hazards.mjs';
 import { markFetched } from './registry.mjs';
 
 const NWS = 'https://api.weather.gov';
-const r3 = (n) => Number(n).toFixed(3);        // ~110m — enough to forecast, not enough to locate a person
+const r3 = (n) => Number(n).toFixed(3);        // ~110m, enough to forecast, not enough to locate a person
 
 /** Live conditions + today's forecast + any active hazard, or a stated reason why not. */
 export async function weatherNow(lat, lng) {
@@ -78,12 +78,12 @@ async function nws(lat, lng) {
       wind: [period.windSpeed, period.windDirection].filter(Boolean).join(' ') || null,
     },
     next: later && { name: later.name, summary: later.shortForecast, temperature: later.temperature, unit: later.temperatureUnit },
-    // Alerts are the one thing here that can change what a chapter does today —
+    // Alerts are the one thing here that can change what a chapter does today,
     // so an unreachable feed has to read as unreachable, never as "nothing wrong".
     alerts: hazard?.items ?? [],
     alerts_available: hazard?.available === true,
     alerts_note: hazard?.available === true ? null
-      : (hazard?.reason ?? 'could not reach the National Weather Service — this is not an all-clear'),
+      : (hazard?.reason ?? 'could not reach the National Weather Service, this is not an all-clear'),
   };
 }
 

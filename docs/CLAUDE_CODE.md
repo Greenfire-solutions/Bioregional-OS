@@ -10,7 +10,7 @@ cd "path/to/Bioregional-OS"
 claude
 ```
 
-That's it. Claude Code now has every tool in the registry — the same set the app
+That's it. Claude Code now has every tool in the registry, the same set the app
 itself runs on, and the same consent gates. `npm run connect` prints the count. Try:
 
 > what is the state of the commons?
@@ -18,7 +18,7 @@ itself runs on, and the same consent gates. `npm run connect` prints the count. 
 ## Or without a terminal at all
 
 The Assistant panel in the app is the same thing. It runs the Claude Code CLI on
-your own subscription — no API key, nothing in `.env` — and reaches the commons
+your own subscription, no API key, nothing in `.env`, and reaches the commons
 through this same MCP server, so an action taken from the panel meets the
 protocol exactly as one taken from the terminal does. Ask it to file a council
 decision without a Land Seat report and it comes back refused, with the
@@ -32,14 +32,14 @@ Two things about it are worth knowing, because they are deliberate:
 
 **It answers only to this machine.** `npm start -- --share` binds `0.0.0.0` so a
 phone at a gathering can reach `/join`, and there is no authentication anywhere
-on this API — a fine trade for a page where somebody writes down what they
+on this API, a fine trade for a page where somebody writes down what they
 noticed, and a poor one for an endpoint that spawns a process and spends your
 subscription. Requests that did not come from this computer are refused, and
 told why.
 
 **The file and network tools are denied, not merely unused.** The CLI is started
 with `--disallowedTools`, which removes them, and `--mcp-config .mcp.json
---strict-mcp-config`, which loads this project's MCP server and nothing else —
+--strict-mcp-config`, which loads this project's MCP server and nothing else,
 without that second pair it also picks up whatever is in your global MCP config,
 which on one machine meant the panel could read its steward's email. What
 remains is every tool in this registry plus `ToolSearch`, and the panel checks
@@ -47,7 +47,7 @@ that list against an allowlist on every single run: if anything unrecognised
 appears it abandons the exchange and names it, rather than trusting that the
 model will decline to use it.
 
-The number beside the composer is a **usage estimate, not a charge** — on a
+The number beside the composer is a **usage estimate, not a charge**: on a
 subscription no money leaves an account for this; it is what the same work would
 have cost through the API. Today's ground, what moved and what's next are all
 computed on this machine and cost nothing at all.
@@ -62,8 +62,8 @@ computed on this machine and cost nothing at all.
 | "Pull the latest water data" | Ingests live USGS gage readings as Hydrological signals |
 | "What ecoregions are in this bounding box?" | Queries the same layer the 3D map draws |
 | "Find our neighbours" | Searches the Murmurations network and records peers |
-| "Propose a decision about X" | Refuses without a Land Seat report — by design |
-| "What should we do today?" | `whats_next` — every stage checked, ranked by what blocks other work |
+| "Propose a decision about X" | Refuses without a Land Seat report, by design |
+| "What should we do today?" | `whats_next`, every stage checked, ranked by what blocks other work |
 | "Someone brought a need" | Records it, and tracks that they are owed an answer |
 | "Close the land access gate on X" | Refuses without evidence and a named reviewer |
 | "Advance that project to prototype" | Refuses, with the specific blockers, until it is ready |

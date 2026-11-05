@@ -2,7 +2,7 @@
 // Sign in, sign out, and who am I.
 //
 // They are routes rather than tools on purpose. Everything else in this OS goes
-// through the one tool registry, which is right — but a tool answers with JSON
+// through the one tool registry, which is right, but a tool answers with JSON
 // and these have to SET AND CLEAR A COOKIE, which is a thing only a route can
 // do. Putting them in the registry would mean a tool that works over HTTP and
 // silently does nothing over MCP.
@@ -14,10 +14,10 @@ import { readBody } from './api.mjs';
 /**
  * The cookie.
  *
- *   HttpOnly  — script on the page cannot read it, so a bug in the interface
+ *   HttpOnly, script on the page cannot read it, so a bug in the interface
  *               cannot hand somebody's session to anywhere else.
- *   SameSite=Lax — another site cannot make the browser act as this person.
- *   Path=/    — the whole app.
+ *   SameSite=Lax, another site cannot make the browser act as this person.
+ *   Path=/, the whole app.
  *
  * NOT Secure, and that is not an oversight: this OS serves plain HTTP on
  * localhost and on a wifi address. `Secure` would mean the cookie is never
@@ -77,7 +77,7 @@ export async function authRoute(req, res, url, { chapterId, clearance }) {
 
     // The first steward. Nobody can be invited to make this account because
     // there is nobody to do the inviting, so it is the one account that makes
-    // itself — at the keyboard, and only while there are none.
+    // itself, at the keyboard, and only while there are none.
     if (body.first_steward) {
       if (!atKeyboard) {
         return { status: 403, body: {
@@ -113,7 +113,7 @@ export async function authRoute(req, res, url, { chapterId, clearance }) {
     }
     res.setHeader('set-cookie', cookieHeader(out.token, out.expires_in_days));
     // The token is set as a cookie and NOT returned in the body. A token in a
-    // JSON response is a token the page can read, store, and leak — the whole
+    // JSON response is a token the page can read, store, and leak, the whole
     // point of HttpOnly is that nothing on the page ever holds it.
     return { account: out.account, signed_in: true, ...whoAmIAfter(req, out.account) };
   }

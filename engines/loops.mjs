@@ -2,7 +2,7 @@
 // The two questions the data already answers and the interface never asked.
 //
 // Across citizen science, the most consistently identified driver of continued
-// participation is not recognition, not scoring and not reminders — it is
+// participation is not recognition, not scoring and not reminders, it is
 // seeing that what you contributed went somewhere. The matching finding on the
 // other side is that slow or absent reporting of results is a leading cause of
 // people stopping. The chain exists here already:
@@ -22,7 +22,7 @@ import { parseStamp } from '../core/time.mjs';
 import { humanObservedSql } from '../core/provenance.mjs';
 
 /**
- * Mechanic §5.4 — what a person's observations turned into.
+ * Mechanic §5.4, what a person's observations turned into.
  *
  * Read-only, and it never invents a connection: every item names the row that
  * links it, so somebody who disagrees can go and look.
@@ -54,8 +54,8 @@ export function whatMoved(chapterId, { since_days = 90, limit = 12 } = {}) {
       for (const d of all(
         `SELECT id, title, status, method, decided_at, created_at
            FROM decisions WHERE quest_id = ? ORDER BY coalesce(decided_at, created_at)`, q.id)) {
-        // `decided_at ?? created_at` would put two different dates — when the
-        // council decided, and when somebody proposed it — into one field with
+        // `decided_at ?? created_at` would put two different dates, when the
+        // council decided, and when somebody proposed it, into one field with
         // no way to tell them apart. They answer different questions, so the
         // answer says which one it is carrying.
         const decided = d.status === 'decided' && d.decided_at;
@@ -124,7 +124,7 @@ export function whatMoved(chapterId, { since_days = 90, limit = 12 } = {}) {
     total: items.length,
     items: items.slice(0, limit),
     note: items.length ? null
-      : 'Nothing a person observed has led anywhere yet. That is not a failure — it is what ' +
+      : 'Nothing a person observed has led anywhere yet. That is not a failure, it is what ' +
         'the Observe stage looks like before the Prioritize stage catches up.',
   };
 }
@@ -143,7 +143,7 @@ function sentence(s, became) {
   if (decision) {
     // Reads the flag, not the prose. Testing /decided/ against a sentence this
     // same file writes means any rewording silently changes what the card says
-    // happened — the string is for people, the field is for code.
+    // happened, the string is for people, the field is for code.
     return `${who} observation on ${when} is why the council ${
       decision.at_is === 'decided' ? 'decided on' : 'is meeting about'} ${decision.title}.`;
   }
@@ -151,7 +151,7 @@ function sentence(s, became) {
 }
 
 /**
- * Mechanic §5.5 — the intake promise, kept or not.
+ * Mechanic §5.5, the intake promise, kept or not.
  *
  * The protocol says a person must be able to submit a need, receive a response,
  * and appeal. This measures the middle one. A visible promise kept is why
@@ -187,11 +187,11 @@ export function intakePromise(chapterId) {
       : null,
     rule: 'A person must be able to submit a need, receive a response, and appeal.',
     sentence: rows.length === 0
-      ? 'Nobody has brought a need yet. The Listen tab is the front door — it is worth telling people it exists.'
+      ? 'Nobody has brought a need yet. The Listen tab is the front door, it is worth telling people it exists.'
       : waiting.length === 0
         ? `${rows.length} need${rows.length === 1 ? '' : 's'} brought. All of them answered.`
         : `${rows.length} brought, ${answered.length} answered. ` +
-          `${waiting.length} still waiting — the longest for ${longestWait} day${longestWait === 1 ? '' : 's'}.`,
+          `${waiting.length} still waiting, the longest for ${longestWait} day${longestWait === 1 ? '' : 's'}.`,
   };
 }
 

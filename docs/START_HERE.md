@@ -7,7 +7,7 @@ and stop when it works.
 
 **On a Mac:** double-click the **BioRegional OS** icon at the top of the folder.
 That is the whole thing. It sets itself up the first time, then opens your
-browser — and if it is already running, clicking it just opens the browser again.
+browser, and if it is already running, clicking it just opens the browser again.
 
 If a warning says the app is from an unidentified developer: right-click it,
 choose **Open**, then **Open** again. macOS only asks once.
@@ -45,17 +45,17 @@ In the terminal:
 | Start it again later | `npm run os -- --open` |
 
 **You cannot break it by trying commands.** Your work lives in
-`data/commons.db`. To take a copy of it, run `npm run backup` — that writes one
+`data/commons.db`. To take a copy of it, run `npm run backup`, that writes one
 complete file you can put on a memory stick. Copying `commons.db` by hand is not
 enough and will quietly give you an out-of-date commons.
 
 ## Letting other people in
 
-Run `npm run connect`. It prints every option, including a **QR code** — someone
+Run `npm run connect`. It prints every option, including a **QR code**: someone
 points their phone camera at it and the commons opens in their browser. No app,
 no account, no login.
 
-If somebody should be able to *write* — not just bring a need — open
+If somebody should be able to *write*, not just bring a need, open
 **Together → Devices** and press **Add a device**. They type the code on their
 own laptop or phone and that browser is enrolled. No account, no password.
 
@@ -72,7 +72,7 @@ first setup, an API key, a server, or any cloud service.
 
 **Optional:** an Anthropic API key, if you want the assistant to answer inside the
 app. You can skip this entirely and talk to your commons through Claude Code
-instead — see [CLAUDE_CODE.md](CLAUDE_CODE.md).
+instead, see [CLAUDE_CODE.md](CLAUDE_CODE.md).
 
 ## If something goes wrong
 

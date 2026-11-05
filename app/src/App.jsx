@@ -29,7 +29,7 @@ import { useHere, startHere } from './here.js';
 
 // ── The shape of the thing ────────────────────────────────────────────────
 // Thirteen flat tabs were thirteen decisions to make before doing anything.
-// They are five, and the five are not tidiness — they are the protocol's own
+// They are five, and the five are not tidiness, they are the protocol's own
 // structure. Listen → Signals → Quests → Measure IS the spine of the twelve
 // stage loop: a need, an observation, a project, the evidence. Council,
 // Gatherings and Exchange are three of the seven engines and all of them are
@@ -44,7 +44,7 @@ import { useHere, startHere } from './here.js';
 // prose is left to a person.
 const GROUPS = [
   // The board first, and the protocol's own stages behind it. Fifteen tabs
-  // named after the twelve-stage loop is the system's filing cabinet — correct,
+  // named after the twelve-stage loop is the system's filing cabinet, correct,
   // complete, and navigable only by somebody who already knows the loop. The
   // cabinet is still here; it is no longer what a person lands on.
   { id: 'home', label: 'The commons', icon: Home, sub: [
@@ -63,12 +63,12 @@ const GROUPS = [
     // Between the project and the measurement, which is where it happens. A
     // project is a paragraph with gates on it until somebody writes down what
     // is actually being done on Saturday.
-    // "Tasks", not "The work" — the GROUP is already called The work, so a
+    // "Tasks", not "The work", the GROUP is already called The work, so a
     // sub-tab of the same name is invisible: clicking the group lands on Listen
     // (the first leaf), nothing looks new, and the only clue is a second pill
     // with the identical label. Reported as "I don't see any of it" by the
     // first person to open it, which is exactly what that looks like from
-    // outside. The siblings are Listen, Signals, Quests, Measure — one noun
+    // outside. The siblings are Listen, Signals, Quests, Measure, one noun
     // each, and this is one of them.
     { id: 'work',    label: 'Tasks',   icon: ListChecks, add: 'add_task',  addLabel: 'Add a task' },
     { id: 'measure', label: 'Measure', icon: Ruler, add: 'add_indicator', addLabel: 'Add an indicator' },
@@ -154,7 +154,7 @@ export default function App() {
       safe('me', setMe),
       callTool('list_indicators', {}).then((r) => Array.isArray(r) && setIndicators(r)).catch(() => {}),
     ]);
-      // Every reload is a new version, so anything keyed on it refetches —
+      // Every reload is a new version, so anything keyed on it refetches,
     // the map especially, whose contents change without any row count
     // changing when a gate closes.
     setVersion((v) => v + 1);
@@ -178,7 +178,7 @@ export default function App() {
   }
   function focusOn(coords) { setFocus(coords); setTab('atlas'); }
 
-  // The first sixty seconds. With no chapter at all this replaces everything —
+  // The first sixty seconds. With no chapter at all this replaces everything,
   // there is nothing else to show, and the alternative is somebody's first
   // screen being a commons in Austin that is not theirs.
   const noChapter = status && (status.chapters?.length ?? 0) === 0;
@@ -186,7 +186,7 @@ export default function App() {
   // What matters is what you are LOOKING AT, not how many chapters exist.
   // This was gated on the example being the only chapter, which breaks on the
   // most ordinary path there is: somebody founds their own commons, then clicks
-  // back to the example to see how a worked one should look — second chapter
+  // back to the example to see how a worked one should look, second chapter
   // exists, banner gone, and they are reading an invented report about an
   // unpermitted discharge with nothing on screen saying so.
   const viewingChapter = status?.default_chapter ?? status?.chapters?.[0]?.id ?? null;
@@ -291,7 +291,7 @@ export default function App() {
               );
             })}
             {/* The primary action used to live here, pushed to the far right of
-                the tab strip as a small outlined pill — styled as navigation,
+                the tab strip as a small outlined pill, styled as navigation,
                 outside the column the eye reads, at the size of a label.
                 "Propose to council" is the whole point of the council page and
                 it looked like a tab nobody had selected. It is now beside each
@@ -367,8 +367,8 @@ export default function App() {
                          setMoving(null);
                          if (!m) return;
                          // Straight through the same tool a form would have
-                         // called, so the engine's rules — both halves of a
-                         // coordinate, or neither — apply to a press exactly as
+                         // called, so the engine's rules, both halves of a
+                         // coordinate, or neither, apply to a press exactly as
                          // they apply to typing.
                          const out = await callTool(m.action.tool, { ...m.action.input, ...at });
                          if (out?.error) { setForm({ tool: m.action.tool, prefill: { ...m.action.input, ...at } }); return; }
@@ -376,12 +376,12 @@ export default function App() {
                          load();
                        }}
                        onSelect={(s) => {
-                         // An ecoregion has no single point to fly to — it is an
-                         // area — so clicking one opens what is known about it
+                         // An ecoregion has no single point to fly to, it is an
+                         // area, so clicking one opens what is known about it
                          // instead of moving the camera.
                          // One panel at a time, and each closes the other. A
                          // double-click both zooms and picks, so it was opening
-                         // an ecoregion AND a feature at once — two answers to a
+                         // an ecoregion AND a feature at once, two answers to a
                          // question nobody asked twice.
                          if (s.type === 'ecoregion') { setPicked(null); return setRegion(s.item); }
                          // A thing the commons put on the map opens beside it
@@ -392,7 +392,7 @@ export default function App() {
                        }} />
               </div>
               {region && (
-                // Beside the map, not floating over it — the same column the
+                // Beside the map, not floating over it, the same column the
                 // feature panel uses. It used to be absolutely positioned on
                 // top, so the two panel types behaved differently and the
                 // ecoregion one covered the ground it was describing.

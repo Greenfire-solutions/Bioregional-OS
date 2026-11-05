@@ -1,7 +1,7 @@
 # Communications
 
 How a chapter reaches its people, and how its people reach it. Researched
-2026-09-12 across four parallel streams — message transport under bad
+2026-09-12 across four parallel streams, message transport under bad
 connectivity, voice, identity and sign-in, and the field record of what
 actually survives in community deployments, each stream citing its own sources
 inline.
@@ -25,7 +25,7 @@ A neighbour can text or speak a need to the commons and get an acknowledgement.
 The commons never sends anything unasked, never hosts a conversation, and never
 becomes a place people have to check.
 
-This narrows the rule already in `engines/dispatch.mjs` — *it sends nothing* —
+This narrows the rule already in `engines/dispatch.mjs`, *it sends nothing*,
 to what that rule was actually defending. The amended form:
 
 > **The OS never broadcasts. It may answer.**
@@ -61,12 +61,12 @@ The field stream states its own test plainly, while arguing that CoMapeo is not
 a precedent for chat:
 
 > Peer-to-peer observation sync has no moderation surface, no edit/delete
-> problem, no identity-recovery problem and no critical-mass problem — a single
+> problem, no identity-recovery problem and no critical-mass problem, a single
 > person's observations are still valuable. Messages have all four.
 
 **Inbound-only intake passes that test on all four counts.** One neighbour
 texting one need to the commons is not a conversation. It has no many-to-many
-surface, no feed, and it is valuable when exactly one person uses it — the same
+surface, no feed, and it is valuable when exactly one person uses it, the same
 shape as the `/join` QR page that already exists, with SMS as the transport
 instead of a camera. It is the Listen stage, reached by a different door.
 
@@ -80,7 +80,7 @@ One thing does not dissolve, and it should not be pretended away:
 **A phone number costs money every month.** Roughly $11.50/month for a
 60-member chapter through a cloud aggregator, plus about $19 once and thirty
 minutes of A2P registration forms. The field stream's sustainability argument is
-that this project's entire advantage is having **no recurring cost at all** —
+that this project's entire advantage is having **no recurring cost at all**,
 that ODK and KoboToolbox survived eleven years by *selling* hosting, and that
 every managed service re-creates the thing that killed the dead projects. A
 volunteer stops paying a card and messages fail silently.
@@ -97,11 +97,11 @@ The companion strategy is right and is already well argued in
 
 **It is structurally one-way.** The card goes out; nothing comes back.
 `intakePromise()` measures how long a neighbour waits to be heard, and in pure
-companion mode the OS can never close that loop itself — a steward has to notice
+companion mode the OS can never close that loop itself, a steward has to notice
 a reply in WhatsApp and retype it.
 
 **The group chat only reaches people in the group chat.** GSMA (September 2025)
-puts 3.1 billion people — 38% of the world — inside mobile coverage and not
+puts 3.1 billion people, 38% of the world, inside mobile coverage and not
 using mobile internet, against roughly 300 million outside coverage altogether.
 The *usage* gap is two orders of magnitude larger than the *coverage* gap. The
 elderly neighbour with a feature phone, the person who left the chat because it
@@ -109,10 +109,10 @@ was too noisy, and everyone never added are precisely who the commons claims to
 serve, and SMS is the one interface all of them already operate.
 
 **The corollary, which is the bigger trap:** never build a second object that
-has to be kept current in both the app and the chat — a roster, a task list, an
+has to be kept current in both the app and the chat, a roster, a task list, an
 events calendar. A study of 81 community health workers in Bihar found WhatsApp
 had become the de facto backbone *alongside* the official app, with the cost
-named exactly: *"We have to maintain both app entries and WhatsApp reporting —
+named exactly: *"We have to maintain both app entries and WhatsApp reporting,
 double work."* Across 29 UK mutual aid groups and 32 organiser interviews,
 **zero** adopted any purpose-built tool.
 
@@ -120,19 +120,19 @@ double work."* Across 29 UK mutual aid groups and 32 organiser interviews,
 
 ## 4. Tiers, and what triggers each
 
-**Tier 0 — paper, the printed card, the projected QR.** Always on, no cost, no
+**Tier 0, paper, the printed card, the projected QR.** Always on, no cost, no
 licence, no maintenance. Already built. This is the floor, not the fallback.
 Never make a higher tier a precondition for it.
 
-**Tier 1 — inbound SMS.** Trigger: the chapter has members who do not come to
+**Tier 1, inbound SMS.** Trigger: the chapter has members who do not come to
 gatherings and do not read the group chat, *and* somebody has agreed to own the
 bill. Not before both.
 
-**Tier 2 — LoRa radio.** Trigger: **no cellular coverage at all**. This is the
-coverage gap — 4% of the world. Entering Tier 2 to solve a Tier 1 problem is the
+**Tier 2, LoRa radio.** Trigger: **no cellular coverage at all**. This is the
+coverage gap, 4% of the world. Entering Tier 2 to solve a Tier 1 problem is the
 most common mistake in this space.
 
-**Tier 3 — device-to-device sync.** Trigger: a second steward's laptop exists.
+**Tier 3, device-to-device sync.** Trigger: a second steward's laptop exists.
 This is not a member channel at all; see §7.
 
 ---
@@ -152,14 +152,14 @@ The evidence is consistent and one-directional:
   seven-month field deployment touchtone beat voice every single week, 100% of
   users preferred it, and *"we found no evidence of a decrease"* in input errors
   over time. The recognizer was 94% accurate. People still did not want it.
-- **Every open voice channel in the literature is held up by paid moderators** —
-  10–15 full-time staff at CGNet Swara and Gram Vaani; 400–500 messages a day
+- **Every open voice channel in the literature is held up by paid moderators**,
+  10-15 full-time staff at CGNet Swara and Gram Vaani; 400-500 messages a day
   each listened to by a person at Mobile Vaani. Avaaj Otalo's forum collapsed
   the month the NGO stopped answering, and users did not self-organise to fill
   the gap. A one-laptop, one-steward system has no moderation capacity.
-- **Expect tens of recordings, not thousands.** The closest analogue that exists
-  — a shared communal tablet used for oral governance in Mankosi, South Africa,
-  over ten months — produced about 35 meeting recordings. One custodian,
+- **Expect tens of recordings, not thousands.** The closest analogue that exists,
+  a shared communal tablet used for oral governance in Mankosi, South Africa,
+  over ten months, produced about 35 meeting recordings. One custodian,
   curating.
 
 ### What the closest analogue got wrong, which you will hit
@@ -169,7 +169,7 @@ watershed group meets on riverbanks. Half the files had the wrong date because
 the battery drained and the clock reset. And a UI default caused a genuine
 social crisis: profiles were listed **alphabetically**, husbands often renamed
 wives with names starting "Nom", so the women clustered visibly and the Headman
-was reproached — 70% of accounts were deleted. **Sort nothing alphabetically.**
+was reproached, 70% of accounts were deleted. **Sort nothing alphabetically.**
 
 Voice also reproduces existing exclusion rather than correcting it: 88% of
 recorded voices in Mankosi were male, against roughly 40% female meeting
@@ -178,14 +178,14 @@ attendance. Sangeet Swara ran 94% male; Baang saw 6% female participation.
 ### The disqualifying finding for automatic transcription
 
 Roughly **1% of Whisper transcriptions contain entire hallucinated phrases that
-exist nowhere in the audio, and 38% of those include explicit harms** —
+exist nowhere in the audio, and 38% of those include explicit harms**,
 fabricated violence, invented associations, implied authority. The trigger is
 long pauses and disfluent speech: an elder speaking slowly, somebody searching
 for a word, a deliberate silence.
 
 So: **audio is the record, text is only an index.** Any machine transcript is
 `transcript_draft`, never `transcript`, and it is never published unreviewed.
-Refuse to transcribe languages outside the well-served tier entirely — a
+Refuse to transcribe languages outside the well-served tier entirely, a
 60%-error output is worse than none because it *looks* like a transcript.
 
 Indigenous-language ASR essentially does not exist in open form. Māori, Sámi,
@@ -200,7 +200,7 @@ points at on its own terms. Never bundle one.**
 ### The blocker to know before designing capture
 
 `getUserMedia` requires a secure context. Over `http://192.168.x.x`,
-`navigator.mediaDevices` is **undefined** — a TypeError, not a permission
+`navigator.mediaDevices` is **undefined**: a TypeError, not a permission
 prompt. **Today's `/join` page physically cannot record audio.** The cheap way
 round is `<input type="file" accept="audio/*" capture>`, which is not
 secure-context gated and hands off to the phone's own recorder that people
@@ -215,15 +215,15 @@ credential-free `people` table so contributions can be attributed, credited and
 withdrawn without anyone ever signing in.
 
 The field evidence is blunt. Asked whether to create 2,000 accounts for
-enumerators, KoboToolbox's community answered no — give each person a random
+enumerators, KoboToolbox's community answered no, give each person a random
 identifier they type into the form. A deployment that took the credential path
 reported enumerators using the shared login to browse the whole database. **The
 failure mode of credentials here is account-wide exposure, not impersonation.**
 
 LiteFarm ships a `Worker Without Account` role: a manager creates a person with
 just a first name and no invite step, because there is nobody to click a link.
-ODK's QR enrolment is passwordless by design but binds nothing to a device — one
-code scans into unlimited phones — so their answer is forensic rather than
+ODK's QR enrolment is passwordless by design but binds nothing to a device, one
+code scans into unlimited phones, so their answer is forensic rather than
 preventive: every submission carries a device id. And in both ODK and CoMapeo,
 **revocation is a status change, never a deletion**: a revoked person stays
 visible as the submitter of everything they filed, because replicated data
@@ -232,7 +232,7 @@ cannot be recalled.
 Two guards worth taking directly:
 
 - A person record can never be *promoted* into credential-holding by a role
-  change — only by an explicit upgrade, which **resets consent**. Prior consent
+  change, only by an explicit upgrade, which **resets consent**. Prior consent
   does not transfer to a new identity.
 - Never make contact the primary key. LiteFarm had to mint synthetic
   `<uuid>@pseudo.com` addresses purely because email was a NOT NULL unique
@@ -287,14 +287,14 @@ of one chapter being merged as one chapter.
 | Broadcast messaging from the OS | A human posting under their own name is a different social object from a bot on a schedule |
 | Any second object kept current in both app and chat | *"Double work"* is the documented quote that kills adoption |
 | Voice navigation, voice menus, an IVR phone tree | DTMF beats speech in every field deployment; needs an always-on public endpoint; dies four weeks after the toll-free subsidy stops |
-| An open voice inbox or voice forum | Needs 10–15 full-time moderators at the scale where it works |
+| An open voice inbox or voice forum | Needs 10-15 full-time moderators at the scale where it works |
 | Auto-published machine transcripts | ~1% wholly fabricated passages, 38% of those carrying explicit harm, triggered by slow speech |
 | Ratings, ranking or voting on contributions | Flattening is what drives knowledge holders away |
 | Alphabetical ordering of people, anywhere | It caused a real social crisis in the one comparable deployment |
 | Mesh as the community channel | 233-byte payloads; default preset changes silently mute nodes bought months apart |
 | Per-person accounts and passwords | Shared devices make this a safety property, not a convenience |
 | Any required cloud dependency | Including a TK Label hub; no recurring cost is the sustainability plan |
-| Audio as SQLite BLOBs | Files on disk, content-addressed — it is also the sovereignty answer |
+| Audio as SQLite BLOBs | Files on disk, content-addressed, it is also the sovereignty answer |
 | Federating person profiles | The index is unauthenticated and world-readable; erasure is one-way |
 
 ---
@@ -311,7 +311,7 @@ What the governing frameworks require, stated as constraints:
    protocol cannot be inserted. Not a nullable `is_public`.
 2. **The ladder is not enough.** `public / members / council / restricted /
    sacred` is a rank, and TK Labels include Seasonal, Women General, Men
-   Restricted — categories a rank cannot express.
+   Restricted, categories a rank cannot express.
 3. **Consent records a process, not a signature.** Which language, whether an
    interpreter was present, whether comprehension was checked. Studies of
    low-literacy consent found comprehension failures came *not from literacy but
@@ -322,7 +322,7 @@ What the governing frameworks require, stated as constraints:
    downgrades an item to private rather than continuing to publish.
 5. **Segment-level, not item-level.** The unit is a time range. An item-level
    model cannot express "everything except minutes 14 to 19."
-6. **Withdrawal must execute, not advise** — master audio, every derived
+6. **Withdrawal must execute, not advise**: master audio, every derived
    encoding, the draft transcript, extracted quotes, exports, and any published
    profile. **Note the live gap:** `scripts/erase.mjs` covers `commons.db`, its
    log and the backups directory. Voice files would be the first community data
@@ -333,7 +333,7 @@ What the governing frameworks require, stated as constraints:
 The anti-pattern to avoid by name: StoryCorps' general release transfers all
 rights worldwide, irrevocably, and makes the narrator indemnify the
 organisation. The most famous community-voice project in the country uses a
-total assignment. Copy exactly one thing from it — the narrator keeps a copy of
+total assignment. Copy exactly one thing from it, the narrator keeps a copy of
 their own recording.
 
 ---
@@ -341,16 +341,16 @@ their own recording.
 ## 10. What is genuinely uncertain
 
 - **The two streams disagreed and I resolved it by argument, not evidence.**
-  §2's reading — that inbound intake is not messaging — is mine, not a finding.
+  §2's reading, that inbound intake is not messaging, is mine, not a finding.
   If it is wrong, the cost is a monthly bill and a channel nobody uses.
 - **The paid-steward question is contested.** One flagship community network
   argues part-time paid staff become the most cost-effective answer at scale;
   another ran five successful years paying nobody and remains donor-dependent.
-  At 10–30 people, design around a 20-minute weekly cap instead.
+  At 10-30 people, design around a 20-minute weekly cap instead.
 - **There is no published literature on SMS-based watershed or environmental
   monitoring at any scale.** This would be novel. Instrument it, do not assume.
 - **Almost the entire voice evidence base is rural India, Pakistan and
-  sub-Saharan Africa, 2009–2018.** The literacy finding transfers; the
+  sub-Saharan Africa, 2009-2018.** The literacy finding transfers; the
   device-access finding does not. No field study of community voice archiving in
   a North American watershed group appears to exist.
 - **The participatory-voice movement is not ascendant.** Gram Vaani went from
@@ -358,4 +358,4 @@ their own recording.
   forex blog. The field has shifted to WhatsApp and LLMs.
 - **Whether the twelve-stage loop is right at all** is unevidenced in both
   directions. Nothing says it is wrong; nothing supports it. What makes it safe
-  to be wrong is a recorded override — see the note in `ARCHITECTURE.md`.
+  to be wrong is a recorded override, see the note in `ARCHITECTURE.md`.

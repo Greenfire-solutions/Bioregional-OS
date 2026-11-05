@@ -4,7 +4,7 @@
 // The success metric for a tool like this is not attention. There is no company
 // here to optimise, nobody is selling anything, and DAU would measure the one
 // thing §6 refuses to chase. So the measures are about whether the LOOP is
-// turning — every one of them computable locally from commons.db, and every one
+// turning, every one of them computable locally from commons.db, and every one
 // of them a question somebody would actually ask out loud:
 //
 //   Are needs being heard?            median days from received to answered
@@ -28,7 +28,7 @@
 //
 //   THE NUMBER AND THE JUDGEMENT ARE SEPARATE. Each measure carries its own
 //   `healthy` flag and the threshold that produced it, so a chapter that
-//   disagrees can argue with the threshold instead of with the arithmetic —
+//   disagrees can argue with the threshold instead of with the arithmetic,
 //   the same contract every item in engines/operator.mjs keeps by citing the
 //   protocol rule it came from.
 import { all, one } from '../core/db.mjs';
@@ -69,7 +69,7 @@ export function vitals(chapterId, { days = WINDOW_DAYS } = {}) {
 /** 1. Are needs being heard? */
 function heard(chapterId) {
   // Only needs that were actually answered. Mixing in the ones still waiting,
-  // measured against now, answers a different question — and the mixture moves
+  // measured against now, answers a different question, and the mixture moves
   // in the wrong direction when an old need is finally closed.
   const waits = all(
     `SELECT CAST(julianday(responded_at) - julianday(created_at) AS REAL) d
@@ -84,7 +84,7 @@ function heard(chapterId) {
   // responded_at was added after chapters already existed, so every need
   // answered before the migration has an answer and no date for it. Reading
   // that as "no needs" is a confident, wrong, and flattering-in-reverse
-  // sentence — it tells a commons that has been answering people for a year
+  // sentence, it tells a commons that has been answering people for a year
   // that nobody has ever come to the door. Absence of a timestamp is not
   // absence of the thing it timed.
   const brought = one('SELECT COUNT(*) n FROM intake WHERE chapter_id = ?', chapterId)?.n ?? 0;
@@ -101,7 +101,7 @@ function heard(chapterId) {
     // The protocol's own threshold, so the judgement is the commons' and not
     // this file's.
     healthy: m === null ? null : m <= 14,
-    threshold: '14 days — the protocol\'s own flag on an unanswered need.',
+    threshold: '14 days, the protocol\'s own flag on an unanswered need.',
     detail: waiting ? `${waiting} still waiting.` : null,
     sentence: m !== null
       ? `Half of all needs are answered within ${fmt(m)} day${m === 1 ? '' : 's'}.`
@@ -146,7 +146,7 @@ function leadsAnywhere(chapterId) {
 /** 3. Does monitoring change decisions? */
 function changesDecisions(chapterId) {
   // An indicator with a decision trigger is a promise that a reading can force
-  // a change. The measure is whether any reading ever has — a trigger that has
+  // a change. The measure is whether any reading ever has, a trigger that has
   // never fired is either a healthy system or a promise nobody kept, and the
   // two look identical from here, so the sentence says so rather than guessing.
   const triggers = all(
@@ -198,7 +198,7 @@ function changesDecisions(chapterId) {
 function spread(chapterId, since, days) {
   // Every column in the schema where a person is named as doing something,
   // within the window. Counted DISTINCT, because the question is how many
-  // shoulders there are — not how much was done, which is the leaderboard
+  // shoulders there are, not how much was done, which is the leaderboard
   // question and is asked nowhere in this project.
   const names = new Set();
   const add = (rows) => rows.forEach((r) => {
@@ -228,10 +228,10 @@ function spread(chapterId, since, days) {
     value: n || null,
     unit: `people named in ${days} days`,
     // §3.8: participation is radically unequal at any size, and that is normal.
-    // The number worth noticing is not a ratio but an absolute floor — below a
+    // The number worth noticing is not a ratio but an absolute floor, below a
     // handful, the commons is one person's illness away from stopping.
     healthy: n ? n >= 5 : null,
-    threshold: 'Five. Not a fairness target — a resilience one. Below it, one person ' +
+    threshold: 'Five. Not a fairness target, a resilience one. Below it, one person ' +
                'falling ill stops the commons.',
     detail: null,
     sentence: !n
@@ -254,7 +254,7 @@ function care(chapterId) {
     value: mean === null ? null : Number(mean.toFixed(1)),
     unit: 'of four provisions, mean across gatherings',
     healthy: mean === null ? null : mean >= 2,
-    threshold: 'Two of four — the same line the operator already draws on a single gathering.',
+    threshold: 'Two of four, the same line the operator already draws on a single gathering.',
     detail: rows.length ? `Across ${rows.length} gathering${rows.length === 1 ? '' : 's'}.` : null,
     sentence: mean === null
       ? 'No gatherings yet, so there is nothing to say about how they are provisioned.'
@@ -326,8 +326,8 @@ function vitalsSentence(measures, known, unhealthy) {
   }
   const first = unhealthy[0];
   return unhealthy.length === 1
-    ? `Six of the seven are fine. The one that is not: ${lower(first.question)} — ${first.sentence}`
-    : `${unhealthy.length} of the seven need attention. The first: ${lower(first.question)} — ${first.sentence}`;
+    ? `Six of the seven are fine. The one that is not: ${lower(first.question)}, ${first.sentence}`
+    : `${unhealthy.length} of the seven need attention. The first: ${lower(first.question)}, ${first.sentence}`;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // ── Who is asking, and what they may therefore see ────────────────────────
-// The sensitivity ladder — public / members / council / restricted / sacred —
+// The sensitivity ladder, public / members / council / restricted / sacred,
 // was enforced correctly everywhere EXCEPT at the point where the level was
 // chosen. Three routes in api.mjs read it from the query string:
 //
@@ -14,7 +14,7 @@
 //
 // A clearance is a fact about the CONNECTION, never a field in the request.
 // Nothing a client sends can raise it, because everything a client sends is
-// under the client's control — which is the whole of the lesson.
+// under the client's control, which is the whole of the lesson.
 //
 // The line drawn here is the only one this system can actually defend without
 // accounts: the machine the commons lives on is the steward's, and being sat
@@ -52,7 +52,7 @@ export const STRANGER = 'public';
  * the connection carrying them here is plain HTTP on a shared wifi. An enrolled
  * device raises a stranger to a member or a coordinator; it does not turn a
  * gathering's wifi into a room where sacred material is read. If the council
- * needs that, they use the machine — which is a sentence somebody can act on,
+ * needs that, they use the machine, which is a sentence somebody can act on,
  * unlike a promise about transport security this app cannot keep.
  */
 export const NETWORK_CEILING = 'council';
@@ -64,14 +64,14 @@ const lower = (a, b) => (LADDER.indexOf(a) <= LADDER.indexOf(b) ? a : b);
  * Strip from an answer every object the connection may not see.
  *
  * The export routes already filter by clearance inside their adapters. Every
- * other answer — a tool result, a list route — was handed back whole, so a
+ * other answer, a tool result, a list route, was handed back whole, so a
  * member's device on the wifi calling `list_signals` received a sacred
  * observation alongside the public ones, and NETWORK_CEILING above was a
  * promise the tool route did not keep.
  *
  * This walks the answer once and removes any object whose id belongs to a RID
  * above the clearance, counting what it removed into `withheld` so protection
- * is visible rather than silent — the same rule the exports follow. Applied at
+ * is visible rather than silent, the same rule the exports follow. Applied at
  * one place (server/routes/api.mjs) to everything that leaves over HTTP, so a
  * new tool or route is covered by default.
  *
@@ -81,7 +81,7 @@ const lower = (a, b) => (LADDER.indexOf(a) <= LADDER.indexOf(b) ? a : b);
  * withhold(), with the one definition of where hidden ids come from.
  *
  * The route built these deps inline, which was fine while the route was the
- * only caller. runTool has to withhold too — see the ordering note there — and
+ * only caller. runTool has to withhold too, see the ordering note there, and
  * a second inline copy of this query is how two callers come to disagree about
  * what is hidden.
  */
@@ -154,7 +154,7 @@ export function isLoopback(address) {
   if (!address) return false;                 // no socket means no proof
   const a = String(address).trim().toLowerCase();
   if (LOOPBACK.has(a)) return true;
-  // 127.0.0.0/8 is all loopback, not just .1 — and ::ffff:-mapped forms of it.
+  // 127.0.0.0/8 is all loopback, not just .1, and ::ffff:-mapped forms of it.
   return /^(::ffff:)?127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(a);
 }
 
@@ -166,7 +166,7 @@ export function isLoopback(address) {
  * "the level they asked for", because there is no such thing.
  *
  * Proxy headers (`x-forwarded-for` and friends) are ignored on purpose. They
- * are set by whoever is in front, and nothing is in front of this — a local
+ * are set by whoever is in front, and nothing is in front of this, a local
  * server with no reverse proxy that trusts a forwarding header is a server that
  * lets a stranger claim to be the steward by typing a header name.
  */
@@ -180,7 +180,7 @@ export function clearanceFor(req) {
   // or the reverse.
   //
   // SIGNING IN NARROWS, IT NEVER WIDENS. At the keyboard the clearance is
-  // already everything — being sat at the machine the commons lives on is the
+  // already everything, being sat at the machine the commons lives on is the
   // credential this system can actually defend. So signing in there as a member
   // LOWERS what this connection may do, to what that member may do, which is
   // the honest reading of somebody saying who they are. It cannot raise a
@@ -206,7 +206,7 @@ export function clearanceFor(req) {
   if (atKeyboard) return FULL;
 
   // An enrolled device, and the distinction from the bug at the top of this
-  // file matters. `?clearance=sacred` was a CLAIM — anybody could type it. A
+  // file matters. `?clearance=sacred` was a CLAIM, anybody could type it. A
   // device token is a SECRET somebody was handed in a room by a steward who
   // decided to hand it over, and holding it is the proof. That is the ordinary
   // difference between asserting a level and having been given one.

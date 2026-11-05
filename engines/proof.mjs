@@ -2,7 +2,7 @@
 // The one place bytes enter this commons.
 //
 // Everything here is local. A photograph taken on a phone at a creek goes into
-// data/media on the steward's own machine and nowhere else — no bucket, no
+// data/media on the steward's own machine and nowhere else, no bucket, no
 // signed URL, no third party holding the evidence behind somebody else's
 // account. That is the same promise the rest of the OS makes, and evidence is
 // the worst possible place to stop keeping it.
@@ -31,7 +31,7 @@ export function mediaDir() {
  * Checked on the RESOLVED path, not by testing the string for "..". A prefix
  * check on the raw name misses percent-encodings, symlinks and "mediaX/" style
  * near misses, and the cost of getting it wrong is that a URL parameter reads
- * any file this process can — which, on the steward's own laptop, is all of them.
+ * any file this process can, which, on the steward's own laptop, is all of them.
  */
 export function resolveStored(name) {
   if (!name || !STORED_NAME.test(String(name))) return null;
@@ -73,7 +73,7 @@ export function storeMedia(chapterId, {
     return {
       error: 'too_large',
       message: `That file is ${(buffer.length / 1048576).toFixed(0)} MB. The limit is ` +
-               `${MAX_BYTES / 1048576} MB — this is a field-evidence store on somebody's laptop.`,
+               `${MAX_BYTES / 1048576} MB, this is a field-evidence store on somebody's laptop.`,
     };
   }
 
@@ -91,7 +91,7 @@ export function storeMedia(chapterId, {
     if (!consent_id) {
       return {
         error: 'consent_required',
-        message: 'A photograph of identifiable people needs a consent record — who agreed, to what, ' +
+        message: 'A photograph of identifiable people needs a consent record, who agreed, to what, ' +
                  'and whether they may withdraw it. That register already exists in this commons.',
         action: { tool: 'record_consent', input: {} },
       };
@@ -116,7 +116,7 @@ export function storeMedia(chapterId, {
   if (!file) return { error: 'bad_name', message: 'That file could not be given a safe name.' };
   writeFileSync(file, buffer);
 
-  // Hash what was WRITTEN, by reading it back — not the buffer that was handed
+  // Hash what was WRITTEN, by reading it back, not the buffer that was handed
   // in. The claim a proof makes is about the bytes this commons is holding, and
   // hashing the input would certify a file that a full disk truncated. When the
   // read back fails, that is recorded as such rather than left to look like
@@ -196,7 +196,7 @@ export function withdrawMedia(id, { reason = null } = {}) {
  * Submit a before-and-after pair against a task.
  *
  * A PAIR, insisted on. Two loose uploads with a shared tag lets one arrive
- * without the other and still read as evidence — and the claim being made is
+ * without the other and still read as evidence, and the claim being made is
  * entirely comparative: this is what it was, this is what it is. One photograph
  * of a clear culvert proves that a culvert is clear, which nobody doubted.
  */
@@ -210,7 +210,7 @@ export function submitProof(taskId, {
       error: 'pair_required',
       message: 'A proof is a pair: the ground before, and the same ground after. ' +
                `${!before_media_id ? 'The before' : 'The after'} is missing.`,
-      note: 'Upload both files first — each upload answers with an id to pass here.',
+      note: 'Upload both files first, each upload answers with an id to pass here.',
     };
   }
   for (const [which, id] of [['before', before_media_id], ['after', after_media_id]]) {
@@ -235,7 +235,7 @@ export function submitProof(taskId, {
 
   // ── The name is required, and this is the reason ───────────────────────
   // `reviewProof` refuses a check signed by the person who submitted the work.
-  // That rule compares against `submitted_by` — so a proof filed WITHOUT a name
+  // That rule compares against `submitted_by`, so a proof filed WITHOUT a name
   // is a proof the rule can never fire on, and the one person it exists to stop
   // is the one person who knows to leave the field blank.
   //
@@ -249,7 +249,7 @@ export function submitProof(taskId, {
   if (!String(submitted_by ?? '').trim()) {
     return {
       error: 'name_required',
-      message: 'Filing evidence needs the name of whoever did the work — not a login, a name. ' +
+      message: 'Filing evidence needs the name of whoever did the work, not a login, a name. ' +
                'It is what makes it possible to say that somebody else checked it.',
     };
   }
@@ -278,7 +278,7 @@ export function submitProof(taskId, {
  * THE ONE RULE: not your own. A check signed by the person who did the work is
  * not a check, and the point of a before-and-after is that a person who was not
  * there can look. Compared on the trimmed name because names are all this
- * system has — there are no accounts here — and a rule that can be walked
+ * system has, there are no accounts here, and a rule that can be walked
  * around by typing a middle initial is still worth having, because the record
  * shows what was typed and the commons can read it.
  */
@@ -299,7 +299,7 @@ export function reviewProof(proofId, { decision, reviewed_by, note = null } = {}
     return {
       error: 'cannot_check_own_work',
       message: `${by} submitted this. The whole purpose of a before-and-after is that somebody who ` +
-               'was not there can look at it — so the person who did the work is not the person who checks it.',
+               'was not there can look at it, so the person who did the work is not the person who checks it.',
     };
   }
   if (decision === 'rejected' && !String(note ?? '').trim()) {
@@ -330,7 +330,7 @@ export function pendingProofs(chapterId) {
     `SELECT p.*, t.title task_title, q.title project_title
        FROM proofs p JOIN tasks t ON t.id=p.task_id JOIN quests q ON q.id=t.quest_id
       -- rowid breaks the tie. created_at is a datetime('now') to the second,
-      -- and a work party files four pairs in the same minute — without this,
+      -- and a work party files four pairs in the same minute, without this,
       -- "the oldest thing waiting" is whichever row SQLite happened to return
       -- first, and the operator's one-line summary names a different task each
       -- time it is asked. Same reasoning as LATEST_MEASUREMENT in core/db.mjs.
@@ -342,7 +342,7 @@ export function pendingProofs(chapterId) {
  * Is the evidence this commons holds still there, and still what it says?
  *
  * Re-reads every stored file and re-hashes it. A proof store nobody ever checks
- * is a promise, and this is the check — it can say "the file is gone", "the
+ * is a promise, and this is the check, it can say "the file is gone", "the
  * bytes changed", or "this row never had a real hash", which are three
  * different problems that look identical in the interface.
  */

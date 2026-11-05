@@ -1,4 +1,4 @@
-// Local-first store. Node's built-in SQLite — no native build step, no server.
+// Local-first store. Node's built-in SQLite, no native build step, no server.
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -8,7 +8,7 @@ import { makeRid, newId } from './ids.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(HERE, '..');
 /**
- * Resolved lazily, on first use — NOT at module load.
+ * Resolved lazily, on first use, NOT at module load.
  * ES imports are evaluated before the importing module's body runs, so a file
  * that sets BROS_DB in its body would otherwise be too late and would silently
  * open the real commons database. That is how a test suite eats live data.
@@ -31,7 +31,7 @@ export function db() {
   // `journal_mode=wal` does, so every writer that met another writer got
   // `database is locked` immediately. That is not hypothetical here: the
   // launcher leaves a server running with a heartbeat writing to this file, and
-  // any command a person types — a backup, a region download, a tool call — is
+  // any command a person types, a backup, a region download, a tool call, is
   // a second process. Found by racing six processes at the round; two of them
   // simply threw.
   //
@@ -48,7 +48,7 @@ export function db() {
  * Columns added after a commons already exists.
  *
  * schema.sql is all CREATE TABLE IF NOT EXISTS, which means a new column in it
- * reaches a fresh database and NOT the one someone has been using for a year —
+ * reaches a fresh database and NOT the one someone has been using for a year,
  * and the failure is a confusing "no such column" rather than anything that
  * points at the cause. So every added column is declared here too, and applied
  * if missing. Adding a column is safe and cheap; this list only ever grows.
@@ -84,7 +84,7 @@ const ADDED_COLUMNS = {
  *
  * ALTER TABLE cannot touch a CHECK in SQLite, so widening one means rebuilding
  * the table. That is heavier than adding a column and is only ever done when
- * the old constraint makes the schema state something untrue — which is the
+ * the old constraint makes the schema state something untrue, which is the
  * case here: `federation_peers.kind` allowed only chapter/network/registry/
  * index, so every organisation discovered in the Murmurations index was
  * recorded as a *chapter*. The index near any given point returns taxi
@@ -152,19 +152,19 @@ CREATE TABLE IF NOT EXISTS federation_peers (
  *
  * `theRound()` reads for an open round and inserts one if there is none, and
  * those are two statements. Four processes asked at once on a throwaway commons
- * and two rounds came back open — one of them invisible from then on, holding
+ * and two rounds came back open, one of them invisible from then on, holding
  * items that would never clear. Structurally impossible beats unlikely, which
  * is the same argument the sync design makes for one writer per file.
  *
  * NOT in schema.sql, deliberately. schema.sql is executed on every open, before
  * this runs, so a `CREATE UNIQUE INDEX` there would THROW on any database that
- * already has two open rounds — and the only databases that have two are the
+ * already has two open rounds, and the only databases that have two are the
  * ones that hit the bug. A migration that refuses to open the commons it was
  * written to repair is worse than the bug.
  */
 function oneOpenRoundPerChapter(d) {
   try { d.prepare('SELECT 1 FROM rounds LIMIT 1').get(); } catch { return; }  // table not created yet
-  // Close the losers first — oldest kept, because it is the one whose keys were
+  // Close the losers first, oldest kept, because it is the one whose keys were
   // shown to somebody. rowid breaks the tie, since opened_at is a DATE and two
   // rounds opened in the same second sort arbitrarily without it.
   d.exec(`UPDATE rounds SET closed_at = datetime('now')
@@ -226,8 +226,8 @@ export function create(table, objectType, chapterId, row, sensitivity = 'public'
  * "The most recent reading", written once.
  *
  * `ORDER BY measured_at DESC` on its own is not deterministic, and the way it
- * fails is a coin flip rather than an error. measured_at is frequently a DATE —
- * record_measurement takes YYYY-MM-DD and defaults to today — so a
+ * fails is a coin flip rather than an error. measured_at is frequently a DATE,
+ * record_measurement takes YYYY-MM-DD and defaults to today, so a
  * before-and-after pair taken on one field morning ties, and "the latest"
  * becomes whichever row SQLite happens to return first. That reverses the sign
  * of a change in a season report, names the wrong person as the one still
@@ -237,7 +237,7 @@ export function create(table, objectType, chapterId, row, sensitivity = 'public'
  *
  * rowid is insertion order, which is the one thing always known and never tied.
  * Exported rather than repeated because there were six copies of this clause
- * and fixing five of them would have been worse than fixing none — the sixth
+ * and fixing five of them would have been worse than fixing none, the sixth
  * would have disagreed with the rest in a way nothing reports.
  */
 export const LATEST_MEASUREMENT = 'ORDER BY measured_at DESC, rowid DESC';

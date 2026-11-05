@@ -24,7 +24,7 @@ const TOPICS = {
       ['Terrain vs Globe', 'Buttons top-left of the map'],
       ['Level III / Level IV', 'Coarse or fine ecoregion boundaries'],
       ['Relief', 'Raises each ecoregion so you can see the borders in 3D'],
-      ['Signals', 'The coloured posts — red is critical, gold is watch, blue is information'],
+      ['Signals', 'The coloured posts, red is critical, gold is watch, blue is information'],
     ],
     note: 'Gold dots are your places. Green dots are hubs. Hover anything to see what it is.',
   },
@@ -51,14 +51,14 @@ const TOPICS = {
   data: {
     title: 'Your data',
     body: [
-      ['Where it lives', 'data/commons.db — one file, on this computer'],
+      ['Where it lives', 'data/commons.db, one file, on this computer'],
       ['Back it up', 'npm run backup'],
       ['Check a backup is really readable', 'npm run backup -- --verify <file>'],
       ['Start over with fresh example data', 'npm run seed -- --reset'],
       ['Get it out as a map file', 'curl http://localhost:4180/api/export/geojson > atlas.geojson'],
       ['Refresh reference data', 'npm run update'],
     ],
-    note: 'Nothing is uploaded anywhere. Do not copy commons.db by hand — recent work sits in a ' +
+    note: 'Nothing is uploaded anywhere. Do not copy commons.db by hand, recent work sits in a ' +
           'separate log file, so a hand copy is usually out of date and gives you no sign of it. ' +
           'npm run backup takes the lot, in one file, while the OS keeps running.',
   },
@@ -72,7 +72,7 @@ const TOPICS = {
       ['Every item has a button', 'It opens the exact form that fixes that item'],
       ['From the terminal instead', 'curl -s localhost:4180/api/whats-next'],
     ],
-    note: 'Each item quotes the rule it comes from. If you disagree with the rule, the item is wrong — say so.',
+    note: 'Each item quotes the rule it comes from. If you disagree with the rule, the item is wrong, say so.',
   },
   automatic: {
     title: 'What it does on its own',
@@ -81,7 +81,7 @@ const TOPICS = {
       ['See what it has done', 'curl -s localhost:4180/api/heartbeat'],
       ['Turn it off', 'npm run os -- --no-heartbeat'],
     ],
-    note: 'It only runs while the OS is open. That is deliberate — on macOS a background timer ' +
+    note: 'It only runs while the OS is open. That is deliberate, on macOS a background timer ' +
           'cannot read your Desktop and would fail silently, which is worse than not running at all.',
   },
   offline: {
@@ -94,7 +94,7 @@ const TOPICS = {
       ['Prove it reads with the wifi off', 'npm run data -- --offline'],
       ['What is in one', 'docs/LIBRARY.md'],
     ],
-    note: 'Each region is about 100 KB — plants, animals, soil, climate, water, hazards and local ' +
+    note: 'Each region is about 100 KB, plants, animals, soil, climate, water, hazards and local ' +
           'resources. Stop it with Control + C and run it again whenever; it never refetches ' +
           'anything still current. Threatened species are named but never located, and culture is ' +
           'deliberately not downloaded.',
@@ -121,7 +121,7 @@ if (topic && TOPICS[topic]) {
   for (const [what, how] of t.body) { console.log(`\n  ${what}`); cmd(how); }
   console.log(`\n  ${c.dim}${t.note}${c.reset}\n`);
 } else {
-  title('BioRegional OS — what do you need?');
+  title('BioRegional OS, what do you need?');
   console.log(`  ${c.dim}Type one of these. You cannot break anything by trying them.${c.reset}\n`);
   for (const [key, t] of Object.entries(TOPICS)) {
     console.log(`  ${c.gold}npm run help ${key.padEnd(9)}${c.reset} ${t.title}`);

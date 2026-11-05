@@ -66,7 +66,7 @@ export default function Today({ onChanged, onGoTo }) {
       {/* The land first. A page that only ever asks does not get opened twice. */}
       <Ground onNoticed={() => { load(); onChanged?.(); }} />
 
-      {/* Then what came of what people already did — before the list of what
+      {/* Then what came of what people already did, before the list of what
           they have not done yet. */}
       <Loops />
 
@@ -181,6 +181,6 @@ export default function Today({ onChanged, onGoTo }) {
   );
 }
 
-// One label per tool, from ../verbs.js — there were three copies of this map
+// One label per tool, from ../verbs.js, there were three copies of this map
 // and eight of twenty had already drifted.
 const label = verb;

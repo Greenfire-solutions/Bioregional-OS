@@ -26,7 +26,7 @@ export function run(command, args, opts = {}) {
 }
 
 export function ask(question) {
-  // Minimal synchronous prompt — no dependency, works in any terminal.
+  // Minimal synchronous prompt, no dependency, works in any terminal.
   process.stdout.write(question);
   try {
     const buf = Buffer.alloc(1024);

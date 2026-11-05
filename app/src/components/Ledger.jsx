@@ -12,7 +12,7 @@ import { verb } from '../verbs.js';
  * thing anybody meets here is an empty page and the question "what would we
  * even count?". So the empty state explains the two shapes a commons actually
  * chooses between, in a sentence each, and names the decision it takes to
- * start — which is a council decision, because that is where this OS keeps its
+ * start, which is a council decision, because that is where this OS keeps its
  * government.
  *
  * Every figure shown is added up from the entries by the engine. Nothing here
@@ -63,7 +63,7 @@ export default function Ledger({ onAct, onGoTo }) {
       </div>
 
       {/* The check, first and always. A ledger nobody ever checks is a
-          spreadsheet with a trigger on it — so the answer is at the top of the
+          spreadsheet with a trigger on it, so the answer is at the top of the
           page rather than behind a button somebody has to know to press. */}
       {audit && !!currencies.length && (
         <div className={`flex items-start gap-2 rounded border px-3 py-2 text-[11px] leading-snug ${
@@ -93,10 +93,10 @@ export default function Ledger({ onAct, onGoTo }) {
           </div>
 
           <section>
-            <SectionHead icon={Package}>Pools — what the units are good for</SectionHead>
+            <SectionHead icon={Package}>Pools, what the units are good for</SectionHead>
             {!pools.length ? (
               <p className="text-[11px] leading-snug text-[var(--ink-3)]">
-                None yet. A currency with no pool is not broken — it is a promise between people,
+                None yet. A currency with no pool is not broken, it is a promise between people,
                 which is what mutual credit is. A pool is for when you want to say what backs it.
               </p>
             ) : (
@@ -131,7 +131,7 @@ export default function Ledger({ onAct, onGoTo }) {
             <SectionHead icon={Scale}>The entries</SectionHead>
             <p className="mb-2 text-[10px] leading-snug text-[var(--ink-3)]">
               The record every figure above is added up from. Nothing here is ever deleted or
-              edited — a mistake is reversed, and both stay.
+              edited, a mistake is reversed, and both stay.
             </p>
             <div className="divide-y divide-[var(--line-2)] rounded border border-[var(--line)]">
               {entries.map((e) => (
@@ -143,7 +143,7 @@ export default function Ledger({ onAct, onGoTo }) {
                   <span className="min-w-0 flex-1 truncate">
                     {e.agent_name ?? (e.counterparty === 'issuance' ? 'brought into existence'
                       : e.counterparty === 'pool' ? 'back to the pool' : e.counterparty)}
-                    {e.note ? <span className="text-[var(--ink-3)]"> — {e.note}</span> : null}
+                    {e.note ? <span className="text-[var(--ink-3)]">, {e.note}</span> : null}
                   </span>
                   <span className="shrink-0 text-[10px] text-[var(--ink-3)]">
                     {e.kind === 'reversal' ? <Undo2 className="inline h-3 w-3" /> : e.kind}
@@ -200,8 +200,8 @@ function CurrencyCard({ currency: c, onAct, open, onToggle }) {
       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--ink-2)]">
         <span>
           {c.zero_sum
-            ? 'Zero-sum — nobody issues; every balance together is always nothing'
-            : `Issued — ${c.in_existence} in existence`}
+            ? 'Zero-sum, nobody issues; every balance together is always nothing'
+            : `Issued, ${c.in_existence} in existence`}
         </span>
         {c.credit_limit != null && <span>limit −{Math.abs(c.credit_limit)}</span>}
         {!c.zero_sum && c.per_verified_proof
@@ -248,7 +248,7 @@ function CurrencyCard({ currency: c, onAct, open, onToggle }) {
           {c.zero_sum && (
             <p className="mt-1.5 text-[10px] leading-snug text-[var(--ink-3)]">
               Negative is normal here. Somebody below zero has received more than they have given
-              yet — that is the group extending them credit, and the limit is how much of it you
+              yet, that is the group extending them credit, and the limit is how much of it you
               agreed to.
             </p>
           )}
@@ -263,7 +263,7 @@ function CurrencyCard({ currency: c, onAct, open, onToggle }) {
  *
  * "Make a currency" means nothing to somebody who has never done it. The two
  * shapes are named, in one sentence each, with the consequence of choosing
- * each — and the route in is a council decision, because that is the honest
+ * each, and the route in is a council decision, because that is the honest
  * first step and pretending otherwise would teach the wrong thing about what
  * this is.
  */
@@ -272,7 +272,7 @@ function Empty({ onAct, onGoTo }) {
     <div className="rounded border border-dashed border-[var(--line)] px-4 py-6">
       <h3 className="text-sm">This commons does not count anything yet.</h3>
       <p className="mt-1 max-w-xl text-xs leading-relaxed text-[var(--ink-2)]">
-        A ledger here is not a currency somebody shipped you — it is a unit you define, in your
+        A ledger here is not a currency somebody shipped you, it is a unit you define, in your
         own words, with rules you agree together. There are two shapes, and most groups want the
         first:
       </p>
@@ -281,7 +281,7 @@ function Empty({ onAct, onGoTo }) {
           <div className="text-xs font-medium">Zero-sum</div>
           <p className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
             Nobody issues. Units only move between people, so all the balances together are
-            always exactly nothing and going below zero is normal — it means the group is
+            always exactly nothing and going below zero is normal, it means the group is
             extending you credit. You set how far. This is mutual credit, and it is what most
             local exchange systems that lasted actually are.
           </p>
@@ -289,7 +289,7 @@ function Empty({ onAct, onGoTo }) {
         <div className="rounded border border-[var(--line)] p-2.5">
           <div className="text-xs font-medium">Issued</div>
           <p className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
-            Units come into existence when somebody makes them — by council decision, or
+            Units come into existence when somebody makes them, by council decision, or
             automatically for each before-and-after that has been checked. How many exist is a
             number everybody can see and argue about.
           </p>
@@ -308,7 +308,7 @@ function Empty({ onAct, onGoTo }) {
         <button onClick={() => onAct?.('define_currency', {})}
           className="rounded border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--ink-2)]
                      hover:border-[var(--moss)] hover:text-[var(--moss)]">
-          We have already decided — define it
+          We have already decided, define it
         </button>
       </div>
     </div>

@@ -2,8 +2,8 @@
 // A quest is a project: a need, a desired condition, a smallest experiment,
 // nine gates. Useful, and not something a person can pick up on a Saturday.
 //
-// A task is what somebody actually does. It has a place, a person, and — when
-// it changes something on the land — a before and an after.
+// A task is what somebody actually does. It has a place, a person, and, when
+// it changes something on the land, a before and an after.
 //
 // Three refusals live here, and each one exists because the alternative is a
 // commons that cannot tell work from the claim of work:
@@ -32,7 +32,7 @@ export function addTask(input = {}) {
   const questId = String(input.quest_id ?? '').trim();
   const title = String(input.title ?? '').trim();
   if (!questId) return { error: 'missing_required', message: 'A task belongs to a project. Pass quest_id.' };
-  if (!title) return { error: 'missing_required', message: 'A task needs a title — what somebody is actually going to do.' };
+  if (!title) return { error: 'missing_required', message: 'A task needs a title, what somebody is actually going to do.' };
 
   const quest = one('SELECT id, chapter_id, title, place_id, lat, lng FROM quests WHERE id=?', questId);
   if (!quest) return { error: 'not_found', message: `No project ${questId}.` };
@@ -69,7 +69,7 @@ export function addTask(input = {}) {
     due_at: input.due_at ?? null,
     // Default ON, and switching it off is a deliberate act by whoever writes
     // the task. `input.requires_before_after === false` is the only thing that
-    // turns it off — an absent field means the default, not "no".
+    // turns it off, an absent field means the default, not "no".
     requires_before_after: input.requires_before_after === false ? 0 : 1,
     created_by: input.created_by ?? null,
   }, input.sensitivity ?? 'members');
@@ -139,7 +139,7 @@ function decorate(t) {
  *
  * Self-service on purpose. A commons where work has to be handed out by a
  * coordinator is a commons that stops when the coordinator is away, and the
- * failure mode of open claiming — two people claiming the same thing — is
+ * failure mode of open claiming, two people claiming the same thing, is
  * visible, cheap, and fixed by them talking to each other.
  */
 export function claimTask(taskId, { person_name, person_id = null, role = 'doing' } = {}) {
@@ -147,7 +147,7 @@ export function claimTask(taskId, { person_name, person_id = null, role = 'doing
   if (!name) {
     return {
       error: 'missing_required',
-      message: 'A claim needs a name. Not a login — a name, so the commons can say who is carrying this.',
+      message: 'A claim needs a name. Not a login, a name, so the commons can say who is carrying this.',
     };
   }
   const t = one('SELECT * FROM tasks WHERE id=?', taskId);
@@ -187,7 +187,7 @@ export function claimTask(taskId, { person_name, person_id = null, role = 'doing
  * Step back from a task. The row stays.
  *
  * Deleting it would make the record say that person was never there, which is
- * the same mistake the people and devices tables refuse with triggers — and a
+ * the same mistake the people and devices tables refuse with triggers, and a
  * task that three people carried before it was finished is a fact about the
  * commons worth more than a tidy list.
  */
@@ -209,14 +209,14 @@ export function releaseTask(taskId, { person_name, reason = null } = {}) {
  * Finish a task.
  *
  * THE REFUSAL THIS FILE EXISTS FOR. A task marked as requiring a before and an
- * after does not close without one. Not a warning — a refusal, because a
+ * after does not close without one. Not a warning, a refusal, because a
  * warning above a Save button is a warning nobody reads, and because the
  * evidence is worth most at exactly the moment it is least convenient: standing
  * in the mud, having just finished.
  *
  * What it requires is a SUBMITTED pair, not a verified one. Requiring
  * verification would mean the person who did the work cannot close it until
- * somebody else looks — so the task sits open, the board fills with work that
+ * somebody else looks, so the task sits open, the board fills with work that
  * is actually finished, and within a month everybody has learned to mark things
  * done first and photograph them never. Checking is a separate act by a
  * separate person, and it has its own place in the board.
@@ -238,7 +238,7 @@ export function completeTask(taskId, { by = null, note = null } = {}) {
                  'the same ground is the one form of evidence somebody who was not there can check.',
         // The action, so a refusal is a door rather than a wall.
         action: { tool: 'submit_proof', input: { task_id: taskId } },
-        note: 'If this task never changed anything visible — a phone call, a permit filed — say so ' +
+        note: 'If this task never changed anything visible, a phone call, a permit filed, say so ' +
               'when you write it, with requires_before_after false.',
       };
     }
@@ -247,7 +247,7 @@ export function completeTask(taskId, { by = null, note = null } = {}) {
   run(`UPDATE tasks SET status='done', completed_at=datetime('now'), completed_by=? WHERE id=?`,
     by ? String(by).trim() : null, taskId);
   // Single quotes. In SQLite a DOUBLE-quoted token is an identifier, so `""`
-  // is a zero-length column name and the statement throws — `no such column:
+  // is a zero-length column name and the statement throws, `no such column:
   // ""`. It shipped in both places that append to a description, and every test
   // and every end-to-end run missed it for the same reason: not one of them
   // passed a note, so neither line ever executed. The tests below now do.
@@ -260,7 +260,7 @@ export function completeTask(taskId, { by = null, note = null } = {}) {
  * Correct a task that was written down wrong.
  *
  * Every field a person could get wrong on the way in, and nothing else. Status
- * is not here — moving a task between states is `setTaskStatus`, which has
+ * is not here, moving a task between states is `setTaskStatus`, which has
  * rules (finishing needs evidence, abandoning needs a reason) that an
  * edit-any-field tool would quietly walk straight past. That is the shape of
  * bug this project keeps finding: a second door into a guarded room.
@@ -285,7 +285,7 @@ export function updateTask(taskId, input = {}) {
   }
   // Both halves or neither, the same rule addTask applies. A task edited to
   // have a latitude and no longitude is drawn at [null, 30] and rendered by
-  // calling .toFixed on null — and an EDIT is the likelier way to get there,
+  // calling .toFixed on null, and an EDIT is the likelier way to get there,
   // because somebody correcting one number does not think of the other.
   if (input.lat !== undefined || input.lng !== undefined) {
     const lat = input.lat ?? t.lat;
@@ -303,7 +303,7 @@ export function updateTask(taskId, input = {}) {
   if (input.requires_before_after !== undefined) {
     // Turning the evidence requirement OFF on a task that already has evidence
     // filed would leave a proof attached to a task that claims not to need one.
-    // Allowed, because the task may genuinely have been mis-written — but the
+    // Allowed, because the task may genuinely have been mis-written, but the
     // proof stays and still has to be checked.
     set.requires_before_after = input.requires_before_after === false ? 0 : 1;
   }
@@ -317,7 +317,7 @@ export function updateTask(taskId, input = {}) {
   return getTask(taskId);
 }
 
-/** Reopen, abandon, block — the states that are not "finished". */
+/** Reopen, abandon, block, the states that are not "finished". */
 export function setTaskStatus(taskId, status, { note = null } = {}) {
   if (!STATUS.includes(status)) {
     return { error: 'unknown_status', message: `Status is one of: ${STATUS.join(', ')}.` };
@@ -329,7 +329,7 @@ export function setTaskStatus(taskId, status, { note = null } = {}) {
   // ── Abandoning is this system's version of deleting ────────────────────
   // There is no delete. A task row carries who claimed it, who released it and
   // every before-and-after filed against it, and `ON DELETE CASCADE` would take
-  // the evidence with it — destroying the proof of work somebody actually did,
+  // the evidence with it, destroying the proof of work somebody actually did,
   // to tidy a list. The same reasoning the people, devices and media tables
   // enforce with triggers.
   //
@@ -343,7 +343,7 @@ export function setTaskStatus(taskId, status, { note = null } = {}) {
   if (status === 'abandoned' && !String(note ?? '').trim()) {
     return {
       error: 'reason_required',
-      message: 'Dropping a task needs a reason — a sentence is enough. It is kept, because a task ' +
+      message: 'Dropping a task needs a reason, a sentence is enough. It is kept, because a task ' +
                'somebody wrote down and the commons then decided against is worth more than a gap.',
       note: 'Nothing is deleted here. The task leaves the map and the board; the record stays.',
     };
@@ -361,7 +361,7 @@ export function setTaskStatus(taskId, status, { note = null } = {}) {
 /**
  * The work of this commons, arranged by what a person is looking for.
  *
- * Not a scoreboard and deliberately not counting anybody's completed tasks —
+ * Not a scoreboard and deliberately not counting anybody's completed tasks,
  * DAILY_USE.md refuses streaks on evidence, and "tasks completed per person" is
  * a streak with names on it.
  */

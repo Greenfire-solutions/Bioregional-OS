@@ -1,7 +1,7 @@
 // ── Watershed resolution + live water signals ─────────────────────────────
-// Upstream (both US federal, public domain — no license friction):
-//   USGS Watershed Boundary Dataset (WBD) — HUC12 subwatershed for a point
-//   USGS NWIS Instantaneous Values       — real-time discharge / gage height
+// Upstream (both US federal, public domain, no license friction):
+//   USGS Watershed Boundary Dataset (WBD), HUC12 subwatershed for a point
+//   USGS NWIS Instantaneous Values, real-time discharge / gage height
 // The manual organizes water work by watershed; this is what makes that literal.
 import { getJSON, getText, qs } from './http.mjs';
 
@@ -51,7 +51,7 @@ export async function waterSignals(lat, lng, { radiusDeg = 0.15 } = {}) {
     const v = ts.values?.[0]?.value?.[0];
     const loc = ts.sourceInfo?.geoLocation?.geogLocation ?? {};
     return {
-      title: `${ts.sourceInfo?.siteName ?? 'USGS gage'} — ${ts.variable?.variableName?.split(',')[0] ?? ''}`.trim(),
+      title: `${ts.sourceInfo?.siteName ?? 'USGS gage'}: ${ts.variable?.variableName?.split(',')[0] ?? ''}`.trim(),
       category: 'Hydrological',
       severity: 'Info',
       location_name: ts.sourceInfo?.siteName ?? null,
@@ -71,7 +71,7 @@ export async function waterSignals(lat, lng, { radiusDeg = 0.15 } = {}) {
 
 /**
  * A gage reading on its own is a number. A gage reading against its own history
- * is news — and news is the only thing that earns a second visit.
+ * is news, and news is the only thing that earns a second visit.
  *
  * Two free USGS services, no account:
  *   • NWIS IV, period=P7D   → what this gage has done this week
@@ -124,7 +124,7 @@ export async function gageContext(siteCode, { parameterCd = '00060' } = {}) {
       if (out.current === 0) {
         // An intermittent creek reading zero is not a missing number, it is the news.
         out.standing = row.median === 0
-          ? 'dry — as it usually is on this date'
+          ? 'dry, as it usually is on this date'
           : 'dry, and it is not usually dry on this date';
       } else if (out.current != null && row.median) {
         out.vs_median_pct = Math.round(((out.current - row.median) / row.median) * 100);
@@ -145,7 +145,7 @@ export async function gageContext(siteCode, { parameterCd = '00060' } = {}) {
 /**
  * Parse one day's row out of an NWIS RDB table.
  * Exported under a test name so the two traps below can be proven without a
- * network call — both of them are silent when they break.
+ * network call, both of them are silent when they break.
  */
 export function findDailyStat(rdb, month, day) {
   const lines = String(rdb).replace(/\r/g, '').split('\n');
@@ -162,7 +162,7 @@ export function findDailyStat(rdb, month, day) {
     if (Number(f[iMonth]) !== month || Number(f[iDay]) !== day) continue;
     const num = (name) => {
       const i = idx(name);
-      // A blank RDB cell is an absent statistic, not zero — and Number('') is 0,
+      // A blank RDB cell is an absent statistic, not zero, and Number('') is 0,
       // which would silently turn "no 90th percentile on record" into a flood.
       const raw = i >= 0 ? String(f[i] ?? '').trim() : '';
       if (!raw) return null;

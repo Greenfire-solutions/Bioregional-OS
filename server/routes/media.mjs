@@ -27,7 +27,7 @@ const atLeast = (have, need) => LADDER.indexOf(have) >= LADDER.indexOf(need);
  * POST /api/media
  *
  * Body: the file's bytes, exactly as they are.
- * Headers: x-bros-filename (required — its extension decides the type)
+ * Headers: x-bros-filename (required, its extension decides the type)
  * Query:  caption, lat, lng, captured_at, shows_people, consent_id, by, chapter
  */
 export async function uploadMedia(req, url, { chapterId, clearance }) {
@@ -46,7 +46,7 @@ export async function uploadMedia(req, url, { chapterId, clearance }) {
   if (!filename) {
     return { status: 400, body: {
       error: 'missing_required',
-      message: 'Send the file name in the x-bros-filename header — its extension is how the type is known.',
+      message: 'Send the file name in the x-bros-filename header, its extension is how the type is known.',
     } };
   }
 
@@ -94,7 +94,7 @@ export async function uploadMedia(req, url, { chapterId, clearance }) {
 }
 
 /**
- * GET /api/media/:id — the file itself.
+ * GET /api/media/:id, the file itself.
  *
  * Writes its own response, so it returns undefined and the wrapper in api.mjs
  * leaves it alone.
@@ -103,7 +103,7 @@ export async function uploadMedia(req, url, { chapterId, clearance }) {
  *
  *   • The Content-Type comes from the STORED extension, never from anything a
  *     caller said. A caller-chosen type is how any uploaded file becomes
- *     text/html on this origin — stored scripting against the one browser this
+ *     text/html on this origin, stored scripting against the one browser this
  *     OS grants everything to.
  *   • X-Content-Type-Options: nosniff, so a browser does not re-decide that for
  *     itself.
@@ -117,7 +117,7 @@ export function serveMedia(req, res, id, clearance) {
   // The sensitivity ladder, applied to bytes. `withhold()` in the JSON wrapper
   // walks objects looking for ids and cannot see a file stream at all, so this
   // gate has to be made here or the ladder simply stops at the edge of the
-  // media store — which is where the photographs are.
+  // media store, which is where the photographs are.
   const level = one('SELECT sensitivity FROM rids WHERE object_type=? AND local_id=?', 'media', id)?.sensitivity
     ?? 'members';
   if (clearance !== FULL && !atLeast(clearance, level)) {

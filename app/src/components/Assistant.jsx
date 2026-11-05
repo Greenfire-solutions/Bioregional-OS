@@ -79,7 +79,7 @@ export default function Assistant({ configured, claudeCode, onRefresh, toolCount
       }
       if (type === 'text') {
         // The two engines mean different things by a text event. The SDK sends
-        // deltas that must be concatenated raw — a separator between them would
+        // deltas that must be concatenated raw, a separator between them would
         // land mid-word. The CLI sends whole blocks, one per thought, and those
         // need a blank line or the end of one paragraph fuses to the start of
         // the next: "…what's actually urgent.**Most urgent:**".
@@ -161,8 +161,8 @@ export default function Assistant({ configured, claudeCode, onRefresh, toolCount
 
       {nothingAvailable && (
         <div className="border-b border-[var(--line)] bg-[#FBF7E8] px-4 py-3 text-xs text-[var(--ink-2)]">
-          No assistant is reachable. Either install Claude Code and reopen this page — it runs on your
-          own subscription and needs no key — or set
+          No assistant is reachable. Either install Claude Code and reopen this page, it runs on your
+          own subscription and needs no key, or set
           <code className="mx-1 rounded bg-[var(--line-2)] px-1">ANTHROPIC_API_KEY</code> in
           <code className="mx-1 rounded bg-[var(--line-2)] px-1">.env</code>. The same
           {' '}{toolCount ?? ''} tools are available either way; see
@@ -175,7 +175,7 @@ export default function Assistant({ configured, claudeCode, onRefresh, toolCount
           <div className="space-y-2">
             <p className="text-xs text-[var(--ink-2)]">
               {engine === 'code'
-                ? 'Claude Code, running here on your own subscription. It reaches the commons through the same tools it would from a terminal, and meets the same protocol refusals you would — it cannot write past a consent gate, a red flag or a missing Land Seat report.'
+                ? 'Claude Code, running here on your own subscription. It reaches the commons through the same tools it would from a terminal, and meets the same protocol refusals you would, it cannot write past a consent gate, a red flag or a missing Land Seat report.'
                 : 'Ask about the land, the work, or the council. The assistant reads the same data the map shows and cannot write past a consent gate or a red flag.'}
             </p>
             {SUGGESTIONS.map((s) => (
@@ -187,7 +187,7 @@ export default function Assistant({ configured, claudeCode, onRefresh, toolCount
             ))}
             <p className="pt-1 text-[11px] text-[var(--ink-3)]">
               Today’s ground, what moved and what’s next are all computed on this machine and cost
-              nothing — you never need the assistant to read them.
+              nothing, you never need the assistant to read them.
             </p>
           </div>
         )}
@@ -291,7 +291,7 @@ export default function Assistant({ configured, claudeCode, onRefresh, toolCount
   );
 }
 
-/** First readable thing out of a refusal blob — usually the protocol's own sentence. */
+/** First readable thing out of a refusal blob, usually the protocol's own sentence. */
 function refusalLine(preview) {
   try {
     const j = JSON.parse(preview);

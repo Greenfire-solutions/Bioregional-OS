@@ -39,8 +39,8 @@ export const ATLAS_LAYERS = [
  * Every source, declared once.
  *
  * `sensitivity` is the level a record from this source is created at when the
- * adapter cannot tell whether it is sensitive. It fails CLOSED — 'members', not
- * 'public' — because an adapter that guesses wrong in the other direction
+ * adapter cannot tell whether it is sensitive. It fails CLOSED, 'members', not
+ * 'public', because an adapter that guesses wrong in the other direction
  * publishes something it cannot take back.
  */
 export const SOURCES = [
@@ -63,7 +63,7 @@ export const SOURCES = [
     adapter: 'adapters/layers.mjs', vendored_path: 'data/upstream/global-ecoregions.geojson',
     cadence: 'vendored', sensitivity: 'public',
     notes: 'Optional drop-in. One Earth Bioregions 2023 is CC-BY-NC and its geometry is never redistributed here.',
-    no_probe: 'vendored file, not a service — check the file exists instead',
+    no_probe: 'vendored file, not a service, check the file exists instead',
   },
   {
     id: 'usgs-wbd', layer: 2, kind: 'dataset', coverage: 'us',
@@ -102,7 +102,7 @@ export const SOURCES = [
   },
   {
     id: 'isric-soilgrids', layer: 4, kind: 'api', coverage: 'global',
-    name: 'ISRIC SoilGrids v2', project: 'ISRIC — World Soil Information',
+    name: 'ISRIC SoilGrids v2', project: 'ISRIC, World Soil Information',
     license: 'CC-BY-4.0',
     attribution: 'ISRIC SoilGrids 2.0 (CC-BY-4.0)',
     url: 'https://soilgrids.org/',
@@ -138,7 +138,7 @@ export const SOURCES = [
     attribution: 'iNaturalist community observations',
     url: 'https://www.inaturalist.org/',
     adapter: 'adapters/life.mjs', cadence: 'weekly', sensitivity: 'public',
-    notes: 'Species counts carry no coordinates. Threatened taxa are held at restricted anyway — presence in a small box is itself the sensitive fact.',
+    notes: 'Species counts carry no coordinates. Threatened taxa are held at restricted anyway, presence in a small box is itself the sensitive fact.',
     probe: 'https://api.inaturalist.org/v1/observations?per_page=1',
   },
   {
@@ -224,7 +224,7 @@ export const SOURCES = [
     adapter: 'adapters/hydrology.mjs', cadence: 'weekly', sensitivity: 'public',
     probe: 'https://www.waterqualitydata.us/data/Station/search?bBox=-97.80,30.25,-97.78,30.27&mimeType=geojson&zip=no',
     expect: 'FeatureCollection',
-    notes: 'Answers CSV. Nitrate arrives as both mg/L as N and mg/L as NO3 in the same result set — a median across the two is meaningless and must never be taken.',
+    notes: 'Answers CSV. Nitrate arrives as both mg/L as N and mg/L as NO3 in the same result set, a median across the two is meaningless and must never be taken.',
   },
   {
     id: 'nhdplus-hr', layer: 2, kind: 'dataset', coverage: 'us',
@@ -235,7 +235,7 @@ export const SOURCES = [
     adapter: 'adapters/hydrology.mjs', cadence: 'once per place', sensitivity: 'public',
     probe: 'https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer/3?f=json',
     expect: 'NetworkNHDFlowline',
-    notes: 'Layer 3 is NetworkNHDFlowline. Query by point+distance, not by bounding box — a box is wider at its corners and changes which reach is "nearest" depending on which way the creek runs.',
+    notes: 'Layer 3 is NetworkNHDFlowline. Query by point+distance, not by bounding box, a box is wider at its corners and changes which reach is "nearest" depending on which way the creek runs.',
   },
 
   // ── layers 7-11: the people, the memory, the growing year ───────────────
@@ -248,7 +248,7 @@ export const SOURCES = [
     adapter: 'adapters/community.mjs', cadence: 'weekly', sensitivity: 'public',
     probe: 'https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%3Bnode%281%29%3Bout%3B',
     expect: 'osm3s',
-    notes: 'Fills layers 7-11 at once. amenity=shelter is a BUS SHELTER — a refuge is social_facility=shelter. Volunteer-maintained: absence is never evidence of absence.',
+    notes: 'Fills layers 7-11 at once. amenity=shelter is a BUS SHELTER, a refuge is social_facility=shelter. Volunteer-maintained: absence is never evidence of absence.',
   },
   {
     id: 'chronicling-america', layer: 11, kind: 'api', coverage: 'us',
@@ -283,7 +283,7 @@ export const SOURCES = [
   },
   {
     id: 'usa-npn', layer: 6, kind: 'dataset', coverage: 'us',
-    name: 'USA National Phenology Network — Extended Spring Indices', project: 'USA-NPN',
+    name: 'USA National Phenology Network, Extended Spring Indices', project: 'USA-NPN',
     license: 'Public domain',
     attribution: 'USA National Phenology Network, Extended Spring Indices',
     url: 'https://www.usanpn.org/data/spring_indices',
@@ -301,7 +301,7 @@ export const SOURCES = [
     adapter: 'adapters/species.mjs', cadence: 'once per species', sensitivity: 'public',
     probe: 'https://plantsservices.sc.egov.usda.gov/api/PlantSearch?searchText=Quercus%20fusiformis',
     expect: 'ScientificName',
-    notes: 'Declared 2026-09-13, found by making the licence check case-insensitive — species.mjs asserted "(public domain)" inline while the source was declared nowhere. Note that nothing currently imports species.mjs, so plantProfile() is reachable and unused: this entry declares terms and a probe for an upstream the OS can call, not one it calls today.',
+    notes: 'Declared 2026-09-13, found by making the licence check case-insensitive, species.mjs asserted "(public domain)" inline while the source was declared nowhere. Note that nothing currently imports species.mjs, so plantProfile() is reachable and unused: this entry declares terms and a probe for an upstream the OS can call, not one it calls today.',
   },
   {
     id: 'usda-hardiness', layer: 4, kind: 'api', coverage: 'us',
@@ -325,7 +325,7 @@ export const SOURCES = [
 
   // ── catalogues ──────────────────────────────────────────────────────────
   // Not resolvers. These answer "what does this locality publish?" rather than
-  // "what is true at this point?", so they fill no single Atlas layer — they
+  // "what is true at this point?", so they fill no single Atlas layer, they
   // find candidates for many. `kind: 'catalogue'` is how the difference is
   // visible to anything reading this table.
   {
@@ -348,7 +348,7 @@ export const SOURCES = [
     adapter: 'adapters/discover.mjs', cadence: 'on demand', sensitivity: 'members',
     probe: 'https://hub.arcgis.com/api/v3/datasets?q=water&page%5Bsize%5D=1',
     expect: 'attributes',
-    notes: 'Its licence field reads "none" or "custom" almost everywhere. "none" means nobody filled it in, NOT that the data is free — nothing from here is auto-approvable in practice.',
+    notes: 'Its licence field reads "none" or "custom" almost everywhere. "none" means nobody filled it in, NOT that the data is free, nothing from here is auto-approvable in practice.',
   },
 
   // ── supporting sources ──────────────────────────────────────────────────
@@ -376,7 +376,7 @@ export const SOURCES = [
     probe: 'https://geocoding-api.open-meteo.com/v1/search?name=Austin&count=1',
   },
   {
-    // layer: null — Murmurations finds other CHAPTERS, not anything about this
+    // layer: null, Murmurations finds other CHAPTERS, not anything about this
     // ground. It was filed at 12 ("Active projects, maintenance, and outcomes")
     // while that layer's own note says nothing upstream fills it, and both could
     // not be true. A supporting source, like the geocoders.
@@ -397,7 +397,7 @@ export function source(id) { return BY_ID.get(id) ?? null; }
 /**
  * A cheap, side-effect-free request that proves a source is answering.
  *
- * Deliberately NOT the same as `url`. `url` is the source's home page — the
+ * Deliberately NOT the same as `url`. `url` is the source's home page, the
  * right thing to show a person and the wrong thing to call: it is heavy, it is
  * often a redirect, and it being up says nothing about whether the API behind
  * it is. A probe is the smallest real question the service can be asked.
@@ -497,13 +497,13 @@ export function markFetched(id) {
 export function registerLayer(chapterId, sourceId, { geojson_path = null, notes = null, layer = null } = {}) {
   const s = BY_ID.get(sourceId);
   if (!s || !chapterId) return null;
-  // A source can legitimately fill more than one layer — OpenStreetMap fills
-  // four — so the caller may name which. It still has to be a real layer.
+  // A source can legitimately fill more than one layer, OpenStreetMap fills
+  // four, so the caller may name which. It still has to be a real layer.
   const layerNo = layer ?? s.layer;
   if (!(layerNo >= 1 && layerNo <= 12)) return null;
   // A supporting source (geocoding, and anything else that answers "where is
   // that?") fills no Atlas layer. Refuse rather than write NULL into layer_no,
-  // which the schema constrains to 1-12 — the insert would throw at the worst
+  // which the schema constrains to 1-12, the insert would throw at the worst
   // possible moment, inside a successful resolve.
   if (s.layer == null && layer == null) return null;
   const existing = one(
@@ -527,7 +527,7 @@ export function registerLayer(chapterId, sourceId, { geojson_path = null, notes 
 
 /**
  * Register an Atlas layer for a dataset that was DISCOVERED rather than
- * declared — a city portal's own data, approved by a person or by its licence.
+ * declared, a city portal's own data, approved by a person or by its licence.
  *
  * Separate from registerLayer because the provenance is different and has to
  * stay visible: a declared source was vetted when it was written into SOURCES,
@@ -595,7 +595,7 @@ export function layerCoverage(chapterId) {
 /**
  * Which registry source wrote a signal, from the short `source_adapter` tag it
  * carries. Tags are short ('usgs') and registry ids are long ('usgs-nwis'), so
- * something has to join them — and a join is exactly where a credit goes
+ * something has to join them, and a join is exactly where a credit goes
  * missing quietly.
  */
 export const ADAPTER_SOURCE = {
@@ -607,7 +607,7 @@ export const ADAPTER_SOURCE = {
  * The credit block any artifact LEAVING THE MACHINE has to carry.
  *
  * A screen missing a credit is a bug a reader might notice. An artifact missing
- * one is a licence breach in something already in someone else's hands — and a
+ * one is a licence breach in something already in someone else's hands, and a
  * knowledge bundle is the worst case, because it is designed to travel between
  * chapters and becomes their problem rather than stopping at one group chat.
  *

@@ -8,12 +8,12 @@
 //   What can I do?     a small number of things, each one click from done
 //
 // The interface this replaces at the front had fifteen tabs named after the
-// protocol's stages — Listen, Signals, Quests, Convene, Measure. That is the
+// protocol's stages, Listen, Signals, Quests, Convene, Measure. That is the
 // SYSTEM's filing cabinet. It is a good filing cabinet and everything in it
 // still exists; it is simply not what a person can navigate on arrival,
 // because using it requires already knowing the twelve-stage loop. The person
 // who designed this could not tell where to click, which is not a failure of
-// attention — it is what a taxonomy built for completeness does to whoever has
+// attention, it is what a taxonomy built for completeness does to whoever has
 // to stand in front of it.
 //
 // So: one composition, arranged by what a person is looking for rather than by
@@ -21,7 +21,7 @@
 // from an engine that already existed, and the tabs remain for the depth.
 //
 // ENTIRELY OFFLINE AND SYNCHRONOUS. This is the first paint of the first screen
-// and it must never wait on a network call — everything is the local database
+// and it must never wait on a network call, everything is the local database
 // plus solar equations computed on this machine. A board that hangs because an
 // upstream is slow is a board nobody sees.
 import { all, one } from '../core/db.mjs';
@@ -39,7 +39,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
   if (!chapterId) {
     return {
       error: 'no_chapter',
-      message: 'No commons here yet. Find your bioregion first — it writes nothing and takes ' +
+      message: 'No commons here yet. Find your bioregion first, it writes nothing and takes ' +
                'about seven seconds.',
       action: { tool: 'look_around', input: {} },
     };
@@ -47,7 +47,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
   const chapter = one('SELECT * FROM chapters WHERE id=?', chapterId);
   const land = safely(() => landSeatBrief(chapterId)) ?? {};
   const regions = safely(() => myRegions(chapterId)) ?? {};
-  // myRegions() is the DOWNLOAD list — every region whose bounding box overlaps
+  // myRegions() is the DOWNLOAD list, every region whose bounding box overlaps
   // this chapter. Taking [0] from it made the header name the wrong ecoregion
   // for essentially every chapter that is not the demo. homeRegion() asks the
   // question the header is actually asking, and answers it from the EPA polygon
@@ -73,7 +73,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
   //
   // Filtered BEFORE the cap, so the slots refill with work she can do rather
   // than showing her three things and two gaps. The items themselves are not
-  // hidden — the count below says how many are held, and every one of them is
+  // hidden, the count below says how many are held, and every one of them is
   // still in `whats_next`, which she can read. A commons that concealed its own
   // council work from its members would be a worse answer than one that offered
   // it and refused.
@@ -84,7 +84,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
   // Settling in comes first, always, until it is done. An installed commons
   // with nothing in it is the way these die (docs/COMMUNICATIONS.md), so the
   // three things that make it about somewhere and someone are not a wizard
-  // that can be dismissed — they are the top of the list until they exist.
+  // that can be dismissed, they are the top of the list until they exist.
   const settling = safely(() => settledIn(chapterId)) ?? { complete: true, steps: [] };
   const settle = settling.complete ? [] : settling.steps.filter((s) => !s.done).map((s) => ({
     title: s.title, detail: s.detail, why: s.why,
@@ -98,7 +98,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
   // once and held (engines/round.mjs), so clearing one EMPTIES a slot.
   //
   // Settling in still comes first and still sits inside the cap. It is not part
-  // of the round because it is not weekly work — it is the three things that
+  // of the round because it is not weekly work, it is the three things that
   // make a commons about somewhere and someone, and until they exist there is
   // nothing for a round to be about.
   const week = settling.complete
@@ -113,7 +113,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
 
   // ── What is going on ────────────────────────────────────────────────────
   // A project card has to say what state it is really in, which is not its
-  // stage — a project can sit at "co-design" for a season with nothing
+  // stage, a project can sit at "co-design" for a season with nothing
   // blocking it, or at "prototype" with four gates open. So each carries what
   // is actually in its way.
   const pri = safely(() => priorities(chapterId)) ?? { ranked: [], blocked: [] };
@@ -186,13 +186,13 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
       sentence: land.sentence ?? null,
     },
     todo,
-    // How much of THIS WEEK is left, once a round exists — not how much work the
+    // How much of THIS WEEK is left, once a round exists, not how much work the
     // commons has, which is `round.waiting`. Before a commons has settled in
     // there is no round, and this keeps its original meaning so the "5 of 45,
     // the rest are on Today" note still has something true to say.
     todo_total: fromRound.length + settle.length,
     // The week, said in a sentence. `finished` is a state the software can be
-    // in — which is what makes this a round rather than a list — and it is
+    // in, which is what makes this a round rather than a list, and it is
     // deliberately NOT a score: nothing counts finished weeks or compares one
     // to another. See the note on the rounds table.
     round: week ? {
@@ -236,7 +236,7 @@ export function board(chapterId, { actions = 5, projects = 8, clearance = null }
     // something to say, because the whole argument of this project is that a
     // page which only ever hands you your own debts does not get opened twice.
     headline: land.sentence
-      ?? `${chapter?.name ?? 'This commons'} — nothing recorded about the ground yet.`,
+      ?? `${chapter?.name ?? 'This commons'}, nothing recorded about the ground yet.`,
   };
 }
 

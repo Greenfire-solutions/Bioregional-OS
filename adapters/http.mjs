@@ -33,7 +33,7 @@ export async function getJSON(url, { timeout = 30000, ttlMs = 86400000, cache = 
 /**
  * Same contract as getJSON, for upstreams that answer in text.
  * USGS statistics come back as RDB (tab-delimited with comment lines), which is
- * the only way to get day-of-year medians — and medians are what turn a gage
+ * the only way to get day-of-year medians, and medians are what turn a gage
  * reading into a sentence worth reading.
  */
 export async function getText(url, { timeout = 30000, ttlMs = 86400000, cache = true } = {}) {

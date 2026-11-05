@@ -1,7 +1,7 @@
 // ── Where the assistant is standing ───────────────────────────────────────
 // The prompt used to carry one fact about the place: the chapter's name. It
 // described the protocol in detail and the ground in none, so every
-// conversation opened cold — the model had to guess that a question about a
+// conversation opened cold, the model had to guess that a question about a
 // creek was a question about THIS creek, in a particular ecoregion, with a
 // particular gage on it and particular things living in it.
 //
@@ -13,7 +13,7 @@
 // Everything here is read from disk at the moment the question is asked:
 // the chapter's own rows, the ecoregion dossier already compiled, and NOAA's
 // solar equations computed on this machine. No network call, so a conversation
-// works on a laptop in a field with the wifi off — which is where a good number
+// works on a laptop in a field with the wifi off, which is where a good number
 // of these questions get asked.
 //
 // It stays deliberately SHORT. This is orientation, not a data dump: enough
@@ -47,7 +47,7 @@ export function placeContext(chapterId) {
     ecoregion: l4 ? { code: l4.code, name: l4.name, level3: l4.level3_name, biome: l4.biome } : null,
     watershed: land.watershed ?? null,
     // Only if the dossier is actually on disk. A region nobody downloaded must
-    // read as absent rather than as empty — "no species recorded here" and
+    // read as absent rather than as empty, "no species recorded here" and
     // "nobody has fetched this region" are opposite claims.
     life: region?.downloaded ? region.life ?? null : null,
     soil: region?.downloaded ? oneLine(region.soil) : null,
@@ -85,7 +85,7 @@ export function placeContext(chapterId) {
  * Written as sentences rather than JSON because it is read by a model deciding
  * what to reach for, not parsed. Every line names where it came from, so the
  * assistant can tell the difference between "this was in my instructions" and
- * "I read this from a tool" — and so can anyone reading a transcript.
+ * "I read this from a tool", and so can anyone reading a transcript.
  */
 export function placeBriefing(chapterId) {
   const c = placeContext(chapterId);
@@ -93,7 +93,7 @@ export function placeBriefing(chapterId) {
   const L = [];
 
   L.push(`WHERE YOU ARE (read from this machine's own records just now, not from memory)`);
-  L.push(`${c.chapter.name} — a ${c.chapter.scale} chapter${c.chapter.locality ? ` in ${c.chapter.locality}` : ''}.`);
+  L.push(`${c.chapter.name}, a ${c.chapter.scale} chapter${c.chapter.locality ? ` in ${c.chapter.locality}` : ''}.`);
   if (c.chapter.represents) L.push(`It represents: ${c.chapter.represents}`);
   // Carried deliberately. A chapter's limits are the thing an assistant is most
   // likely to overstep by being helpful.
@@ -122,7 +122,7 @@ export function placeBriefing(chapterId) {
 
   L.push('');
   L.push('RIGHT NOW');
-  if (c.now.water) L.push(`Water: ${c.now.water}${c.now.water_stale ? ' (stale — treat as history)' : ''}.`);
+  if (c.now.water) L.push(`Water: ${c.now.water}${c.now.water_stale ? ' (stale, treat as history)' : ''}.`);
   for (const h of c.now.hazards) L.push(`Alert: ${h}`);
   if (c.now.season) L.push(`Season: ${c.now.season}${c.now.daylight ? `, ${c.now.daylight}` : ''}.`);
   if (c.open_work.unaddressed_critical.length) {

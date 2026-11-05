@@ -6,8 +6,8 @@ import { callTool } from '../api.js';
  *
  * The day clock, per DAILY_USE.md §4: sixty seconds, anyone, and it gives
  * before it asks. `ground_today` is the one public read in the system and it
- * answers a stranger with a projection — no coordinates, no place id, none of
- * the chapter's own records — so this panel can be rendered to anybody who
+ * answers a stranger with a projection, no coordinates, no place id, none of
+ * the chapter's own records, so this panel can be rendered to anybody who
  * reaches the OS at all. See forAStranger() in engines/ground.mjs.
  *
  * One component rather than two, because it belongs on both screens a person
@@ -34,9 +34,9 @@ export default function GroundForAnyone({ className = '' }) {
   if (!g) return null;
 
   // `water.standing` is the sentence, and it was being thrown away for the
-  // number. "dry — as it usually is on this date", against 49 years of record,
+  // number. "dry, as it usually is on this date", against 49 years of record,
   // is the thing a person did not know; a bare "0 ft3/s" reads as a broken
-  // gage. The unit is written the way it is spoken, too — `headline()` does the
+  // gage. The unit is written the way it is spoken, too, `headline()` does the
   // same replacement and this panel did not, so the one screen built for
   // strangers was the one printing ft3/s.
   const water = g.water?.site_name

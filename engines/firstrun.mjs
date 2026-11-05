@@ -1,5 +1,5 @@
 // ── The first sixty seconds ───────────────────────────────────────────────
-// One question — where are you? — answered with everything this OS can find
+// One question, where are you? answered with everything this OS can find
 // out about that point, before it asks for anything at all.
 //
 // Two rules shape this file:
@@ -34,7 +34,7 @@ import { attributionFor } from '../adapters/registry.mjs';
 /**
  * What is true about a point, gathered live and kept in memory.
  *
- * `depth: 'quick'` answers in a couple of seconds — the boundaries, the sky,
+ * `depth: 'quick'` answers in a couple of seconds, the boundaries, the sky,
  * the weather and the nearest gage. `depth: 'full'` adds the soil under the
  * place and what lives around it, which are the two most striking answers and
  * also the two slowest, so the interface asks for them second.
@@ -88,7 +88,7 @@ export async function lookAround({ query = null, lat = null, lng = null, depth =
       locality: place.locality ?? null, region: place.region ?? null, country: place.country ?? null,
       geocoder: place.geocoder ?? place.source ?? null,
       // The licence moved out of the adapter's prose and into the registry,
-      // which is right — but the credit a person actually sees is the half with
+      // which is right, but the credit a person actually sees is the half with
       // legal weight, and ODbL requires it. Resolve it rather than reprinting it.
       geocoder_credit: credit(place.geocoder_id),
     },
@@ -125,7 +125,7 @@ function reveal(g) {
     lines.push({ kind: 'place', text: where ? `You are at ${g.place.name}, ${where}.` : `You are at ${g.place.name}.` });
     lines.push({
       kind: 'gap',
-      text: 'Ecoregion and watershed boundaries here need the global ecoregion file — ' +
+      text: 'Ecoregion and watershed boundaries here need the global ecoregion file, ' +
             'RESOLVE Ecoregions 2017, CC-BY, dropped into data/upstream/. ' +
             'The EPA and USGS services that answer instantly only cover the United States.',
     });
@@ -147,7 +147,7 @@ function reveal(g) {
     const said = w.current === 0 && w.standing ? w.standing : `${val}${standing}`;
     lines.push({
       kind: 'water',
-      text: `Your nearest gage — ${w.site_name}${w.km_away != null ? `, ${w.km_away} km away` : ''} — is ${said}` +
+      text: `Your nearest gage, ${w.site_name}${w.km_away != null ? `, ${w.km_away} km away` : ''}, is ${said}` +
             (w.years_of_record ? `, across ${w.years_of_record} years of record.` : '.'),
     });
   }
@@ -173,7 +173,7 @@ function reveal(g) {
     });
   }
 
-  // Always last, and always present — it is the one line that needs no network.
+  // Always last, and always present, it is the one line that needs no network.
   lines.push({
     kind: 'sky',
     text: g.sky.polar
@@ -188,7 +188,7 @@ function reveal(g) {
  * Found a chapter at a point, and resolve it properly on the way in.
  *
  * The two representation questions are not optional here for the same reason
- * they are not optional in `create_chapter` — this is simply the first place a
+ * they are not optional in `create_chapter`, this is simply the first place a
  * person meets them.
  */
 export async function beginHere({
@@ -225,7 +225,7 @@ export async function beginHere({
     lat: Number(lat), lng: Number(lng),
   });
 
-  // Resolve it against the real world immediately — a place without a watershed
+  // Resolve it against the real world immediately, a place without a watershed
   // and an ecoregion fails the Minimum Viable Chapter Test on day one.
   const located = await bio.locate(placeId).catch((e) => ({ error: e.message }));
 
@@ -250,7 +250,7 @@ const fmt = (n) => (n == null ? '' : n >= 100 ? Math.round(n).toLocaleString() :
 const unit = (u) => (u ?? '').replace('ft3/s', 'ft\u00B3/s');
 /** Formatted in the timezone of the PLACE when we know it, this machine's otherwise. */
 const clock = (iso, timeZone = null) => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const opts = { hour: 'numeric', minute: '2-digit', ...(timeZone ? { timeZone } : {}) };
   try { return new Date(iso).toLocaleTimeString('en-US', opts); }
   catch { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
@@ -262,13 +262,13 @@ const clock = (iso, timeZone = null) => {
 // chapter can be founded in seven seconds with nothing in it. This says what
 // is still missing before the commons is about anywhere or anyone:
 //
-//   one place with coordinates      — so the ground has somewhere to read from
-//   one person named                — so the work is not held by "the steward"
-//   three things people noticed     — human observations, never gage readings
+//   one place with coordinates, so the ground has somewhere to read from
+//   one person named, so the work is not held by "the steward"
+//   three things people noticed, human observations, never gage readings
 //
 // It writes nothing and decides nothing. The board puts the missing ones at
 // the top of "What needs doing" with the button that does each, so setup is
-// not finishable by ignoring it — but a person can still close the tab. Only
+// not finishable by ignoring it, but a person can still close the tab. Only
 // HUMAN observations count, by the same rule as core/provenance.mjs: a USGS
 // gage files a reading every three hours forever, and three of those would
 // make an empty commons look settled.

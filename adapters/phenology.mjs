@@ -3,14 +3,14 @@
 //
 // This is the season clock's evidence. The protocol's twelve-stage loop is
 // seasonal, and "is this year early or late?" is the question a seasonal cycle
-// turns on — but it is unanswerable from a chapter's own records until the
+// turns on, but it is unanswerable from a chapter's own records until the
 // chapter has years of them. These three sources answer it on day one:
 //
-//   USA-NPN Spring Index (SI-x) — modelled first leaf and first bloom, current
+//   USA-NPN Spring Index (SI-x), modelled first leaf and first bloom, current
 //     year and thirty-year normal, on a 4km grid. The anomaly between them is
 //     the single best free number for "the land is early this year".
-//   USDA Plant Hardiness Zone — the number every grower actually uses.
-//   NASA POWER — forty years of monthly climate normals, globally, so a chapter
+//   USDA Plant Hardiness Zone, the number every grower actually uses.
+//   NASA POWER, forty years of monthly climate normals, globally, so a chapter
 //     outside the US still gets a growing year.
 //
 // All three are public domain and need no account.
@@ -42,7 +42,7 @@ export async function growingYear(lat, lng, { zip = null } = {}) {
  * First leaf and first bloom for this year, against the thirty-year normal.
  *
  * GeoServer answers GetFeatureInfo with a day-of-year number, and -9999 for
- * "outside the model" — which reads as a perfectly plausible date if nothing
+ * "outside the model", which reads as a perfectly plausible date if nothing
  * checks for it, and would put leaf-out somewhere in the year 1997.
  */
 export async function springIndex(lat, lng) {
@@ -125,7 +125,7 @@ export async function hardinessZone(zip) {
     cached: !!cached, stale: !!stale,
     zone: data.zone,
     low_temp_range_f: data.temperature_range ?? null,
-    readable: `Hardiness zone ${data.zone}${data.temperature_range ? ` — coldest nights ${data.temperature_range}°F` : ''}.`,
+    readable: `Hardiness zone ${data.zone}${data.temperature_range ? `, coldest nights ${data.temperature_range}°F` : ''}.`,
   };
 }
 
@@ -135,14 +135,14 @@ export async function hardinessZone(zip) {
  * Forty years of monthly AVERAGES, anywhere on Earth.
  *
  * Named `climateAverages` rather than `climateNormals` because
- * `adapters/climate.mjs` already exports a `climateNormals` — and that one
+ * `adapters/climate.mjs` already exports a `climateNormals`, and that one
  * answers a different question from a different upstream: extremes a bioregion
  * plans around (frost days, days over 35°C, longest dry spell) from Open-Meteo
  * reanalysis, where this returns long-run means from NASA POWER.
  *
  * They never disagreed, because every caller named its module. But two exports
  * sharing a name while returning different shapes is a trap set for whoever
- * imports the one they did not mean — and the name promised the same thing from
+ * imports the one they did not mean, and the name promised the same thing from
  * both. Averages and extremes are the distinction, so the names say so.
  */
 export async function climateAverages(lat, lng) {

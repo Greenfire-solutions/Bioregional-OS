@@ -5,7 +5,7 @@ import { HelpCircle, X, Share2, Copy, Check, ChevronRight } from 'lucide-react';
 const HELP = {
   place: {
     title: 'My Place',
-    what: 'Whether this commons is actually functioning — not whether it looks busy.',
+    what: 'Whether this commons is actually functioning, not whether it looks busy.',
     do: [
       'Read the Minimum Viable Chapter Test. Red crosses are the real to-do list.',
       'Each failing line tells you exactly what would make it pass.',
@@ -13,11 +13,11 @@ const HELP = {
     ],
   },
   atlas: {
-    title: 'Atlas — the 3D map',
+    title: 'Atlas, the 3D map',
     what: 'The real ecological boundaries you live inside, and everything happening on them.',
     do: [
       'Drag to move. Right-click drag (or two fingers) to tilt and spin.',
-      'Coloured shapes are ecoregions — real boundaries from the US EPA, not drawn by us.',
+      'Coloured shapes are ecoregions, real boundaries from the US EPA, not drawn by us.',
       'Gold dots are your places, green dots are hubs, coloured posts are signals.',
       'Terrain / Globe switches the view. Level III / IV changes how fine the boundaries are.',
     ],
@@ -44,7 +44,7 @@ const HELP = {
     title: 'Council',
     what: 'Decisions, who they affect, and when they get looked at again.',
     do: [
-      'Every item carries a Land Seat report — what the place has to say about it.',
+      'Every item carries a Land Seat report, what the place has to say about it.',
       'Red flags block a decision from being finalised.',
       'Anything irreversible needs a heavier decision method than ordinary consent.',
     ],
@@ -57,12 +57,12 @@ const HELP = {
          'If most hours are unpaid, the system says so plainly.'] },
   learn: { title: 'Learn', what: 'What this commons knows, written so another place can use it.',
     do: ['"May travel" means another chapter can receive it.', 'The doctrine card is the thinking the whole OS runs on.'] },
-  devices: { title: 'Devices', what: 'Other people writing to this commons from their own laptop or phone — without an account.',
+  devices: { title: 'Devices', what: 'Other people writing to this commons from their own laptop or phone, without an account.',
     do: ['Turn on sharing in Together → Devices, so other devices on the wifi can reach this one.',
          'Press "Add a device". Read the code out or let them scan it; it works once, for twenty minutes.',
          'A revoked device stays on the list. It is still the author of what it wrote.'] },
   federation: { title: 'Federation', what: 'Other groups doing this work near you.',
-    do: ['The discover button searches the Murmurations network — a shared, open directory.',
+    do: ['The discover button searches the Murmurations network, a shared, open directory.',
          'Nothing about you is published unless you choose to publish a profile.'] },
 };
 

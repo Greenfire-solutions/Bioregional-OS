@@ -1,8 +1,8 @@
 # Where this is
 
 Written 2026-09-12, at the end of a long build session; updated the same evening. This is the handover
-note: what exists, what does not, and what the next person — or the next
-session — should not have to rediscover.
+note: what exists, what does not, and what the next person, or the next
+session, should not have to rediscover.
 
 Everything in **Built** is tested and pushed. Everything in **Not built** is
 either researched and deliberately deferred, or known-missing. Nothing here is
@@ -13,14 +13,14 @@ aspiration; if it says built, `npm test` covers it.
 ## How to check the state yourself, in four commands
 
 ```
-npm test          # the protocol suite — proves the gates REFUSE
-npm run prove     # presses every button — proves the app RESPONDS
+npm test          # the protocol suite, proves the gates REFUSE
+npm run prove     # presses every button, proves the app RESPONDS
 npm run doctor    # is this machine set up, are the upstreams answering
 npm run data -- --status   # how much of the ecoregion library is downloaded
 ```
 
 `npm test` asserts refusals. `npm run prove` runs every tool and every REST
-route against a throwaway commons and tells a clean refusal from a crash — the
+route against a throwaway commons and tells a clean refusal from a crash, the
 second is the one that catches a button doing nothing, because that failure is
 invisible from a screenshot.
 
@@ -30,20 +30,20 @@ invisible from a screenshot.
 
 ### The loop, end to end
 All twelve protocol stages are enforced in code, and all four phases of
-`docs/DAILY_USE.md` are shipped — the ground, first run, closing the loops, the
+`docs/DAILY_USE.md` are shipped, the ground, first run, closing the loops, the
 group card, and the long rhythms (carrying, the turning, place attention, the
 neighbours, the seven numbers).
 
 ### The work, and the evidence it happened
 A project is a paragraph with gates on it until somebody writes down what is
 actually being done on Saturday. `tasks` sit inside a quest, carry their own
-coordinate, and are picked up by name — no account, self-service, more than one
+coordinate, and are picked up by name, no account, self-service, more than one
 person per task, and stepping back releases rather than deletes. A task that
 changes the land does not close without a before-and-after pair; the pair must
 be FILED, not yet checked, because making somebody wait on a reviewer to close
 their own finished work is how a board fills with things that are actually done.
 The person who did the work is never the person who checks it, which is why
-`submitted_by` is required — the rule cannot fire without a name.
+`submitted_by` is required, the rule cannot fire without a name.
 
 Files live in `data/media` on this machine. Nothing goes to a bucket. Each is
 hashed by reading back what was written, and `check_evidence` re-reads the whole
@@ -55,11 +55,11 @@ a pair.
 
 The Atlas is writable: press any ground and put a project, a task or an
 observation there, coordinate already filled in. Unchecked evidence reaches the
-operator as `waiting` and unclaimed work as a `gap` — unsurfaced, the last
+operator as `waiting` and unclaimed work as a `gap`, unsurfaced, the last
 minute of a job never happens.
 
 ### An economy the commons defines for itself
-Not a currency — the tools to make one. A commons says what it counts and what
+Not a currency, the tools to make one. A commons says what it counts and what
 ONE unit is in its own words, and chooses between two shapes: **zero-sum**,
 where nobody issues, every movement is a transfer, all balances always add to
 exactly nothing and going below zero means the group is extending you credit
@@ -77,12 +77,12 @@ the screen rather than behind a button, because a ledger nobody checks is a
 spreadsheet with a trigger on it.
 
 The government is the one already here. Defining a unit, opening a pool or
-retiring one refuses without a council decision that has actually been DECIDED —
+retiring one refuses without a council decision that has actually been DECIDED,
 with its method, its Land Seat report and no open red flag. This invents no
 second way for a commons to make up its mind.
 
-Pools are the honest part: a named pool holding real things — money, seed, hours
-of a van — with terms in their own words, and redeeming takes units out of
+Pools are the honest part: a named pool holding real things, money, seed, hours
+of a van, with terms in their own words, and redeeming takes units out of
 circulation and records what actually came out. A currency with no pool is not
 broken; it is a promise between people.
 
@@ -93,25 +93,25 @@ having agreed that it should.
 
 ### Who people are
 Two ways in, feeding ONE ladder. An enrolled device is still the right
-credential for a phone at a creek — a code handed over in a room, never typed
+credential for a phone at a creek, a code handed over in a room, never typed
 across a network. Accounts are for the people who sit down at a screen, because
 device enrolment could not tell two coordinators apart: every override, every
 closed gate and every answered need was attributed to a free-text name somebody
 typed.
 
-An account's role — steward, coordinator, member — IS a clearance. It feeds the
+An account's role, steward, coordinator, member, IS a clearance. It feeds the
 same ladder `mayRun` already reads, so there is no second permission system and
 no route that consults one and not the other. Signing in NARROWS and never
 widens: at the keyboard, signing in as a member lowers that connection to what a
 member may do, and over the wifi the network ceiling still caps a steward at
 `council`. Passwords are scrypt with the parameters stored beside the hash, from
-node's own crypto — no dependency. Session tokens are HMAC'd with the same
+node's own crypto, no dependency. Session tokens are HMAC'd with the same
 per-commons salt the device tokens use, so a token lifted from one commons means
 nothing in another.
 
 It is not a wall. The commons can be looked at without signing in; what signing
 in changes is that the work has a name on it. Account creation is not open
-registration — a commons is people who know each other, so making one sits with
+registration, a commons is people who know each other, so making one sits with
 coordinators and the keyboard, exactly where inviting a device sits. Acting ON
 somebody else's account (role, status, password, ending their sessions) is the
 keyboard only: a coordinator's device on a gathering wifi must not be able to
@@ -127,8 +127,8 @@ who is carrying what, and what is around you. The fifteen protocol-stage tabs
 still exist behind it.
 
 ### The map as the playing field
-Everything drawable is on it — places, hubs, projects, needs, gatherings,
-observations, instrument readings — as HTML markers over the deck.gl canvas,
+Everything drawable is on it, places, hubs, projects, needs, gatherings,
+observations, instrument readings, as HTML markers over the deck.gl canvas,
 with a key in the corner that doubles as per-kind switches. Clicking one opens
 a panel beside the map.
 
@@ -141,8 +141,8 @@ to the code on every run.
 
 ### Two security fixes
 `?clearance=sacred` was honoured from the query string. And
-`offerWantProfile()` — the one function that publishes an intake item to a
-world-readable global index — was the only place that did not check
+`offerWantProfile()`, the one function that publishes an intake item to a
+world-readable global index, was the only place that did not check
 `intake.private`.
 
 ### Device enrolment, with a screen
@@ -156,8 +156,8 @@ The week clock, specified in `docs/DAILY_USE.md` §4 as "capped, deferrable, and
 capable of being finished", with the reward written down as "the list empties".
 
 It did not empty. The board recomputed the top five every time it was asked, so
-closing a consent gate — an evening of door-knocking, evidence written, a
-reviewer named — moved one digit while the next identical line stepped into the
+closing a consent gate, an evening of door-knocking, evidence written, a
+reviewer named, moved one digit while the next identical line stepped into the
 slot. The five lines were the same the following week. That is worse than a long
 list: a list that does not change teaches a steward that their work does not
 move the screen.
@@ -166,7 +166,7 @@ A round is picked once and held for seven days (`engines/round.mjs`, `rounds`
 table). Clearing one empties a slot. Three rules keep it honest:
 
 - **Nothing is marked done by a person.** An item leaves the round when it is
-  no longer in `whats_next` — when the work is done, not when somebody says so.
+  no longer in `whats_next`, when the work is done, not when somebody says so.
   There is no checkbox and nothing to game.
 - **Deferrable, with a reason.** `set_aside` takes the item out of this week and
   keeps why. Without it, one thing a steward cannot do holds the round open for
@@ -181,13 +181,13 @@ for a slot.
 
 The round stores only item KEYS, never their text, so it cannot go stale or
 disagree with the commons. A key is the stage, the tool and the ids the action
-names, with volatile inputs left out — `gate` above all, since closing the gate
+names, with volatile inputs left out, `gate` above all, since closing the gate
 the action happens to offer must not make the item look like a different one.
 
 ### Setup cannot finish empty
 `settledIn()` in `engines/firstrun.mjs` names the three things a founded
-commons still lacks — a place with coordinates, a person, three human
-observations — and the board keeps them at the top of *What needs doing*, each
+commons still lacks, a place with coordinates, a person, three human
+observations, and the board keeps them at the top of *What needs doing*, each
 with its button, until they exist. Gage readings never count. `settling_in`
 is the tool.
 
@@ -195,9 +195,9 @@ is the tool.
 `POST /api/tool` ran every tool in the registry for whoever was on the wifi.
 The clearance layer existed and three export routes asked it; the tool route
 never did, so with `--share` on a stranger could mint a coordinator code or
-revoke the steward's devices. `ai/access.mjs` is now the policy — public,
+revoke the steward's devices. `ai/access.mjs` is now the policy, public,
 members, council, keyboard, with the keyboard as the default for anything
-unlisted — and every answer leaving over HTTP is stripped of objects above the
+unlisted, and every answer leaving over HTTP is stripped of objects above the
 connection's clearance, with the count reported as `withheld`.
 
 ---
@@ -209,7 +209,7 @@ Ordered by how much each would change what a real chapter can do.
 **1. US only.** The ecoregion index is EPA: 85 Level III, 967 Level IV.
 `data/upstream/global-ecoregions.geojson` is absent, so `look_around` outside
 the United States resolves a place and finds no ecoregion polygon. The intended
-source is RESOLVE 2017 (CC-BY) — One Earth is CC-BY-**NC** and must not be
+source is RESOLVE 2017 (CC-BY), One Earth is CC-BY-**NC** and must not be
 redistributed. See `docs/DATA_SOURCES.md`.
 
 **2. The region library is fully downloaded for the United States.**
@@ -219,14 +219,14 @@ identity and a download button. Ask `npm run data -- --status` for the live
 figure rather than reading one here.
 
 **3. Communications: researched, nothing built.** `docs/COMMUNICATIONS.md`
-carries the whole decision. The recommendation is **inbound only** — a
+carries the whole decision. The recommendation is **inbound only**: a
 neighbour can text or speak a need and get an acknowledgement; the OS never
 broadcasts. Before any of it: `contact_channels`, shaped like `media_consent`
 with `granted_at` / `withdrawable` / `withdrawn_at`, because `agents.contact`
 and `intake.contact` are free text with no channel type, no verification and no
 opt-out, and retrofitting consent onto a live roster is work nobody ever does.
 
-**4. Voice: researched, nothing built.** Secondary but first-class — capture
+**4. Voice: researched, nothing built.** Secondary but first-class, capture
 and playback, never an interaction channel. Note the blocker recorded in the
 doc: `getUserMedia` needs a secure context, so over `http://192.168.x.x` the
 `/join` page **cannot** record audio. The way round is
@@ -246,13 +246,13 @@ and still a real constraint on what a chapter can rely on.
 Small things seen while building, deliberately left:
 
 - **A round is per chapter, not per person.** A member sees her part of the
-  chapter's five and is told the size of the rest. The alternative — refilling
-  her slots from work the round did not pick — would give her a different week
+  chapter's five and is told the size of the rest. The alternative, refilling
+  her slots from work the round did not pick, would give her a different week
   from her steward's, which is a stranger thing than a short list.
 - **Paper mode has no transcription path.** The field sheet prints eight ruled
   lines and a code, and there is nothing that accepts the code back. Fifteen
   people at a gathering produce 120 lines the steward re-enters one modal at a
-  time. A one-screen grid — code at the top, eight rows, one Save — would turn
+  time. A one-screen grid, code at the top, eight rows, one Save, would turn
   paper from a gesture into a participation path, and it is the cheapest thing
   on this list.
 - **Inviting a device before sharing is on produces a localhost link.** The
@@ -269,12 +269,12 @@ Small things seen while building, deliberately left:
   `canAdvance` now refuses any move that is not to the immediately next stage,
   in either direction, because until 2026-09-13 it enforced no order at all: a
   quest at `council_review` could be rewound eleven stages to `signal` and then
-  teleported four forward, in silence. The depth checks — gates, maintenance
-  owner, baseline, something written down — all looked at the DESTINATION and
+  teleported four forward, in silence. The depth checks, gates, maintenance
+  owner, baseline, something written down, all looked at the DESTINATION and
   never at where the quest was. One step forward is the safe rule and it is the
   one the tool description and the button already promised. But sending work
-  back is a real thing a council does, and the protocol question — who may do
-  it, and what is recorded when they do — has not been answered. Answer it
+  back is a real thing a council does, and the protocol question, who may do
+  it, and what is recorded when they do, has not been answered. Answer it
   before building a way to do it.
 
 - **Settling in is a list, not a gate.** Nothing refuses while it is
@@ -303,11 +303,11 @@ Found by an audit on 2026-09-12 and deliberately left, with the reasoning:
   different things. The kind is carried by colour and shape and the meaning is
   in the key, which is enough to read but not enough to read *fast*. A unit
   glyph on the pill would fix it.
-- **Long titles still truncate on hover** at about 17rem — "Barton Creek Autumn
+- **Long titles still truncate on hover** at about 17rem: "Barton Creek Autumn
   Watershed Ass…". Wider labels start colliding again; the real fix is
   two-line labels, which the collision pass does not yet measure.
 - **Globe mode is off-key.** Markers are a single pale dot and the ecoregion
-  polygons render fully saturated with white seams — a different application's
+  polygons render fully saturated with white seams, a different application's
   palette. Terrain mode is the one that was designed.
 - **Ecoregion polygons show tessellation artifacts** at high zoom: black
   triangular wedges across the fill. Upstream geometry plus deck.gl's
@@ -316,7 +316,7 @@ Found by an audit on 2026-09-12 and deliberately left, with the reasoning:
 ## Things that bit, and will bite again
 
 - **`grep` returns nothing on `scripts/test.mjs` in some shells.** It cost an
-  audit a false finding this session ("the tests do not exist" — they did). Use
+  audit a false finding this session ("the tests do not exist", they did). Use
   python or `rg` on that file.
 - **Paths contain a space.** `new URL(...).pathname` keeps it percent-encoded
   and hands a subprocess a file that does not exist. Use `fileURLToPath`, or
@@ -331,7 +331,7 @@ Found by an audit on 2026-09-12 and deliberately left, with the reasoning:
   property.
 - **A collision rule that can never say yes looks like one working hard.** Every
   place name collided with its OWN marker's reserved footprint, so no place name
-  was ever drawn — and the code read as a careful collision pass the whole time.
+  was ever drawn, and the code read as a careful collision pass the whole time.
   If a rule never fires, check that it *can*.
 - **Editing CSS with a string cut deleted the entire stylesheet** and the build
   still succeeded; the app rendered as unstyled HTML. `git checkout --` the file
@@ -354,7 +354,7 @@ These are argued at length in the docs and are easy to undo by accident.
 - **Three gates never graduate**: rights-holder consent, indigenous consent,
   youth safeguarding. The test is whether the person clicking could be the
   person the gate protects.
-- **Revocation is a status change, never a deletion** — for devices, people and
+- **Revocation is a status change, never a deletion**: for devices, people and
   consent alike. Replicated data cannot be recalled, and deleting the row
   orphans the work rather than undoing it.
 - **A clearance is a fact about the connection.** Nothing a client *claims*

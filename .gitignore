@@ -1,5 +1,5 @@
 node_modules/
-# Agent worktrees live here. A worktree is a second checkout of this same repo —
+# Agent worktrees live here. A worktree is a second checkout of this same repo,
 # committing it would put a whole duplicate copy of the project inside itself.
 #
 # Narrowed to the worktrees rather than all of .claude/ on purpose: agent
@@ -15,7 +15,7 @@ data/upstream/cache/
 # When a card was last produced is a fact about THIS computer, not about the
 # commons. It must never travel to another chapter in a clean copy. Named as a
 # sidecar of the database file, like -wal and -shm, so it follows whichever
-# commons is open — the old fixed path let the test suite and the prover write
+# commons is open, the old fixed path let the test suite and the prover write
 # the real one.
 data/*-last-card.json
 data/last-card.json
@@ -26,7 +26,7 @@ app/node_modules/
 .env.local
 
 # The ecoregion library.
-# The INDEX ships with the repo — it is 314 KB and nothing works without it.
+# The INDEX ships with the repo, it is 314 KB and nothing works without it.
 # The DOSSIERS do not: ~100 KB each, ~97 MB for full US coverage, and every byte
 # is regenerable with `npm run data`. Putting them in git history would make the
 # repository permanently heavy for everyone who only wants their own bioregion.
@@ -44,15 +44,15 @@ data/*-media/
 
 # The evidence store: every photograph this commons holds.
 #
-# The most important line in this file, and the one most easily left out —
+# The most important line in this file, and the one most easily left out,
 # `data/commons.db` was ignored from the beginning and this folder did not exist
 # yet. Everything else here is either regenerable or merely private. This is
 # neither: it is photographs, some of them of people, taken under a consent
 # record that says who agreed to what and that they may withdraw it.
 #
 # Git history does not honour a withdrawal. A photograph committed once is in
-# every clone of this repository forever, and `withdraw_media` — which deletes
-# the bytes on the machine that holds them — cannot reach it. On a PUBLIC
+# every clone of this repository forever, and `withdraw_media`, which deletes
+# the bytes on the machine that holds them, cannot reach it. On a PUBLIC
 # repository, one `git add -A` by somebody who has just started using the OS
 # would publish their neighbours' faces and be unfixable.
 data/media/

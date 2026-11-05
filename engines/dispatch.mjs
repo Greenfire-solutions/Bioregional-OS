@@ -2,7 +2,7 @@
 // The thing somebody pastes into the group chat.
 //
 // This engine exists because of the finding in docs/SOCIAL_LAYER.md §3.1: the
-// group already lives somewhere — a WhatsApp or Signal thread — and it will not
+// group already lives somewhere, a WhatsApp or Signal thread, and it will not
 // move to a localhost URL. Studies of neighbourhood mutual aid groups found the
 // ward WhatsApp group WAS the organisation. So the OS does not try to become
 // that place. It produces the message that goes into it.
@@ -12,7 +12,7 @@
 //   1. IT SENDS NOTHING. There is no send here and there never will be. A human
 //      posts it, at a moment they judge right, under their own name. A bot
 //      posting on a schedule is a different social object, and an undifferentiated
-//      group chat gets muted — after which the messages that mattered are missed
+//      group chat gets muted, after which the messages that mattered are missed
 //      too (§3.2). One card a week, by a person, is the whole design.
 //
 //   2. IT IS COMPLETE IN ITSELF. There is no public URL for anyone not on the
@@ -39,7 +39,7 @@ import { isDemoChapter, DEMO_NOTICE } from '../core/seedData.js';
 // Not a schema column: when a card was last produced is a fact about this
 // computer, not about the commons, and it must never travel to another chapter.
 //
-// Resolved from the OPEN DATABASE, lazily, rather than fixed at ROOT/data —
+// Resolved from the OPEN DATABASE, lazily, rather than fixed at ROOT/data,
 // and for exactly the reason dbPath() is lazy. A constant here meant the file
 // did not follow BROS_DB, so `npm run prove`, which builds a throwaway commons
 // precisely so it can press every button safely, wrote `mark_card_sent` into
@@ -63,7 +63,7 @@ const markPath = () => `${dbPath()}-last-card.json`;
  * The weekly card.
  *
  * Returns structured `sections` (for the canvas renderer) and a `text` block
- * that is what actually gets pasted — text survives pasting, stays searchable in
+ * that is what actually gets pasted, text survives pasting, stays searchable in
  * the chat afterwards, and is readable by a screen reader. The image is for a
  * noticeboard.
  */
@@ -87,7 +87,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
       // When the reading IS the standing ("dry"), the standing already says it.
       const val = w.current === 0 ? 'dry' : `${fmt(w.current)} ${unit(w.unit)}`;
       const said = w.standing
-        ? (w.standing.startsWith(val) ? w.standing : `${val} — ${w.standing}`)
+        ? (w.standing.startsWith(val) ? w.standing : `${val}, ${w.standing}`)
         : val;
       body.push(`${w.site_name}: ${said}`);
     }
@@ -96,7 +96,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
     }
     // A place can be heard, and almost none of it can be redistributed: nearly
     // every recording iNaturalist holds is NonCommercial. So the card carries
-    // the FACT — a count and a name and a date — and never a file. The adapter
+    // the FACT, a count and a name and a date, and never a file. The adapter
     // marks its own block export_safe:false, and this is the boundary where
     // that is checked rather than assumed.
     const heard = await soundFact(ground.place);
@@ -138,10 +138,10 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
     sections.push({
       id: 'gathering', label: 'Next gathering',
       lines: [
-        `${g.title} — ${friendly(g.starts_at)}${g.location_name ? `, ${g.location_name}` : ''}`,
+        `${g.title}, ${friendly(g.starts_at)}${g.location_name ? `, ${g.location_name}` : ''}`,
         care.length
           ? `There is ${list(care)}.`
-          : 'No food, lift, childcare or step-free access arranged yet — which decides who can come.',
+          : 'No food, lift, childcare or step-free access arranged yet, which decides who can come.',
       ],
     });
   } else {
@@ -156,7 +156,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
   const ask = outwardAsk(chapterId);
   if (ask) sections.push({ id: 'ask', label: 'One thing anybody could do', lines: [ask.text], ask });
 
-  // The seeded commons reads like real reporting — a Critical signal describing
+  // The seeded commons reads like real reporting, a Critical signal describing
   // an unpermitted stormwater discharge, naming a real creek and a real city
   // department. That is fine on a screen carrying the "example data" banner. It
   // is not fine in a card, because a card leaves the machine and arrives in a
@@ -164,7 +164,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
   //
   // Same rule as attribution: an artifact that travels must declare what it is.
   // isDemoChapter() rather than the string, because this literal was about to
-  // exist in four places — here, two adapters and the README. If the demo
+  // exist in four places, here, two adapters and the README. If the demo
   // chapter is ever renamed, the card and the exports must not end up
   // disagreeing about which half of a commons is fictional.
   const isExample = isDemoChapter(chapterId);
@@ -173,7 +173,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
     chapter: chapter.name,
     is_example: isExample,
     // Two claims, kept apart on purpose. The commons is fiction; the land under
-    // it is not. My first version said "nothing above is a real observation" —
+    // it is not. My first version said "nothing above is a real observation",
     // which was false, because the heat advisory, the gage reading and the
     // recording count are live public data. A notice that over-claims teaches a
     // reader to distrust the one half of this card that is authoritative, and a
@@ -198,7 +198,7 @@ export async function cardForTheWeek(chapterId, { days = 7 } = {}) {
  * The invariant is about what TRAVELS, not about what an adapter holds. A
  * culture or life block carries media metadata by design and is correctly
  * marked `export_safe: false`; only the one sentence goes on a card. So the
- * check is that the sentence carries no address to anything — nearly every
+ * check is that the sentence carries no address to anything, nearly every
  * recording this OS can reach is NonCommercial, and a card is redistribution.
  *
  * Exported, and tested by breaking it, because an inline regex in a function
@@ -210,7 +210,7 @@ export function safeToSend(text) {
 }
 
 /**
- * One line about what has been heard here — or nothing at all.
+ * One line about what has been heard here, or nothing at all.
  * Loaded lazily so a card still writes itself if the culture adapter is absent,
  * and guarded so that a block which ever becomes export-safe-false in a
  * different way than expected simply drops out rather than travelling.
@@ -233,7 +233,7 @@ function outwardAsk(chapterId) {
     return {
       kind: 'intake',
       text: `${o.from} brought something ${o.days} day${o.days === 1 ? '' : 's'} ago and has had no answer: ` +
-            `“${o.body}” — does anyone know enough to reply?`,
+            `“${o.body}”, does anyone know enough to reply?`,
       rule: intake.rule,
     };
   }
@@ -248,7 +248,7 @@ function outwardAsk(chapterId) {
   return {
     kind: first.kind,
     actionable: !!actionable,
-    // Phrased as a request rather than as a task on somebody's list — and the
+    // Phrased as a request rather than as a task on somebody's list, and the
     // detail is only carried when it survives as a whole sentence. A blob cut
     // off mid-word reads as a broken machine, which is the opposite of an
     // invitation.
@@ -264,8 +264,8 @@ function outwardAsk(chapterId) {
  *
  * A card is not a screen. It is pasted into a group chat and forwarded, and it
  * is already in somebody else's hands by the time anyone checks it. For a
- * CC-BY source — Open-Meteo is one, and it is the weather everywhere outside
- * US National Weather Service coverage — attribution is not tidiness, it is
+ * CC-BY source, Open-Meteo is one, and it is the weather everywhere outside
+ * US National Weather Service coverage, attribution is not tidiness, it is
  * the condition of being allowed to share it at all.
  *
  * Anything the registry cannot resolve is NAMED rather than dropped. A card
@@ -276,7 +276,7 @@ function outwardAsk(chapterId) {
 export function credits(ids) {
   if (!ids.length) return { credit: null, sources: [], unresolved_sources: [] };
   // Asked per id. attributionFor() returns no id on its rows, so deriving
-  // "unresolved" from its output gave an empty set every time — a guard that
+  // "unresolved" from its output gave an empty set every time, a guard that
   // could never fire, which is worse than no guard because it looks like one.
   const unresolved = ids.filter((i) => !registrySource(i));
   const names = attributionFor(ids.filter((i) => registrySource(i)))
@@ -286,21 +286,21 @@ export function credits(ids) {
     unresolved_sources: unresolved,
     credit: [
       names.length ? names.join(' · ') : null,
-      unresolved.length ? `Also drawn from: ${unresolved.join(', ')} — check their terms before sharing further.` : null,
+      unresolved.length ? `Also drawn from: ${unresolved.join(', ')}, check their terms before sharing further.` : null,
     ].filter(Boolean).join(' '),
   };
 }
 
-/** The paste-ready block. Plain text, no markdown — chat apps mangle it. */
+/** The paste-ready block. Plain text, no markdown, chat apps mangle it. */
 function asText(card) {
-  const out = [`${card.chapter} — ${card.week_of}`, ''];
+  const out = [`${card.chapter}, ${card.week_of}`, ''];
   for (const s of card.sections) {
     out.push(s.label.toUpperCase());
     for (const l of s.lines) out.push(l);
     out.push('');
   }
   out.push('Written from our own records. Nothing here is on the internet.');
-  if (card.is_example) out.push(`${card.notice.label} — ${card.notice.commons} ${card.notice.land}`);
+  if (card.is_example) out.push(`${card.notice.label}, ${card.notice.commons} ${card.notice.land}`);
   if (card.credit) out.push(card.credit);
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
@@ -322,15 +322,15 @@ export function markCardSent(chapterId) {
 
 /**
  * Days since a card was last produced, or null if never.
- * The operator turns a long silence into an item in the round — never into a
+ * The operator turns a long silence into an item in the round, never into a
  * notification. Nothing here nags.
  */
 export function daysSinceLastCard(chapterId) {
   try {
     const MARK = markPath();
     // The path moved. A chapter that has been posting for months would
-    // otherwise read as never having posted — the same shape as the column that
-    // made every already-answered need look unanswered — and the operator would
+    // otherwise read as never having posted, the same shape as the column that
+    // made every already-answered need look unanswered, and the operator would
     // tell them "the group has never had a card from this commons". Read the
     // old location when the new one has nothing to say about this chapter.
     const legacy = join(dirname(dbPath()), 'last-card.json');

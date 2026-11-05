@@ -15,13 +15,13 @@
 //
 // Rule 3 is the one that matters most and is the easiest to give up. A stored
 // balance is a second copy of something the entries already say, and the moment
-// two copies exist one of them is wrong — Civil X's schema records the bill for
+// two copies exist one of them is wrong, Civil X's schema records the bill for
 // exactly this: a cashout that debited a hard-coded unit while the balance had
 // been credited in another, so the worker kept the credits AND took the cash,
 // and the second balance went negative to pay for it.
 //
 // AND THE GOVERNMENT IS THE ONE ALREADY HERE. Creating a currency, changing it,
-// opening a pool — each needs a council decision that has actually been
+// opening a pool, each needs a council decision that has actually been
 // DECIDED. This does not invent a second way for a commons to make up its mind;
 // it refuses to move without the first one.
 import { all, one, create, run, db } from '../core/db.mjs';
@@ -35,7 +35,7 @@ export const ISSUE_POLICIES = Object.freeze(['council', 'steward', 'on_verified_
 /**
  * A decision that actually decided something.
  *
- * `status='decided'` and not merely proposed — the difference between a commons
+ * `status='decided'` and not merely proposed, the difference between a commons
  * having agreed and somebody having suggested. Everything that changes the
  * RULES of an economy goes through this, which is how a community builds its
  * own governance here: they already have seven methods, a Land Seat report and
@@ -78,7 +78,7 @@ export function defineCurrency(chapterId, input = {}) {
   if (!unitOf) {
     return {
       error: 'missing_required',
-      message: 'Say what ONE unit is, in your own words — "an hour of work", "a kilo of seed", ' +
+      message: 'Say what ONE unit is, in your own words, "an hour of work", "a kilo of seed", ' +
                '"a meal". A unit nobody can define is a unit nobody can argue about the value ' +
                'of, and that argument is most of what makes one work.',
     };
@@ -255,7 +255,7 @@ function usable(currencyId) {
  * Bring units into existence.
  *
  * Refused outright for a zero-sum currency, because that is what zero-sum
- * MEANS — and a commons that chose mutual credit and then found a way to mint
+ * MEANS, and a commons that chose mutual credit and then found a way to mint
  * would have chosen nothing at all.
  */
 export function issue(chapterId, { currency_id, agent_id, amount, note = null,
@@ -275,7 +275,7 @@ export function issue(chapterId, { currency_id, agent_id, amount, note = null,
     return { error: 'not_found', message: 'No such person or organisation to issue to.' };
   }
   // The policy the commons declared, enforced. `council` and `steward` differ
-  // in WHO may call this — ai/access.mjs decides that — but `council` also
+  // in WHO may call this, ai/access.mjs decides that, but `council` also
   // means every issue names the decision behind it.
   if (cur.issue_policy === 'council') {
     const refusal = decidedOrRefuse(chapterId, decided_by, `Issuing ${n} ${cur.name}`);
@@ -364,7 +364,7 @@ export function redeem(chapterId, { pool_id, agent_id, amount, got = null, note 
   if (!String(got ?? '').trim()) {
     return {
       error: 'say_what_for',
-      message: `Say what came out of ${pool.name} — "2 kg garlic", "£15", "the van on Saturday". ` +
+      message: `Say what came out of ${pool.name}, "2 kg garlic", "£15", "the van on Saturday". ` +
                'A pool whose outgoings are not written down is a pool nobody can check.',
     };
   }
@@ -421,7 +421,7 @@ export function openPool(chapterId, input = {}) {
   if (!name || !holds) {
     return {
       error: 'missing_required',
-      message: 'A pool needs a name and what is actually in it — "£420", "60 kg seed garlic", ' +
+      message: 'A pool needs a name and what is actually in it, "£420", "60 kg seed garlic", ' +
                '"8 hours of the van".',
     };
   }
@@ -493,8 +493,8 @@ export function check(chapterId) {
     if (cur.zero_sum && Math.abs(heldTotal) > 1e-6) {
       problems.push(`${cur.name} is zero-sum but what people hold adds to ${round(heldTotal)}`);
     }
-    // Somebody below a limit their currency declares. Not necessarily an error
-    // — a limit can be lowered after the fact — but it is always worth saying.
+    // Somebody below a limit their currency declares. Not necessarily an error,
+    // a limit can be lowered after the fact, but it is always worth saying.
     const over = cur.credit_limit == null ? [] : balances(cur.id)
       .filter((b) => b.balance < -Math.abs(cur.credit_limit));
     for (const b of over) problems.push(`${b.name ?? b.agent_id} is at ${b.balance}, past −${Math.abs(cur.credit_limit)}`);
@@ -516,7 +516,7 @@ export function check(chapterId) {
 }
 
 /**
- * Retire a currency. Not a delete — the entries stand and still add up.
+ * Retire a currency. Not a delete, the entries stand and still add up.
  *
  * What stops is new movement. A commons that stops using a unit has not made
  * the work that earned it stop having happened.

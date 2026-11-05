@@ -9,7 +9,7 @@ import { callTool } from '../api.js';
  * somebody's observation became a project the council then decided on, and
  * whether needs people brought were actually answered.
  *
- * This is the closest thing here to a reward, and it is deliberately not one —
+ * This is the closest thing here to a reward, and it is deliberately not one,
  * no counter, no total, no comparison between people. It is a statement about
  * what happened, addressed to whoever made it happen.
  */
@@ -71,7 +71,7 @@ export default function Loops() {
           <span className={intake.overdue > 0 ? 'text-[var(--clay)]' : ''}>{intake.sentence}</span>
           {intake.oldest_unanswered && (
             <span className="w-full text-[11px] text-[var(--ink-2)]">
-              Longest: {intake.oldest_unanswered.from} — “{intake.oldest_unanswered.body}”
+              Longest: {intake.oldest_unanswered.from}, “{intake.oldest_unanswered.body}”
             </span>
           )}
         </section>

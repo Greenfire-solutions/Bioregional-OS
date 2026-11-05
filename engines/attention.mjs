@@ -2,11 +2,11 @@
 // Two halves of one question, deliberately in one file because they are the
 // same measurement pointed in opposite directions.
 //
-//   carrying()        — who holds more open responsibility than is fair to ask
-//   placeAttention()  — which ground has gone longest without anyone on it
+//   carrying(), who holds more open responsibility than is fair to ask
+//   placeAttention(), which ground has gone longest without anyone on it
 //
 // §3.8 predicts the participation curve: roughly 1% of any commons does most of
-// the work, and the documented failure mode is not that they leave — it is that
+// the work, and the documented failure mode is not that they leave, it is that
 // they burn out while everyone assumes they are fine. Care as Infrastructure
 // treats that exhaustion as a failure of the commons, not of the person. So the
 // app has to be able to notice a human is carrying too much and SAY SO. That is
@@ -14,7 +14,7 @@
 // would quietly congratulate them.
 //
 // The line this file must not cross is §6: no leaderboards of people. The way
-// it stays on the right side is a single rule, applied everywhere below —
+// it stays on the right side is a single rule, applied everywhere below,
 //
 //   ONLY OPEN OBLIGATIONS COUNT. Finished work is never load.
 //
@@ -45,7 +45,7 @@ export const CARRYING_MIN = 3;
 export const HELD_LONG_DAYS = 90;
 
 /**
- * Mechanic §5.6 — the care ledger.
+ * Mechanic §5.6, the care ledger.
  *
  * Open responsibilities only, gathered from every column in the schema that
  * names a person as still owing something:
@@ -54,7 +54,7 @@ export const HELD_LONG_DAYS = 90;
  *   decisions.land_seat_steward    on a decision still proposed or in review
  *   decisions.land_seat_steward    on a decided one whose review date is due
  *   indicators.<last measured_by>  where the indicator is on a cadence and its
- *                                  quest is still live — a recurring duty is
+ *                                  quest is still live, a recurring duty is
  *                                  held by whoever last performed it
  *
  * Cleared gates, past measurements and completed quests are all absent on
@@ -105,7 +105,7 @@ export function carrying(chapterId) {
   }
 
   // A cadence is a promise to come back. Whoever last kept it is holding it
-  // until somebody else does — which is why this reads the newest measurement
+  // until somebody else does, which is why this reads the newest measurement
   // rather than counting them all. Counting would reward the person doing it;
   // this records that they are still the only one who has.
   for (const i of all(
@@ -153,8 +153,8 @@ export function carrying(chapterId) {
   // and the oldest way that gate gets passed without being satisfied is to put
   // a working group in the field. "The Watershed Working Group" has agreed to
   // nothing: no individual has said yes, and there is nobody to relieve when it
-  // stops happening. So an organisation is still shown carrying its load —
-  // hiding it would make the totals lie — but it is never the subject of a
+  // stops happening. So an organisation is still shown carrying its load,
+  // hiding it would make the totals lie, but it is never the subject of a
   // burnout warning, because a group cannot be exhausted. It gets the finding
   // that actually applies to it instead.
   //
@@ -180,7 +180,7 @@ export function carrying(chapterId) {
       // suppress a burnout warning.
       is_organisation: orgs.has(normalise(name)),
       // A guess from the shape of the name, and reported as a question rather
-      // than a fact — see looksLikeAGroup(). It never silences anything.
+      // than a fact, see looksLikeAGroup(). It never silences anything.
       looks_like_a_group: !orgs.has(normalise(name)) && looksLikeAGroup(name),
       // Work is assigned to somebody the chapter has no record of. True of
       // almost every name in a young chapter, so it is a note, not a warning.
@@ -194,7 +194,7 @@ export function carrying(chapterId) {
   });
 
   // Sorted heaviest first because the answer to "who needs relieving" is read
-  // from the top. This is an order, not a rank — there is no score, nothing
+  // from the top. This is an order, not a rank, there is no score, nothing
   // accumulates, and a person disappears from the list entirely by handing work
   // over or finishing it. Both of those are the point.
   rows.sort((a, b) => b.holding - a.holding || b.longest_held_days - a.longest_held_days);
@@ -203,7 +203,7 @@ export function carrying(chapterId) {
     (r) => !r.is_organisation && r.holding >= CARRYING_MIN && r.share > CARRYING_SHARE);
   const longHeld = rows.filter((r) => !r.is_organisation && r.longest_held_days > HELD_LONG_DAYS);
 
-  // The finding that applies to a group instead. Not a welfare warning — a gate
+  // The finding that applies to a group instead. Not a welfare warning, a gate
   // one: work whose owner is a committee has an owner in the field and none in
   // the world.
   const unowned = rows
@@ -244,7 +244,7 @@ export function carrying(chapterId) {
 function carryingSentence(rows, overloaded, longHeld, unowned, total) {
   if (!total) {
     return 'Nothing is currently named to anybody. That reads as light, but it more often ' +
-           'means the maintenance owner and Land Seat fields are empty — which the gates ' +
+           'means the maintenance owner and Land Seat fields are empty, which the gates ' +
            'are supposed to prevent.';
   }
   // These arrive as rows, not as the trimmed {name} / {name, days} shapes the
@@ -255,7 +255,7 @@ function carryingSentence(rows, overloaded, longHeld, unowned, total) {
     const r = overloaded[0];
     return `${r.name} is named on ${r.holding} of ${total} open ${
       total === 1 ? 'responsibility' : 'responsibilities'}. That is a question for the ` +
-      'council, not for them — somebody has to offer, because the person carrying it ' +
+      'council, not for them, somebody has to offer, because the person carrying it ' +
       'is the last person who will ask.';
   }
   if (longHeld.length) {
@@ -278,11 +278,11 @@ function carryingSentence(rows, overloaded, longHeld, unowned, total) {
 }
 
 /**
- * Mechanic §5.11 — Local Legend, for places.
+ * Mechanic §5.11, Local Legend, for places.
  *
  * A rolling window of which ground has actually been attended to, and which has
  * gone longest without anybody. §3.5 is the argument: consistency is worth
- * making visible, and Strava's Local Legend is the pattern — except that this
+ * making visible, and Strava's Local Legend is the pattern, except that this
  * one is aimed at the ground rather than at the people on it, so it cannot
  * become the leaderboard §6 refuses. There is no loss state. Missing a week
  * costs nothing. A place attended to for a year shows a line you cannot get
@@ -313,7 +313,7 @@ export function placeAttention(chapterId, { days = 90 } = {}) {
 
   const rows = places.map((p) => {
     // Four ways a person is present at a place. Each is a separate query rather
-    // than one union so that the answer can say WHICH kind of attention it was —
+    // than one union so that the answer can say WHICH kind of attention it was,
     // a place that only ever gets observations is a different situation from one
     // that only ever gets meetings held about it.
     const observations = all(
@@ -347,7 +347,7 @@ export function placeAttention(chapterId, { days = 90 } = {}) {
         ${latestMeasurement('m')}`, p.id, since);
 
     // The last time anybody was here, over ALL of history rather than the
-    // window — otherwise every long-neglected place reports the same "never",
+    // window, otherwise every long-neglected place reports the same "never",
     // and "nobody has been in 71 days" is the sentence that actually moves
     // somebody to go.
     const lastHuman = one(
@@ -425,7 +425,7 @@ function attentionSentence(attended, neglected, days) {
            'down rather than that nobody has been.';
   }
   return `${top.name} has been attended to ${top.visits} time${top.visits === 1 ? '' : 's'} ` +
-         `in ${days} days — more than anywhere else.`;
+         `in ${days} days, more than anywhere else.`;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
@@ -434,11 +434,11 @@ function attentionSentence(attended, neglected, days) {
 // raise a question, never to suppress a burnout warning, because the two errors
 // do not cost the same:
 //
-//   Guessing a person is a group, wrongly — the sentence reads "ask who in
+//   Guessing a person is a group, wrongly, the sentence reads "ask who in
 //   Maya R. would notice", which any human corrects on sight, and her load is
 //   still on the list either way.
 //
-//   Guessing a group is a person, wrongly — the app tells the council to
+//   Guessing a group is a person, wrongly, the app tells the council to
 //   relieve a committee. Nobody is relieved, because nobody was tired, and the
 //   real finding (that this project's owner is nobody in particular) is never
 //   said at all.

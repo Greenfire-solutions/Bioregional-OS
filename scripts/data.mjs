@@ -75,7 +75,7 @@ async function main() {
     const est = cov.estimated_full_bytes ?? 967 * 105000;
     warn(`This fetches every ecoregion in the United States.`);
     info(`Roughly ${mb(est)} on disk, and a few hours of polite requests to free public APIs.`);
-    info(`It is fully resumable — stop with Control+C and run it again whenever.`);
+    info(`It is fully resumable, stop with Control+C and run it again whenever.`);
     info(`Starting in 5 seconds. Control+C to back out.`);
     await pause(5000);
   }
@@ -91,8 +91,8 @@ async function main() {
       if (r.error) { console.log(`${c.red}✗${c.reset} ${r.error}`); failed++; }
       else if (r.unchanged) { console.log(`${c.dim}current${c.reset}`); skipped++; }
       // compile() has FOUR outcomes, not three. A region already being written by
-      // the running OS's heartbeat comes back `skipped` — no error, no
-      // `refreshed` — and fell straight through to this branch, which crashed on
+      // the running OS's heartbeat comes back `skipped`, no error, no
+      // `refreshed`, and fell straight through to this branch, which crashed on
       // `r.refreshed.join()` and counted ordinary lock contention as a failure.
       // Waiting your turn is not failing.
       else if (r.skipped) { console.log(`${c.dim}${r.skipped}${c.reset}`); locked++; }
@@ -122,8 +122,8 @@ async function main() {
   const mins = ((Date.now() - started) / 60000).toFixed(1);
   console.log(`\n  ${c.dim}${line()}${c.reset}`);
   ok(`${done} downloaded  ·  ${skipped} already current  ·  ${locked} busy  ·  ${failed} failed  ·  ${mb(bytes)} in ${mins} min`);
-  if (locked) info(`${locked} were being written by the running OS at the time — not failures. Run it again and they are picked up.`);
-  if (failed) info('Failures are usually a rate limit or a dropped connection. Run it again — it resumes.');
+  if (locked) info(`${locked} were being written by the running OS at the time, not failures. Run it again and they are picked up.`);
+  if (failed) info('Failures are usually a rate limit or a dropped connection. Run it again, it resumes.');
   console.log('');
   status({ brief: true });
 }
@@ -167,7 +167,7 @@ function status({ brief: short = false } = {}) {
 
 /**
  * Pack the whole library into one file somebody can carry to a place with no
- * connection. The dossiers are not in git — they are regenerable, and ~97 MB of
+ * connection. The dossiers are not in git, they are regenerable, and ~97 MB of
  * permanent history would make the repository heavy for everyone who only wants
  * their own bioregion. A bundle is the right shape for moving them.
  */
@@ -184,7 +184,7 @@ async function bundle() {
   execFileSync('tar', ['-czf', out, '-C', join(ROOT, 'data'), 'dossiers', 'regions'], { stdio: 'inherit' });
   ok(`${cov.level4.downloaded + cov.level3.downloaded} regions packed`);
   info(out);
-  info(`${mb(statSync(out).size)} — copy it anywhere, then unpack into data/ and it all reads offline.`);
+  info(`${mb(statSync(out).size)}, copy it anywhere, then unpack into data/ and it all reads offline.`);
   cmd('tar -xzf bioregional-library-*.tar.gz -C data/');
   console.log('');
 }
@@ -198,7 +198,7 @@ function offlineProof() {
     cmd('npm run data');
     return;
   }
-  info('Reading from disk only — no network calls are made by any of this.');
+  info('Reading from disk only, no network calls are made by any of this.');
   const chapterId = one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id;
   const mine = chapterId ? myRegions(chapterId).level4 : [];
   const code = mine[0]?.code ?? null;
@@ -212,7 +212,7 @@ function offlineProof() {
     }
   }
   const hit = findSpecies('oak');
-  console.log(`\n  ${c.bold}Offline species search${c.reset} — "oak": ${hit.matches} match(es)`);
+  console.log(`\n  ${c.bold}Offline species search${c.reset}, "oak": ${hit.matches} match(es)`);
   for (const h of hit.results.slice(0, 4)) {
     console.log(`    ${(h.common_name || h.scientific_name || '?').padEnd(28)} ${h.region}`);
   }

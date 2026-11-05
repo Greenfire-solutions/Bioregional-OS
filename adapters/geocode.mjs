@@ -3,12 +3,12 @@
 // seconds can ask one question instead of two numbers.
 //
 // Two upstreams, both keyless:
-//   1. Nominatim (OpenStreetMap, ODbL) — free-form, global, the only one that
+//   1. Nominatim (OpenStreetMap, ODbL): free-form, global, the only one that
 //      understands a creek, a road junction or a farm name. Its usage policy
 //      allows at most one request a second and requires a real User-Agent, and
 //      both are honoured below. Nothing is bulk-downloaded; a person types a
 //      place and gets back the coordinate they already knew.
-//   2. Open-Meteo geocoding (CC-BY-4.0) — a gazetteer of settlements. Narrower,
+//   2. Open-Meteo geocoding (CC-BY-4.0): a gazetteer of settlements. Narrower,
 //      but it answers when Nominatim is rate-limited or down.
 //
 // Reverse geocoding exists for the other door: the browser hands over a
@@ -65,7 +65,7 @@ export async function search(query, { limit = 5 } = {}) {
   }
 }
 
-/** The name of a coordinate — for the "use where I am" door. */
+/** The name of a coordinate, for the "use where I am" door. */
 export async function reverse(lat, lng) {
   try {
     await polite();

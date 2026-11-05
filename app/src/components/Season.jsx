@@ -5,14 +5,14 @@ import { callTool } from '../api.js';
 /**
  * The turning. §5.10.
  *
- * Closing a season and opening the next one — the stage 11 → 12 → 6 hinge that
+ * Closing a season and opening the next one, the stage 11 → 12 → 6 hinge that
  * makes the twelve-stage loop a loop instead of a line. Everything else in this
  * OS is daily or weekly; without this the cycle runs forward and never closes,
  * and nobody ever gets the experience of having finished anything.
  *
  * The one thing this screen must not do is let somebody close a season by
- * pressing a button. The machine's half of the review — what moved, what
- * finished, what travelled — is computed and shown, and then three questions
+ * pressing a button. The machine's half of the review, what moved, what
+ * finished, what travelled, is computed and shown, and then three questions
  * sit between that and the Close button, because those three are the entire
  * value of a review:
  *
@@ -22,7 +22,7 @@ import { callTool } from '../api.js';
  *
  * A report made only of what moved is a progress report, and nothing has ever
  * gone wrong in one. So the computed numbers are placed ABOVE the questions, on
- * purpose — the answers are better when the person writing them is looking at
+ * purpose, the answers are better when the person writing them is looking at
  * the season while they write.
  */
 export default function Season() {
@@ -78,7 +78,7 @@ export default function Season() {
 
       {/* Stage 6's required output, which the twelve-stage loop asks for and
           nothing in this OS produced. It sits here rather than with the
-          projects because a priority list is a statement about a SEASON — and
+          projects because a priority list is a statement about a SEASON, and
           it shows what is held back beside what is ranked, since "what next"
           and "what is stopping what we already chose" are one conversation. */}
       {pri?.total > 0 && (
@@ -110,7 +110,7 @@ export default function Season() {
               <ul className="space-y-0.5">
                 {pri.blocked.slice(0, 5).map((b) => (
                   <li key={b.id} className="text-[11px] leading-snug text-[var(--ink-2)]">
-                    <span className="text-[var(--ink)]">{b.quest}</span> — {b.blocked[0]}
+                    <span className="text-[var(--ink)]">{b.quest}</span>, {b.blocked[0]}
                     {b.blocked.length > 1 && `, and ${b.blocked.length - 1} more`}
                   </li>
                 ))}
@@ -174,7 +174,7 @@ export default function Season() {
                       : 'border-dashed border-[var(--line)] bg-[var(--paper-2)] text-[var(--ink-2)]'}`}>
                     {c.sentence}
                     {c.measured_by && (
-                      <span className="text-[var(--ink-3)]"> — read by {c.measured_by}</span>
+                      <span className="text-[var(--ink-3)]">, read by {c.measured_by}</span>
                     )}
                   </li>
                 ))}
@@ -244,7 +244,7 @@ export default function Season() {
               </button>
             </div>
 
-            {/* The engine's refusal, shown as it was written — it names each
+            {/* The engine's refusal, shown as it was written, it names each
                 question and says why it will not be answered for you. */}
             {refusal && (
               <div className="mt-3 rounded border border-[#E4C9C2] bg-[#FBF1EE] px-3 py-2 text-xs">

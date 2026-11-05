@@ -5,7 +5,7 @@
 // It did not empty. `whats_next()` was recomputed on every look and the board
 // took the top five by priority, so the list was a live ranking wearing a
 // list's clothes. Measured by walking it: a steward closed a consent gate for
-// real — door-knocked fourteen houses, wrote the evidence, named the reviewer —
+// real, door-knocked fourteen houses, wrote the evidence, named the reviewer,
 // and afterwards the total was the same, the first item was the same, and the
 // five lines were identical but for one digit. The next identical line had
 // stepped into the slot.
@@ -20,13 +20,13 @@
 // Three rules that keep this from becoming the thing §3.4 refuses:
 //
 //   Nothing is marked done by a person. An item leaves the round when it is no
-//   longer in `whats_next()` — when the WORK is done, not when somebody says it
+//   longer in `whats_next()`, when the WORK is done, not when somebody says it
 //   is. There is no checkbox to tick, nothing to game, and no way for the round
 //   to disagree with the commons.
 //
 //   No counter survives the week. `closed_at` exists so a week can end, not so
 //   weeks can be compared. Nothing reads a closed round back, nothing counts
-//   finished rounds, and there is a test asserting it stays that way — "rounds
+//   finished rounds, and there is a test asserting it stays that way, "rounds
 //   completed" is a streak with a calendar on it.
 //
 //   Urgent work is never hidden to protect the shape. Something BLOCKING that
@@ -61,10 +61,10 @@ const clampSize = (n) => {
  *
  * Items are recomputed every call and carry no id, so holding five of them
  * means being able to recognise the same piece of work twice. Titles cannot do
- * it — "2 projects are waiting on gates — 17 between them" changes the moment a
+ * it, "2 projects are waiting on gates, 17 between them" changes the moment a
  * gate closes, which is precisely when the round must NOT lose track of it.
  *
- * So: the stage, the tool, and the ids the action names — with the volatile
+ * So: the stage, the tool, and the ids the action names, with the volatile
  * inputs left out. `gate` is the clearest of them: the action offers whichever
  * gate is open first, and closing that one would otherwise make the item look
  * like a different item and silently empty a slot that still has work in it.
@@ -75,7 +75,7 @@ export function itemKey(item) {
   const a = item?.action ?? {};
   // `about` wins when the operator states it, because an action's inputs are
   // chosen to make a BUTTON useful and that is not the same job as identity.
-  // Seven items had an empty or volatile-only input — three overdue decisions
+  // Seven items had an empty or volatile-only input, three overdue decisions
   // all keyed as `Convene|council_agenda`, so a round of five held four pieces
   // of work, clearing one of them counted as nothing done, a decision that went
   // overdue later JOINED the held round, and one "not this week" removed the
@@ -92,7 +92,7 @@ const parseList = (s) => { try { const v = JSON.parse(s ?? '[]'); return Array.i
 
 /** The open round, if one is open and still this week. */
 function openRound(chapterId) {
-  // OLDEST wins, matching the migration that closes duplicates — they used to
+  // OLDEST wins, matching the migration that closes duplicates, they used to
   // disagree, this taking the newest and that keeping the oldest. The unique
   // index makes it moot today, and two rules for "which round is the round" is
   // the kind of thing that stops being moot the moment somebody removes an
@@ -135,8 +135,8 @@ export function theRound(chapterId, { size = 5 } = {}) {
     const id = newId('rnd');
     try {
       // `run`, not `create`: a round gets no RID on purpose. A RID is how a
-      // record is referred to from outside this commons — cited, exported,
-      // withheld, withdrawn — and a round is none of those things. It is local
+      // record is referred to from outside this commons, cited, exported,
+      // withheld, withdrawn, and a round is none of those things. It is local
       // bookkeeping about one week on one machine, it holds no content of its
       // own, and minting an identifier for it would put a week's housekeeping
       // into the same namespace as an observation somebody made.
@@ -150,7 +150,7 @@ export function theRound(chapterId, { size = 5 } = {}) {
     } catch {
       // Somebody else opened this week's round between the read and the write.
       // A partial unique index makes that a refusal rather than a second open
-      // round, and the right answer is simply theirs — a round is the
+      // round, and the right answer is simply theirs, a round is the
       // chapter's week, not this caller's.
       r = openRound(chapterId);
       if (!r) return { error: 'could_not_open_round' };
@@ -162,14 +162,14 @@ export function theRound(chapterId, { size = 5 } = {}) {
   const asideKeys = new Set(aside.map((a) => a.key));
 
   // Still to do: picked, still live, not set aside. Order follows the live
-  // ranking rather than the order they were picked in — within a round, what is
+  // ranking rather than the order they were picked in, within a round, what is
   // most urgent today is still what is most urgent today.
   const remaining = live.filter((i) => {
     const k = itemKey(i);
     return picked.includes(k) && !asideKeys.has(k);
   });
 
-  // Gone because the work is done. Not "completed by" anybody — this is simply
+  // Gone because the work is done. Not "completed by" anybody, this is simply
   // the difference between what was picked and what is still on the list.
   const done = picked.filter((k) => !byKey.has(k) && !asideKeys.has(k));
 
@@ -187,7 +187,7 @@ export function theRound(chapterId, { size = 5 } = {}) {
     done_count: done.length,
     set_aside: aside,
     finished: remaining.length === 0,
-    // What did not fit. Stated, never refilled from — the whole point is that
+    // What did not fit. Stated, never refilled from, the whole point is that
     // the round does not grow back.
     waiting_count: Math.max(0, live.length - picked.length - arrived.length),
     not_in_this_round: arrived,

@@ -48,7 +48,7 @@ export async function api(req, res, url) {
   // The tool route has already withheld, and it had to.
   //
   // `runTool` withholds BEFORE it applies a tool's public view, because the
-  // view drops the `id` that withhold matches on — get that order wrong and the
+  // view drops the `id` that withhold matches on, get that order wrong and the
   // projection blinds the protection. It also takes a snapshot of what was
   // protected BEFORE the handler ran, so a row the caller just created is not
   // withheld from its own author.
@@ -67,7 +67,7 @@ export async function api(req, res, url) {
   //
   // The same shape as the `submit_intake` bug above, arriving from the other
   // direction. An account's RID is `council`, and the clearance for a request
-  // is worked out BEFORE the route runs — which for `sign-in` is before the
+  // is worked out BEFORE the route runs, which for `sign-in` is before the
   // sign-in has happened, so the caller is still `public` and `withhold()`
   // removed the account from the very answer proving who they are. `/api/me`
   // had it worse and permanently: a signed-in MEMBER is below `council`, so
@@ -82,7 +82,7 @@ export async function api(req, res, url) {
       .map((r) => r.local_id)) };
   // An HTTP envelope is `{ status: <number>, body }`. Testing for the KEYS
   // matched an intake row, which has `status: 'received'` and `body: 'the
-  // culvert is blocked'` — so a neighbour bringing a need through the join page
+  // culvert is blocked'`, so a neighbour bringing a need through the join page
   // had their need treated as a response envelope and got
   // `Invalid status code: received` from Node. The main action of the one
   // screen built for strangers has been broken; it took a stranger actually
@@ -98,13 +98,13 @@ async function route(req, res, url, clearance) {
   const q = Object.fromEntries(url.searchParams);
   const chapterId = q.chapter || defaultChapter();
   // `clearance` is earned from the connection, never read from the request. See
-  // ../clearance.mjs — `?clearance=sacred` used to be honoured, which defeated
+  // ../clearance.mjs, `?clearance=sacred` used to be honoured, which defeated
   // the entire ladder.
 
   // The assistant runs TOOLS, so the connection's clearance has to reach it.
   //
   // It did not. `aiStream` called `runTool` with no clearance at all, which
-  // means `clearance === null` — the local-caller path — so every gate in
+  // means `clearance === null`, the local-caller path, so every gate in
   // `mayRun` was skipped, and `anthropicTools()` publishes the whole registry.
   // A device on the gathering wifi could ask the assistant to do council work,
   // read restricted material, or open and close the wifi door. `aiStream` also
@@ -145,7 +145,7 @@ async function route(req, res, url, clearance) {
   // Outside the switch because both carry bytes rather than JSON: the upload
   // reads a raw body, and the read writes its own response and returns
   // undefined so the withholding wrapper leaves the stream alone. The ladder
-  // still applies to both — see routes/media.mjs, which has to enforce it
+  // still applies to both, see routes/media.mjs, which has to enforce it
   // itself precisely because withhold() cannot see inside a file.
   if (p === 'media') return uploadMedia(req, url, { chapterId, clearance });
   // Hyphen, not `media/types`: the prefix test below would swallow that as a
@@ -165,7 +165,7 @@ async function route(req, res, url, clearance) {
         //
         // `forAStranger()` strips lat/lng from the day clock on the stated
         // principle that a name is a fact about the land and a coordinate is a
-        // direction to it — and this route handed the same numbers to the same
+        // direction to it, and this route handed the same numbers to the same
         // stranger, one call away, because it predates the principle. The join
         // page needs the chapter's NAME, which is what it renders.
         chapters: all('SELECT id,name,scale,represents,does_not_represent,lat,lng FROM chapters')
@@ -187,7 +187,7 @@ async function route(req, res, url, clearance) {
         // and the panel says which one it is about to use.
         claude_code: await claudeAvailable(),
         // Whether this process is older than the code it is meant to be
-        // running. See server/stale.mjs — the failure it catches is a feature
+        // running. See server/stale.mjs, the failure it catches is a feature
         // that appears on screen and 404s behind it, which is not a sentence
         // anybody would guess at.
         ...staleness(),
@@ -220,9 +220,9 @@ async function route(req, res, url, clearance) {
     // Two computed flags, both about claims the interface would otherwise have to
     // guess at:
     //
-    //   human_observed    — did a person put this here? One rule, in
+    //   human_observed, did a person put this here? One rule, in
     //                       core/provenance.mjs, so the UI keeps no second copy.
-    //   at_place_centroid — is this coordinate the observation's OWN, or borrowed
+    //   at_place_centroid, is this coordinate the observation's OWN, or borrowed
     //                       from the place it was filed against? That is the
     //                       question a map pin answers, and it is not the same
     //                       as who observed it. Both rules live in
@@ -236,14 +236,14 @@ async function route(req, res, url, clearance) {
     case 'quests':   return all('SELECT * FROM quests WHERE chapter_id=? ORDER BY created_at DESC', chapterId);
     // The work inside the projects, and what is waiting to be checked. Through
     // the engine rather than a SELECT, so a task arrives with its people, its
-    // evidence and the one word for where that evidence stands — the same
+    // evidence and the one word for where that evidence stands, the same
     // decoration the tools and the map get, rather than a third opinion.
     case 'tasks':    return tasks.listTasks(chapterId, { quest_id: q.quest_id ?? null });
     case 'task-board': return tasks.taskBoard(chapterId);
     case 'proofs':   return proof.pendingProofs(chapterId);
     // The economy, if this commons has made one. Through the engine, so every
     // figure here is added up from the entries exactly as it is everywhere
-    // else — there is no balance column for a second answer to come from.
+    // else, there is no balance column for a second answer to come from.
     case 'ledger':   return {
       currencies: ledger.currencies(chapterId),
       pools: ledger.pools(chapterId),
@@ -294,11 +294,11 @@ async function route(req, res, url, clearance) {
       if (req.method !== 'POST') return { status: 405, body: { error: 'POST required' } };
       const body = await readBody(req);
       // The clearance travels with the call. Until it did, this line ran every
-      // tool in the registry for whoever was on the wifi — see ai/access.mjs.
+      // tool in the registry for whoever was on the wifi, see ai/access.mjs.
       return await runTool(body.name, body.input ?? {}, { via: 'ui', clearance });
     }
 
-    // A QR for something the steward is about to show a room — the join link
+    // A QR for something the steward is about to show a room, the join link
     // with an invitation code in it. Keyboard only: a stranger has no business
     // asking this machine to draw pictures, and the code it carries was minted
     // at the keyboard a moment ago.

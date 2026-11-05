@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Keeps the OS current. Run it whenever you like — it is safe and idempotent.
+// Keeps the OS current. Run it whenever you like, it is safe and idempotent.
 //   npm run update              refresh reference data + rebuild the interface
 //   npm run update -- --package make a clean copy for another community
 import { existsSync, mkdirSync, cpSync, rmSync, writeFileSync } from 'node:fs';
@@ -24,7 +24,7 @@ if (process.argv.includes('--package')) {
   mkdirSync(join(out, 'data'), { recursive: true });
   writeFileSync(join(out, 'data', '.gitkeep'), '');
   ok(`Copy written to  ${out}`);
-  info('It contains the protocol, the code and the example seed — and none of your commons data.');
+  info('It contains the protocol, the code and the example seed, and none of your commons data.');
   info('Tell them: open a terminal in that folder and run  npm run setup');
   console.log('');
   process.exit(0);
@@ -32,7 +32,7 @@ if (process.argv.includes('--package')) {
 
 title('Updating BioRegional OS');
 
-// 1 — refresh cached reference data by re-resolving every place
+// 1, refresh cached reference data by re-resolving every place
 const dbFile = join(ROOT, 'data', 'commons.db');
 if (existsSync(dbFile)) {
   const { all } = await import('../core/db.mjs');
@@ -42,7 +42,7 @@ if (existsSync(dbFile)) {
     try {
       const r = await bio.locate(p.id);
       ok(`${p.name} → ${r.place?.ecoregion_name ?? '?'} · ${r.place?.watershed_name ?? '?'}`);
-    } catch (e) { warn(`${p.name} — could not refresh (${e.message})`); }
+    } catch (e) { warn(`${p.name}, could not refresh (${e.message})`); }
   }
   for (const p of places) {
     try {
@@ -51,21 +51,21 @@ if (existsSync(dbFile)) {
     } catch { /* offline is fine */ }
   }
 } else {
-  warn('No commons data yet — run  npm run seed  first.');
+  warn('No commons data yet, run  npm run seed  first.');
 }
 
-// 2 — rebuild the interface so code changes show up
+// 2, rebuild the interface so code changes show up
 if (existsSync(join(ROOT, 'app', 'node_modules'))) {
   console.log('');
   if (run('npm', ['run', 'build'], { cwd: join(ROOT, 'app') })) ok('Interface rebuilt');
-  else warn('Interface did not rebuild — run  npm run doctor');
+  else warn('Interface did not rebuild, run  npm run doctor');
 }
 
-// 3 — global ecoregion layer reminder
+// 3, global ecoregion layer reminder
 if (!existsSync(join(ROOT, 'data', 'upstream', 'global-ecoregions.geojson'))) {
   console.log('');
   info('Optional: to see ecoregions outside the United States, drop a GeoJSON at');
-  info('data/upstream/global-ecoregions.geojson — see docs/INTEROP.md for sources.');
+  info('data/upstream/global-ecoregions.geojson, see docs/INTEROP.md for sources.');
 }
 
 console.log(`\n  ${c.dim}${line()}${c.reset}`);

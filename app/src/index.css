@@ -5,7 +5,7 @@
    AN INSTRUMENT READING A LIVING WORLD
 
    The shell is a dark console: deep green-black, hairlines, luminous data. The
-   things you hand to a human — the weekly card, the field sheet — stay paper.
+   things you hand to a human, the weekly card, the field sheet, stay paper.
    That split is the argument, not decoration. Dark is the machine observing;
    light is what a person carries out of the building.
 
@@ -69,7 +69,7 @@
   --glow-gold: 0 0 22px -6px color-mix(in oklab, var(--gold) 55%, transparent);
 
   /* ── type ──────────────────────────────────────────────────────────────
-     Fraunces carries the voice — it has an organic, almost devotional weight
+     Fraunces carries the voice, it has an organic, almost devotional weight
      that a geometric sans cannot. Plex Mono carries every number, because this
      app is mostly measurements and an instrument should look like one. */
   --font-display: 'Fraunces', ui-serif, Georgia, serif;
@@ -77,7 +77,7 @@
   --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* ── motion ────────────────────────────────────────────────────────────
-     One easing. Fast out, settles hard — things arrive and stop, rather than
+     One easing. Fast out, settles hard, things arrive and stop, rather than
      drifting. That is what "snaps into place" is: a short travel and an abrupt
      settle, never a long ease. */
   --snap: cubic-bezier(.16, 1, .3, 1);
@@ -111,7 +111,7 @@ h1, h2, h3 {
 h1 { letter-spacing: -0.025em; }
 
 /* Every eyebrow label in this app is written `uppercase tracking-wide`. This
-   one rule turns all of them — in components neither session has touched —
+   one rule turns all of them, in components neither session has touched,
    into instrument labels. */
 .uppercase.tracking-wide {
   font-family: var(--font-data);
@@ -166,7 +166,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 
 /* ── tone shim ────────────────────────────────────────────────────────────
    Sixteen colours were written as literal hex in nine components, across two
-   sessions' territory — pale pastels chosen for a light interface. On a dark
+   sessions' territory, pale pastels chosen for a light interface. On a dark
    ground they are white text on cream, which is not a style problem but an
    unreadable one.
 
@@ -200,7 +200,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 .bg-\[\#3D4E41\]                                         { background-color: var(--paper-3) !important; }
 .bg-\[\#1C2421\]                                         { background-color: var(--paper-2) !important; }
 
-/* On paper the shim must not fight the print palette — everything goes white. */
+/* On paper the shim must not fight the print palette, everything goes white. */
 @media print {
   [class*="bg-["] { background-color: #fff !important; }
   [class*="border-["] { border-color: #bbb !important; }
@@ -213,7 +213,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
    part. So the printed page is designed, not just the screen minus its chrome.
 
    The console does not print. On paper the palette inverts back to the field
-   notebook it always was — ink on white, no glow, no aurora — because a dark
+   notebook it always was, ink on white, no glow, no aurora, because a dark
    interface printed is a black rectangle and a waste of somebody's toner. */
 @media print {
   :root {
@@ -246,7 +246,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
    A blocked project, and nothing else. Slow, shallow, and once every three
    seconds: if everything pulsed, nothing would be moving, and a map that
    twitches is a map people stop looking at. Honoured only when the reader has
-   not asked for stillness — vestibular disorders are real and a moving pin is
+   not asked for stillness, vestibular disorders are real and a moving pin is
    not worth a headache. */
 @keyframes bros-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(214, 120, 92, 0.55); }

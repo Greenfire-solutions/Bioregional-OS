@@ -2,7 +2,7 @@
  * Print one thing, not everything on the page.
  *
  * The card and the field sheet live on the same screen and both used to call
- * `window.print()` on the whole document, so either button produced both — a
+ * `window.print()` on the whole document, so either button produced both, a
  * noticeboard card stapled to a sheet meant for the creek. Two buttons that do
  * the same thing is a worse bug than one that does nothing, because it looks
  * like it worked.

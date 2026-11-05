@@ -1,5 +1,5 @@
 // ── Climate ───────────────────────────────────────────────────────────────
-// Open-Meteo historical reanalysis — free, no key, CC-BY 4.0.
+// Open-Meteo historical reanalysis, free, no key, CC-BY 4.0.
 // Ten years of daily data reduced to monthly normals plus the extremes a
 // bioregion actually plans around: heat, frost, dry spells, wettest month.
 import { getJSON, qs } from './http.mjs';

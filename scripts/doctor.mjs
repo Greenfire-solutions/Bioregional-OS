@@ -59,7 +59,7 @@ check('Your commons data exists', existsSync(dbFile),
 }
 
 if (existsSync(dbFile)) {
-  // Not a fault — this is just how SQLite works. But it is the number that makes
+  // Not a fault, this is just how SQLite works. But it is the number that makes
   // "copy the file to back up" visibly wrong, so say it rather than wait for
   // somebody to discover it by restoring.
   const walFile = `${dbFile}-wal`;
@@ -98,9 +98,9 @@ if (existsSync(dbFile)) {
 // ── What this commons can actually reach ──────────────────────────────────
 // Reads the upstream registry rather than a second list of sources kept here.
 // Two different questions, and they are not the same question:
-//   • DECLARED — which open data sources exist, and under what licence. Known
+//   • DECLARED: which open data sources exist, and under what licence. Known
 //     without touching the network.
-//   • ANSWERED — which have actually replied on this computer. That is evidence,
+//   • ANSWERED: which have actually replied on this computer. That is evidence,
 //     not configuration, and it is the one a person wants when something looks
 //     empty and they cannot tell whether it is broken or just untried.
 title('The open data this commons can reach');
@@ -125,7 +125,7 @@ title('The open data this commons can reach');
   if (untried.length) {
     info(`${untried.length} never tried yet: ${untried.slice(0, 6).map((s) => s.name).join(', ')}` +
          (untried.length > 6 ? ` and ${untried.length - 6} more` : ''));
-    info('Not a problem — most are asked once, the first time a place needs them.');
+    info('Not a problem, most are asked once, the first time a place needs them.');
   }
 
   const stale = answered.filter((s) => {
@@ -154,7 +154,7 @@ title('The open data this commons can reach');
 // report that shows only the first two makes "needs a key you do not have" look
 // identical to "we forgot about this one".
 //
-// HTTP 200 is not proof. Two of these answer 200 while completely broken — MRLC
+// HTTP 200 is not proof. Two of these answer 200 while completely broken, MRLC
 // returns an XML exception report for a bad layer, and the Drought Monitor
 // returns CSV when content negotiation fails. Where the registry declares an
 // `expect` string, the body has to contain it.
@@ -187,21 +187,21 @@ title('Checking the outside world (optional)');
 
   for (const r of results.filter((r) => r.state !== 'ok')) {
     if (r.state === 'unreachable') {
-      warn(`${r.name} — cannot reach right now`);
+      warn(`${r.name}, cannot reach right now`);
       info('Not a problem: the OS keeps working offline using what it already downloaded.');
     } else if (r.state === 'wrong') {
       // The dangerous one. Loud here so it cannot be quiet downstream.
-      warn(`${r.name} — answering, but not with what the adapter reads`);
+      warn(`${r.name}, answering, but not with what the adapter reads`);
       info(`Expected to find "${r.expect}" in the reply and did not. The service may have changed.`);
       problems++;
     } else {
-      warn(`${r.name} — reachable but unhappy (${r.detail})`);
+      warn(`${r.name}, reachable but unhappy (${r.detail})`);
     }
   }
 
   if (unprobeable.length) {
     info(`${unprobeable.length} cannot be health-checked, which is not the same as failing:`);
-    for (const u of unprobeable) info(`  ${u.name} — ${u.why}`);
+    for (const u of unprobeable) info(`  ${u.name}, ${u.why}`);
   }
 }
 
@@ -209,7 +209,7 @@ title('Checking the outside world (optional)');
 title('Assistant');
 if (process.env.ANTHROPIC_API_KEY) ok('Built-in assistant is configured');
 else {
-  warn('Built-in assistant is not configured — this is completely optional');
+  warn('Built-in assistant is not configured, this is completely optional');
   info('Either add ANTHROPIC_API_KEY to the .env file in this folder,');
   info('or skip it entirely and drive the OS from Claude Code instead:');
   cmd('npm run connect');

@@ -1,6 +1,6 @@
 // Streaming assistant endpoint. Manual agentic loop over the shared tool
 // registry, streamed to the browser as SSE so the UI can show each tool call
-// as it happens — the steward sees exactly which layers the AI touched.
+// as it happens, the steward sees exactly which layers the AI touched.
 import Anthropic from '@anthropic-ai/sdk';
 import { one } from '../../core/db.mjs';
 import { anthropicTools, runTool } from '../../ai/tools.mjs';
@@ -28,7 +28,7 @@ export async function aiStream(req, res) {
     send('error', {
       message:
         'No ANTHROPIC_API_KEY set. Add it to .env in the project root, or drive the OS from ' +
-        'Claude Code instead — the same tools are exposed over MCP (see docs/CLAUDE_CODE.md).',
+        'Claude Code instead, the same tools are exposed over MCP (see docs/CLAUDE_CODE.md).',
     });
     return res.end();
   }

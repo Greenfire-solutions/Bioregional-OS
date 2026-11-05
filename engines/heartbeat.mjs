@@ -3,7 +3,7 @@
 //
 // Deliberately NOT launchd. On macOS, launchd agents cannot read anything under
 // ~/Desktop or ~/Documents without a TCC grant, and they fail *silently* when
-// they can't — a scheduler that lies about running is worse than none. The OS
+// they can't, a scheduler that lies about running is worse than none. The OS
 // is something you start; while it is up, it keeps itself current.
 import { all, one, run, create } from '../core/db.mjs';
 import * as bio from './bioregional.mjs';
@@ -79,7 +79,7 @@ const TASKS = [
   {
     name: 'watch_hazards',
     every: 60 * MINUTE,
-    why: 'An official alert nobody saw is the same as no alert — and this is the only ' +
+    why: 'An official alert nobody saw is the same as no alert, and this is the only ' +
          'upstream allowed to raise a Watch without a human first.',
     async run(chapterId) {
       const places = all(
@@ -112,21 +112,21 @@ const TASKS = [
       const due = [...work.missing, ...work.stale];
       if (!due.length) return null;
       // One region per beat. The library is not urgent, and the upstreams are
-      // free public services — there is no reason to arrive as a burst.
+      // free public services, there is no reason to arrive as a burst.
       const t = due[0];
       try {
         const r = await compileDossier(t.code, { scheme: t.scheme });
         if (r.error || r.unchanged) return null;
         // The same four outcomes scripts/data.mjs learned, in the copy that was
         // left behind. `skipped` means a long `npm run data -- --all` already
-        // holds the lock — which is not a rare race but the DESIGNED one, since
+        // holds the lock, which is not a rare race but the DESIGNED one, since
         // the whole point of the lock is that these two reach for the same
         // region. This branch read it as a refresh and called .join on a field
         // that is not there, and the catch below turned the crash into `null`:
         // the beat reported nothing to do, looked healthy, and the library task
         // had in fact not run at all. Waiting your turn is not failing, and it
         // is not silence either.
-        if (r.skipped) return `${t.code} ${t.name}: waiting — ${r.skipped}`;
+        if (r.skipped) return `${t.code} ${t.name}: waiting, ${r.skipped}`;
         if (!Array.isArray(r.refreshed)) {
           return `${t.code} ${t.name}: unrecognised result (${Object.keys(r).join(', ')})`;
         }
@@ -135,7 +135,7 @@ const TASKS = [
                (left ? ` · ${left} region${left === 1 ? '' : 's'} still to go` : ' · library current');
       } catch (err) {
         // A crash here used to be indistinguishable from a quiet beat. Say it.
-        return `${t.code} ${t.name}: could not refresh — ${err.message}`;
+        return `${t.code} ${t.name}: could not refresh, ${err.message}`;
       }
     },
   },
@@ -154,13 +154,13 @@ const TASKS = [
     name: 'read_the_neighbours',
     // Ticks often, fetches rarely. The cadence that matters is seven days and
     // it is enforced inside refresh() against each peer's own last-read date,
-    // NOT by this interval — because the OS is something you start, and a
+    // NOT by this interval, because the OS is something you start, and a
     // seven-day timer inside a process that runs for an afternoon would fire
     // once at launch and then never again. Age in the database survives a
     // restart; a timer does not.
     every: 6 * 60 * MINUTE,
     why: `What other chapters published, once every ${CADENCE_DAYS} days. Belonging to ` +
-         'something larger is what sustains volunteer groups — and this is the ambient ' +
+         'something larger is what sustains volunteer groups, and this is the ambient ' +
          'version of it, with nothing to keep up with.',
     async run() {
       const r = await refreshNeighbours();
@@ -178,7 +178,7 @@ const log = [];           // in-memory; the durable record is the data itself
  * When each task last RAN, as distinct from when it last had something to say.
  *
  * The log only records ticks that produced a result, so a task running every
- * half hour and correctly finding nothing to do never appeared in it — and
+ * half hour and correctly finding nothing to do never appeared in it, and
  * status() reported `last: null`, which is precisely what a task that has never
  * fired at all looks like. A silent success and a dead timer were the same
  * value, in the file whose own header says a scheduler that fails silently is
@@ -226,7 +226,7 @@ export function stop() {
 }
 
 /**
- * Four states, not two. Exported so all four can be tested — the two that
+ * Four states, not two. Exported so all four can be tested, the two that
  * matter most only occur after a timer has fired, and a test that can only
  * reach half the states is a test of half the function.
  */
@@ -247,14 +247,14 @@ export function status() {
       why: t.why,
       // Two different questions, kept apart. `last_run` answers "is this alive?"
       // and is set on every tick. `last_result` answers "did it find anything?"
-      // and is null on a healthy quiet task — which is most of them, most of the
+      // and is null on a healthy quiet task, which is most of them, most of the
       // time. Reporting only the second made a working task look like a dead one.
       last_run: lastRun.get(t.name) ?? null,
       last_result: log.find((l) => l.task === t.name) ?? null,
       state: taskState(timers.length > 0, lastRun.get(t.name)),
     })),
     recent: log.slice(0, 30),
-    note: 'The heartbeat runs only while the OS is running. Nothing happens when it is closed — ' +
+    note: 'The heartbeat runs only while the OS is running. Nothing happens when it is closed, ' +
           'that is deliberate: a scheduler that fails silently is worse than no scheduler.',
   };
 }

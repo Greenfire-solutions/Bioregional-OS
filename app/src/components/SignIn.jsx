@@ -57,7 +57,7 @@ export default function SignIn({ me, onDone, onDismiss }) {
         {first ? (
           <p className="mb-3 text-xs leading-relaxed text-[var(--ink-2)]">
             Nobody has an account here yet. This one is made at the computer the commons lives on,
-            because there is nobody to invite you — after this, a steward or a coordinator makes
+            because there is nobody to invite you, after this, a steward or a coordinator makes
             the rest.
           </p>
         ) : (
@@ -71,7 +71,7 @@ export default function SignIn({ me, onDone, onDismiss }) {
             This OS serves plain HTTP: localhost, or http://192.168.x.x on the
             gathering wifi. Over the second one, everything typed here is
             readable by anyone on that network. Saying so is the only honest
-            option — the alternative is a password box that silently implies a
+            option, the alternative is a password box that silently implies a
             protection this transport cannot provide. The server decides this,
             not the browser, which cannot tell a LAN address from localhost
             without being told. */}
@@ -119,7 +119,7 @@ export default function SignIn({ me, onDone, onDismiss }) {
         </form>
 
         <p className="mt-3 border-t border-[var(--line-2)] pt-2 text-[10px] leading-snug text-[var(--ink-3)]">
-          This is not a wall. The commons can be looked at without signing in — what signing in
+          This is not a wall. The commons can be looked at without signing in, what signing in
           changes is that the work has your name on it.
         </p>
       </div>
@@ -141,7 +141,7 @@ function Field({ label, value, onChange, type = 'text', hint, ...rest }) {
 }
 
 /**
- * Who you are, in the header — and the way out.
+ * Who you are, in the header, and the way out.
  *
  * Named rather than implied. A person at somebody else's laptop has to be able
  * to see whose name their work is about to be recorded against, which is the
@@ -151,7 +151,7 @@ export function SignedInAs({ me, onSignIn, onSignedOut }) {
   const [busy, setBusy] = useState(false);
 
   // NOT `if (!me) return null`. That is what it said, and it meant the control
-  // vanished entirely whenever /api/me could not be reached — which is exactly
+  // vanished entirely whenever /api/me could not be reached, which is exactly
   // what happens when the running server predates the route. The screen then
   // shows no sign-in at all, and the person reasonably concludes the feature was
   // never built, rather than that the process answering them is out of date.

@@ -3,7 +3,7 @@
 // and Regen Network. The idea this OS borrows: knowledge travels as *labels*
 // (Reference Identifiers + manifests), while the material stays where it was
 // made. A peer learns that your bank-stabilisation method exists and can ask
-// for it — it does not silently copy your community's data.
+// for it, it does not silently copy your community's data.
 import { all, one } from '../core/db.mjs';
 import { makeRid, parseRid, visibleAt } from '../core/ids.mjs';
 import { creditForTags } from './registry.mjs';
@@ -37,7 +37,7 @@ export function manifest(chapterId, { clearance = 'public' } = {}) {
 
 /**
  * Bundle a specific object for travel. Only things marked as travelling
- * knowledge (learn.travels = 1) leave at all — that is a protocol rule,
+ * knowledge (learn.travels = 1) leave at all, that is a protocol rule,
  * not a preference.
  */
 export function bundle(rid, { clearance = 'public' } = {}) {
@@ -66,12 +66,12 @@ export function bundle(rid, { clearance = 'public' } = {}) {
     source_chapter: parsed.chapterId,
     retrieved_at: new Date().toISOString(),
     contents: strip(row),
-    // A bundle is the artifact designed from the outset to TRAVEL — it does not
+    // A bundle is the artifact designed from the outset to TRAVEL, it does not
     // stop at one group chat, it lands in another commons and becomes theirs.
     // So it carries its credit with it, resolved from the registry, and names
     // anything it could not resolve rather than passing on an unmarked gap.
     ...creditForTags([row.source_adapter], { humanTags: [...HUMAN_SOURCES, null, undefined] }),
-    // A bundle is built to land in a stranger's commons — no banner, no
+    // A bundle is built to land in a stranger's commons, no banner, no
     // interface, nobody who knows where it came from. If it carries invented
     // reporting it has to say so in the artifact itself, because by the time
     // anyone wonders it is already somewhere else.

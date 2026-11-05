@@ -1,9 +1,9 @@
 // ── The Land Seat ─────────────────────────────────────────────────────────
 // The chair at the council table that nobody sits in.
 //
-// The protocol requires every agenda item to carry a Land Seat report —
+// The protocol requires every agenda item to carry a Land Seat report,
 // "ecological observations, seasonal conditions, downstream effects,
-// uncertainty, red flags" — and `engines/council.mjs` has always refused a
+// uncertainty, red flags", and `engines/council.mjs` has always refused a
 // proposal without one. What it could not do was tell whether the report had
 // anything to do with the land. The field was free text, validated for
 // non-emptiness, and the OS knew a great deal that never reached it: the gage
@@ -14,12 +14,12 @@
 //
 // Two functions here, and the distinction between them is the whole design:
 //
-//   brief()    — what the land is doing, offered to whoever is WRITING the
+//   brief(), what the land is doing, offered to whoever is WRITING the
 //                report. It is material, not a draft. Nothing auto-writes the
 //                report, because the Land Seat is a person speaking for a
 //                place and a generated paragraph is nobody speaking.
 //
-//   context()  — the same facts, frozen onto the decision at the moment it was
+//   context(), the same facts, frozen onto the decision at the moment it was
 //                proposed. This is the part that pays off later: a decision
 //                made in the third year of a drought reads very differently
 //                once the drought breaks, and "monitoring must change
@@ -113,7 +113,7 @@ export function brief(chapterId, { place_id = null } = {}) {
   if (water) {
     observations.push(
       waterAge > WATER_FRESH_DAYS
-        ? `The most recent water reading is ${waterAge} days old — ${waterReading(water)}. ` +
+        ? `The most recent water reading is ${waterAge} days old, ${waterReading(water)}. ` +
           'Treat it as history, not conditions.'
         : waterReading(water));
   }
@@ -149,7 +149,7 @@ export function brief(chapterId, { place_id = null } = {}) {
     ],
     sentence: landSentence({ water, waterAge, hazards, unaddressed, place, season }),
     note: 'Material for the report, not the report. The Land Seat is a person speaking for ' +
-          'a place — a generated paragraph is nobody speaking.',
+          'a place, a generated paragraph is nobody speaking.',
   };
 }
 
@@ -205,7 +205,7 @@ function landSentence({ water, waterAge, hazards, unaddressed, place, season }) 
 /** The reading as a person would say it: a place, a number and a unit. */
 function waterReading(w) {
   if (!w) return null;
-  const where = String(w.title ?? '').split(' — ')[0];
+  const where = String(w.title ?? '').split(/ \u2014 |: /)[0];
   if (w.quantity_value == null) return w.title;
   return `${where} is at ${w.quantity_value}${w.quantity_unit ? ` ${w.quantity_unit}` : ''}`;
 }

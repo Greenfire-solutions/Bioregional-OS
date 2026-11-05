@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// BioRegional OS — local server.
+// BioRegional OS, local server.
 //
 //   npm run os            → runs on this computer only (http://localhost:4180)
 //   npm run os -- --share → also reachable by phones/laptops on the same wifi
@@ -25,7 +25,7 @@ const OPEN = argv.includes('--open');
 const PORT = Number(process.env.PORT || 4180);
 // The loopback listener never moves. Sharing opens a SECOND listener on
 // 0.0.0.0 (server/share.mjs), so it can be turned on and off from inside the
-// app without a restart — which is the difference between a chapter that shares
+// app without a restart, which is the difference between a chapter that shares
 // and one whose steward was told to quit the app and use a terminal.
 const HOST = '127.0.0.1';
 
@@ -33,7 +33,7 @@ const HOST = '127.0.0.1';
 // --share binds 0.0.0.0 and the connect QR hands out http://<lan-ip>:4180, so
 // everyone on the gathering wifi can reach the OS. Requests from off this
 // machine are held at `public` (see routes/clearance.mjs) and cannot ask for
-// more, so nothing protected is served — but a steward about to project a QR
+// more, so nothing protected is served, but a steward about to project a QR
 // code in a room should be told what is in the commons before they do it,
 // rather than trusting that a gate they cannot see is holding.
 //
@@ -52,7 +52,7 @@ if (SHARE) {
   This commons holds ${held} thing${held === 1 ? '' : 's'} above members-only:`);
     for (const r of byKind) console.log(`    ${String(r.n).padStart(4)}  ${r.sensitivity}  ${r.object_type}`);
     console.log(`
-  Phones on the wifi are only ever served public material — they cannot ask
+  Phones on the wifi are only ever served public material, they cannot ask
   for more. But sharing a commons that holds restricted or sacred records is
   a decision for the people those records belong to, not for whoever is at
   the keyboard.
@@ -95,10 +95,10 @@ const handle = async (req, res) => {
           try {
             const QRCode = (await import('qrcode')).default;
             qr = await QRCode.toDataURL(`http://${ip}:${PORT}`, { margin: 1, width: 240 });
-          } catch { /* qrcode not installed — the link alone still works */ }
+          } catch { /* qrcode not installed, the link alone still works */ }
         }
         // Answered BEFORE api(), so there is no clearanceFor() and no withhold()
-        // over it — which means everything here is public by construction and
+        // over it, which means everything here is public by construction and
         // has to be chosen that way. Two things were not: the count of
         // restricted and sacred records, added in the same commit whose own
         // comment says "telling a stranger whether the wifi door is open is
@@ -121,7 +121,7 @@ const handle = async (req, res) => {
       const out = await api(req, res, url);
       if (out === undefined) return;                   // route wrote its own response
       // An envelope is `{ status: <number>, body }`. `out.status ?? 200` treated
-      // any answer with a `status` field as one — and an intake row's status is
+      // any answer with a `status` field as one, and an intake row's status is
       // the word "received", so `writeHead('received')` threw and a neighbour
       // bringing a need through the join page got HTTP 500 while their words
       // were written to the database. Same collision as in routes/api.mjs; it
@@ -155,7 +155,7 @@ function send(res, status, body, type) {
 }
 
 function bootstrapPage() {
-  return `<!doctype html><meta charset="utf-8"><title>BioRegional OS — one step left</title>
+  return `<!doctype html><meta charset="utf-8"><title>BioRegional OS, one step left</title>
 <style>body{font:16px/1.7 ui-sans-serif,system-ui;background:#F7F5F0;color:#2C2A29;max-width:36rem;margin:5rem auto;padding:0 1.5rem}
 code{background:#EAE6DD;padding:.2em .45em;border-radius:4px;font-size:.9em}h1{font-weight:600;font-size:1.4rem}
 a{color:#4A5D4E}.step{border-left:3px solid #D4AF37;padding-left:1rem;margin:1.5rem 0}</style>
@@ -171,7 +171,7 @@ db();
 // Which upstreams exist, their licences and their Atlas layers are known at
 // build time and have nothing to do with whether anything has been fetched yet.
 // Writing the declaration at boot means "what data can this OS reach?" has an
-// answer on a brand-new commons, before any adapter has run — and it gives
+// answer on a brand-new commons, before any adapter has run, and it gives
 // last_fetched_at a row to land on when one does.
 syncSources();
 // The handler the loopback server uses is the handler the wifi listener uses.
@@ -197,7 +197,7 @@ server.listen(PORT, HOST, async () => {
   console.log(`  Stop it with Control + C. Nothing leaves this machine.\n`);
   if (chapter && !NO_BEAT) {
     heartbeat.start(chapter.id);
-    console.log(`  Tending ${chapter.name} while this stays open — locating places, refreshing`);
+    console.log(`  Tending ${chapter.name} while this stays open, locating places, refreshing`);
     console.log(`  water readings, watching review dates. Stop with --no-heartbeat.\n`);
   }
   if (OPEN) execFile('open', [`http://localhost:${PORT}`], () => {});
@@ -207,7 +207,7 @@ server.on('error', async (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`\n  BioRegional OS is already running on port ${PORT}.`);
     // Ask the one that IS running whether it is older than the code on disk.
-    // Without this, the whole message is "it is already running" — which is
+    // Without this, the whole message is "it is already running", which is
     // true, unhelpful, and exactly what somebody sees after an update when the
     // new screens are on their screen and the new routes are not in that
     // process. Best effort: if it cannot be asked, the old advice stands.
@@ -223,7 +223,7 @@ server.on('error', async (err) => {
         process.exit(1);
       }
     } catch { /* could not ask it; the line below is still true */ }
-    console.error(`  Open http://localhost:${PORT} — or run it on another port:  PORT=4190 npm run os\n`);
+    console.error(`  Open http://localhost:${PORT}, or run it on another port:  PORT=4190 npm run os\n`);
     process.exit(1);
   }
   throw err;

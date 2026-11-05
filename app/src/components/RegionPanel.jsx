@@ -5,17 +5,17 @@ import { callTool } from '../api.js';
 /**
  * What is actually here, for a region somebody just pointed at.
  *
- * The ecoregion index ships with the repo — all 967 EPA Level IV and 85 Level
- * III — so every polygon on the map can always say its own name, division and
+ * The ecoregion index ships with the repo, all 967 EPA Level IV and 85 Level
+ * III, so every polygon on the map can always say its own name, division and
  * biome with no network at all. The DOSSIER behind it (life, soil, water,
  * climate, resources, hazards) is compiled per region and is not in the repo,
  * because all of them together are about 95 MB of other people's open data.
  *
  * So this panel has three states, and the middle one is the one that matters:
  *
- *   downloaded  — everything, read from disk, works with the wifi off
- *   not yet     — the region's identity, plus a button that fetches the rest
- *   offline     — the identity, and an honest statement that the rest needs a
+ *   downloaded, everything, read from disk, works with the wifi off
+ *   not yet, the region's identity, plus a button that fetches the rest
+ *   offline, the identity, and an honest statement that the rest needs a
  *                 connection once, ever
  *
  * The old behaviour was a fourth state nobody chose: hovering showed a name and
@@ -41,7 +41,7 @@ export default function RegionPanel({ region, onClose }) {
     const r = await callTool('download_region', { code: region.code, scheme: region.scheme });
     if (r?.error) {
       // The honest failure. Compiling a region reads live upstreams, so with no
-      // connection this cannot work — and saying "try again" would be a lie.
+      // connection this cannot work, and saying "try again" would be a lie.
       setFailed(r.message || r.error);
     } else {
       setBrief(await callTool('region_brief', { code: region.code, scheme: region.scheme }));
@@ -158,8 +158,8 @@ const SECTIONS = [
 /**
  * A nested value, as a person reads it rather than as JSON.
  *
- * A dossier section carries lists inside objects — signature plants, birds,
- * mammals — and stringifying those printed a truncated array literal complete
+ * A dossier section carries lists inside objects, signature plants, birds,
+ * mammals, and stringifying those printed a truncated array literal complete
  * with brackets, quotes and a severed last word. The names ARE the content
  * here; the punctuation around them is an implementation detail leaking onto
  * the screen.
@@ -179,7 +179,7 @@ function short(v) {
 /**
  * A dossier section is composed by adapters and its shape is theirs, not this
  * component's. Rendering it generically means a new adapter appears here on the
- * day it is written rather than the day somebody remembers to add a case —
+ * day it is written rather than the day somebody remembers to add a case,
  * the same reason forms are generated from the tool schemas.
  */
 function Lines({ value }) {

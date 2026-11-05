@@ -5,10 +5,10 @@
 // A chapter organizing around a creek needs two things the gage cannot tell it:
 // what is IN the water, and where the water goes. Both are public domain.
 //
-//   Water Quality Portal (USGS + EPA + tribal programmes, 430M results) —
+//   Water Quality Portal (USGS + EPA + tribal programmes, 430M results),
 //     nitrate, E. coli, dissolved oxygen, turbidity, temperature, at real
 //     monitoring stations, by whoever sampled them.
-//   NHDPlus High Resolution — the stream network. Stream order says how far
+//   NHDPlus High Resolution, the stream network. Stream order says how far
 //     down the branching a reach sits; drainage area says how much ground is
 //     upstream of you. Together they answer "what happens here affects what?"
 //
@@ -70,7 +70,7 @@ export async function waterQualityNear(lat, lng, { radiusKm = 5, sinceYears = 3,
 
   return {
     available: true,
-    source: 'Water Quality Portal — USGS, EPA and tribal programmes',
+    source: 'Water Quality Portal, USGS, EPA and tribal programmes',
     source_id: 'water-quality-portal',
     cached: !!cached, stale: !!stale,
     radius_km: radiusKm, since_years: sinceYears,
@@ -91,21 +91,21 @@ function readableQuality(chars, radiusKm, years) {
     ? `${lead.name} last read ${lead.latest.value}${lead.unit ? ` ${lead.unit}` : ''} on ${lead.latest.date}`
     : `${lead.name} sampled ${lead.samples} times`;
   const split = chars.filter((c) => c.also_reported_in).length;
-  return `${distinct} water quality measures tracked within ${radiusKm} km over ${years} years — ${val}.` +
+  return `${distinct} water quality measures tracked within ${radiusKm} km over ${years} years, ${val}.` +
     (split ? ` Some are reported in more than one unit and are kept apart rather than averaged together.` : '');
 }
 
 
 /**
  * Group results by characteristic AND unit. Exported so the rule can be tested
- * without a network call — and so there is one implementation rather than a
+ * without a network call, and so there is one implementation rather than a
  * test-only twin that can drift from the one that runs.
  */
 export function groupByUnit(rows) {
   // Grouped by CHARACTERISTIC **and UNIT**, never by characteristic alone.
   //
-  // This is not tidiness. Nitrate in this dataset arrives in two units — mg/L
-  // as N and mg/L as NO3, twenty samples each — and they are the same substance
+  // This is not tidiness. Nitrate in this dataset arrives in two units, mg/L
+  // as N and mg/L as NO3, twenty samples each, and they are the same substance
   // on scales that differ by a factor of about 4.4. Medianing across them gave
   // 2.39, which is the median of neither group and corresponds to no real
   // measurement, printed confidently with one of the two unit labels attached.
@@ -122,7 +122,7 @@ export function groupByUnit(rows) {
     const g = groups.get(key);
     if (r.MonitoringLocationIdentifier) g.stations.add(r.MonitoringLocationIdentifier);
     // The blank-cell rule. An empty ResultMeasureValue means the sample was
-    // taken and no value recorded — not that the value was zero.
+    // taken and no value recorded, not that the value was zero.
     const raw = r['ResultMeasureValue'];
     const value = (raw == null || String(raw).trim() === '') ? null : Number(raw);
     if (value == null || !Number.isFinite(value)) { g.unmeasured++; continue; }
@@ -154,7 +154,7 @@ export function groupByUnit(rows) {
       latest: g.latest,
       // Named on every row so nobody has to notice the duplicate themselves.
       also_reported_in: others.length ? others : null,
-      // WQP's unit column carries junk for some bacterial counts — 'None' and
+      // WQP's unit column carries junk for some bacterial counts, 'None' and
       // 'hours' against E. coli. Flagged rather than printed as if it were a
       // concentration.
       unit_looks_wrong: g.unit != null && /^(hours?|days?|minutes?)$/i.test(g.unit) ? g.unit : null,
@@ -199,7 +199,7 @@ export async function flowlinesNear(lat, lng, { radiusKm = 5 } = {}) {
   //
   // And the honest answer here turned out to be neither of the ones I expected.
   // The seed place is called "Barton Creek Greenbelt Reach", but the nearest
-  // mapped channel to its coordinates is Skunk Hollow Creek — Barton Creek is
+  // mapped channel to its coordinates is Skunk Hollow Creek, Barton Creek is
   // four hundred metres further. That is a fact about the place, not a fault in
   // the query, and it is the kind of thing a chapter should find out early. A
   // heuristic tuned until it said "Barton Creek" would have been a lie that
@@ -211,7 +211,7 @@ export async function flowlinesNear(lat, lng, { radiusKm = 5 } = {}) {
   const { cached, stale } = wide;
   const feats = wide.feats;
   if (!feats.length) {
-    return { available: false, reason: 'no NHD flowlines here — outside coverage, or no mapped channel', source: null };
+    return { available: false, reason: 'no NHD flowlines here, outside coverage, or no mapped channel', source: null };
   }
   markFetched('nhdplus-hr');
 

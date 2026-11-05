@@ -4,13 +4,13 @@
 // them, and the panel that opens when one is clicked.
 //
 // The keys here must match engines/mapboard.mjs's MAP_KINDS exactly, and a test
-// asserts it — a kind drawn but missing from the key is a symbol nobody can
+// asserts it, a kind drawn but missing from the key is a symbol nobody can
 // read, and a kind in the key but never drawn is a promise the map does not
 // keep.
 //
 // Shape AND colour, never colour alone. Roughly one man in twelve cannot
 // reliably separate the reds from the greens, and this map uses both to mean
-// opposite things — a blocked project and a running one. Anything that depends
+// opposite things, a blocked project and a running one. Anything that depends
 // on telling those apart has to work in greyscale too, so the shapes differ as
 // well and the key shows both.
 
@@ -34,7 +34,7 @@ export const KIND = {
     label: 'Work to do', shape: 'chevron', color: [90, 124, 99],
     // The one kind whose colour says "you could do this". An unclaimed task is
     // the single most useful thing on this map to a person who has just walked
-    // up to it, so nobody-has-picked-this-up is what changes the colour —
+    // up to it, so nobody-has-picked-this-up is what changes the colour,
     // exactly as a project's colour changes for something being in its way.
     blockedColor: [201, 150, 62], size: 22, z: 8,
     what: 'One thing somebody is going to do. Gold when nobody has picked it up; the number is who has',
@@ -69,7 +69,7 @@ const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
  * the globe scatterplot each tested `state === 'blocked'` on their own, which
  * was correct for exactly as long as "blocked" was the only kind of attention
  * this map could express. Adding tasks broke that silently and in the worst
- * possible direction — an unclaimed task, the single most useful thing on the
+ * possible direction, an unclaimed task, the single most useful thing on the
  * map to somebody who has just walked up to it, would have drawn in the calm
  * colour on all three surfaces and nothing anywhere would have said so.
  *
@@ -88,7 +88,7 @@ export function needsAttention(f) {
  *
  * Drawn rather than picked from an icon font so the shapes stay legible at the
  * sizes a map actually uses them, and so a borrowed coordinate can be drawn as
- * the same shape without a fill — see below.
+ * the same shape without a fill, see below.
  *
  * `precise: false` means the thing has no coordinate of its own and is sitting
  * at the centre of the place it belongs to. Those are hollow and dashed, which
@@ -104,7 +104,7 @@ export function markerSVG(kind, { blocked = false, precise = true } = {}) {
   const dash = precise ? '' : ' stroke-dasharray="4 3"';
   // The shape is built twice: once as a dark halo behind, once in its colour.
   // Built by a function rather than reused as a string, because presentation
-  // attributes on a child ELEMENT beat the ones on its parent <g> — wrapping a
+  // attributes on a child ELEMENT beat the ones on its parent <g>, wrapping a
   // coloured path in a dark-stroked group drew a second copy of the coloured
   // path, not a halo, and the emitted SVG looked correct while delivering
   // nothing.

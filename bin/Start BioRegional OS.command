@@ -15,7 +15,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 if [ ! -d app/node_modules ] || [ ! -f app/dist/index.html ]; then
-  printf '  First time here — setting things up. This takes a few minutes.\n\n'
+  printf '  First time here, setting things up. This takes a few minutes.\n\n'
   npm run setup || { printf '\n  Setup hit a problem. Press Return to close.'; read -r _; exit 1; }
 fi
 

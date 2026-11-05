@@ -8,7 +8,7 @@ import { callTool } from '../api.js';
  * This is the page that answers "is this working?", and the reason it exists is
  * that the honest answer is not attention. There is no company here to optimise
  * and nothing to sell, so the measures are all about whether the loop is
- * turning — and none of them go up when somebody opens the app more often.
+ * turning, and none of them go up when somebody opens the app more often.
  *
  * Three presentation rules, each guarding against a specific way this page
  * could quietly become the dashboard §6 refuses:
@@ -19,7 +19,7 @@ import { callTool } from '../api.js';
  *   false and exactly the moment somebody gives up.
  *
  *   There is no total. No score out of seven, no percentage, no ring that
- *   fills — because the instant this page has one number on it, that number is
+ *   fills, because the instant this page has one number on it, that number is
  *   the thing people manage, and the seven questions underneath it stop being
  *   read.
  *
@@ -51,7 +51,7 @@ export default function Vitals() {
           <h2 className="text-base font-medium">How it is going</h2>
           <p className="mt-0.5 text-xs text-[var(--ink-2)]">
             Seven questions, answered from this commons’ own database. Nothing here is
-            telemetry, and none of it counts how often anybody opens the app — if these are
+            telemetry, and none of it counts how often anybody opens the app, if these are
             healthy and you open it twice a week, it is working.
           </p>
         </div>
@@ -84,7 +84,7 @@ export default function Vitals() {
 
               <div className="mt-1.5 flex items-baseline gap-1.5 pl-[1.375rem]">
                 <span className={`text-xl leading-none ${S.mark}`}>
-                  {m.value === null ? '—' : m.value}
+                  {m.value === null ? '-' : m.value}
                 </span>
                 <span className="text-[11px] text-[var(--ink-3)]">{m.unit}</span>
               </div>

@@ -1,7 +1,7 @@
 // ── Map layers ────────────────────────────────────────────────────────────
 // Polygon geometry for the 3D map. Live from EPA (public domain, US coverage);
 // a global layer can be dropped into data/upstream/global-ecoregions.geojson
-// (see docs/INTEROP.md — RESOLVE Ecoregions 2017 is CC-BY-4.0 and safe to
+// (see docs/INTEROP.md, RESOLVE Ecoregions 2017 is CC-BY-4.0 and safe to
 // vendor; One Earth Bioregions 2023 is CC-BY-NC and is not redistributed here).
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,7 +14,7 @@ const GLOBAL = join(ROOT, 'data', 'upstream', 'global-ecoregions.geojson');
 /** Ecoregion polygons intersecting a bbox, simplified for the viewport. */
 export async function ecoregionPolygons({ west, south, east, north }, { level = 'l3', simplify } = {}) {
   const span = Math.max(Math.abs(east - west), Math.abs(north - south));
-  // Simplify proportionally to how much world is on screen — keeps payloads sane.
+  // Simplify proportionally to how much world is on screen, keeps payloads sane.
   const offset = simplify ?? Math.max(0.002, Math.min(0.2, span / 220));
   const url = `${EPA_BASE}?${qs({
     geometry: { xmin: west, ymin: south, xmax: east, ymax: north, spatialReference: { wkid: 4326 } },

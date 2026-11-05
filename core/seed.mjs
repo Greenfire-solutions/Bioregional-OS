@@ -1,5 +1,5 @@
 // Seed the commons from the Green Fire prototype data (Austin / Barton Creek).
-// Everything here is demonstration material — it is labelled as such in the UI.
+// Everything here is demonstration material, it is labelled as such in the UI.
 // Run `npm run seed -- --reset` to start over.
 import { db, all, one, create, run, close } from './db.mjs';
 import { readFileSync } from 'node:fs';
@@ -24,15 +24,15 @@ if (reset) {
   // Every table, read from the database rather than listed here.
   //
   // The list used to be written out by hand and had fallen seven tables behind
-  // the schema — including `people`, `devices` and `capabilities`. So
+  // the schema, including `people`, `devices` and `capabilities`. So
   // `npm run seed -- --reset` printed "cleared existing data" while leaving
   // every enrolled person, every device secret and every unredeemed invitation
   // code in place. A reset that lies about what it cleared is the same class of
   // problem as a backup that is not a backup.
   //
   // Foreign keys are ON in this database, so the order would matter. Rather
-  // than hand-maintaining a dependency order as well — a second list to fall
-  // behind — they are switched off for the duration of the delete, which is
+  // than hand-maintaining a dependency order as well, a second list to fall
+  // behind, they are switched off for the duration of the delete, which is
   // what a full wipe means anyway.
   const tables = all(
     `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`)
@@ -42,7 +42,7 @@ if (reset) {
   // stays visible as the author of everything they filed.
   //
   // That reasoning does not reach here, and it is worth saying why rather than
-  // just switching them off. `--reset` is not a withdrawal being honoured — it
+  // just switching them off. `--reset` is not a withdrawal being honoured, it
   // is the whole database being thrown away, including every row those people
   // authored. There is nothing left for them to remain the author OF. Honouring
   // a person's withdrawal is `npm run erase`, which is a different act with a
@@ -67,7 +67,7 @@ if (reset) {
 }
 
 if (one('SELECT id FROM chapters WHERE id=?', CHAPTER)) {
-  console.log('  chapter already seeded — nothing to do (use --reset to start over)');
+  console.log('  chapter already seeded, nothing to do (use --reset to start over)');
   close();
   process.exit(0);
 }
@@ -128,7 +128,7 @@ for (const q of INITIAL_QUESTS) {
     stage: 'council_review',
   });
   questMap[q.id] = row.id;
-  // Gates start unsatisfied — that is the point.
+  // Gates start unsatisfied, that is the point.
   for (const gate of ['rights_holder_consent', 'land_access', 'permits_insurance',
                       'maintenance_owner', 'affected_party_process']) {
     create('quest_gates', 'gate', CHAPTER, { quest_id: row.id, gate, required: 1, satisfied: 0 });
@@ -143,7 +143,7 @@ for (const d of INITIAL_DECISIONS) {
     status: d.status === 'Consented' ? 'decided' : 'in_review',
     reversible: 1,
     land_seat_report:
-      'Seeded record — the original prototype predates the Land Seat requirement. ' +
+      'Seeded record, the original prototype predates the Land Seat requirement. ' +
       'Replace with a real ecological briefing before this decision is reviewed.',
     land_seat_steward: d.author,
     affected_parties: [...(d.governs ?? []), ...(d.outsideAuthority ?? [])].join('; '),
@@ -163,7 +163,7 @@ for (const g of INITIAL_GATHERINGS) {
     location_name: g.locationName, description: g.description,
     rsvp_count: g.rsvpsCount ?? 0,
     care_meals: 0, care_transport: 0, care_childcare: 0, care_accessibility: 0,
-    care_notes: 'No care provision recorded yet — see the care gap report.',
+    care_notes: 'No care provision recorded yet, see the care gap report.',
   });
 }
 

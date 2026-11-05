@@ -7,7 +7,7 @@ import { callTool } from '../api.js';
 /**
  * The first sixty seconds.
  *
- * One question, then everything the OS can find out about that point — before
+ * One question, then everything the OS can find out about that point, before
  * it asks for anything at all. Nothing on the reveal screen writes to the
  * database; a person can find out what bioregion they live in and close the
  * tab, and that is a perfectly good outcome.
@@ -28,7 +28,7 @@ export default function FirstRun({ blocking = false, onDone, onDismiss }) {
     setBusy(false);
     if (r?.error) { setError(r.message ?? 'Could not find that.'); return; }
     setLook(r); setStep('reveal');
-    // The slow half — soil and species — arrives second so the first answer is fast.
+    // The slow half, soil and species, arrives second so the first answer is fast.
     callTool('look_around', { depth: 'full', lat: r.place.lat, lng: r.place.lng })
       .then((full) => { if (!full?.error) setLook(full); })
       .catch(() => {});
@@ -74,7 +74,7 @@ export default function FirstRun({ blocking = false, onDone, onDismiss }) {
           <div className="px-5 py-5">
             <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search({ query: query.trim() }); }}>
               <label htmlFor="firstrun-where" className="text-xs text-[var(--ink-2)]">
-                A town, a creek, a road junction, a farm name — anything with a name on a map.
+                A town, a creek, a road junction, a farm name, anything with a name on a map.
               </label>
               <div className="mt-2 flex gap-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2 rounded border border-[var(--line)] bg-[var(--paper-2)] px-3 py-2">
@@ -192,7 +192,7 @@ function Found({ look, onDone }) {
     // Caught here so the refusal reads like the reason it exists, rather than
     // like a schema validation message on somebody's first screen.
     if (!form.represents.trim() || !form.does_not_represent.trim()) {
-      setError('Both representation answers are required — including the second one. ' +
+      setError('Both representation answers are required, including the second one. ' +
                'It is the protocol\'s first gate, not a formality.');
       return;
     }

@@ -17,7 +17,7 @@ export function propose(chapterId, d) {
     };
   }
   // Rights before efficiency: an irreversible decision cannot ride a light method.
-  // Absent an explicit flag a decision is reversible — the schema default.
+  // Absent an explicit flag a decision is reversible, the schema default.
   const reversible = d.reversible !== false && d.reversible !== 0;
   if (!reversible && !IRREVERSIBLE_METHODS.includes(d.method)) {
     return {
@@ -30,14 +30,14 @@ export function propose(chapterId, d) {
   }
   // Freeze what the land was doing at the moment this was proposed.
   //
-  // Not a check on the report and not a substitute for it — the report is still
+  // Not a check on the report and not a substitute for it, the report is still
   // required and still written by a person. This is the record that makes
   // "monitoring must change decisions" answerable later: a decision taken in
   // the third year of a drought reads very differently once the drought breaks,
   // and without this nobody can tell which of the two they are reading.
   //
   // Captured rather than fetched, so a council meeting with no wifi still gets
-  // it, and a failure here must never block a proposal — the Land Seat report
+  // it, and a failure here must never block a proposal, the Land Seat report
   // is the requirement; this is the corroboration.
   let land_seat_context = null;
   try { land_seat_context = JSON.stringify(landSeatContext(chapterId, { place_id: d.place_id })); }
@@ -55,7 +55,7 @@ export function decide(id, { decided_by, review_date } = {}) {
     return { error: 'red_flag_open', message: `Open red flag: ${d.red_flags}` };
   }
   if (!d.review_date && !review_date) {
-    return { error: 'missing_review_date', message: 'Monitoring must change decisions — set a review date.' };
+    return { error: 'missing_review_date', message: 'Monitoring must change decisions, set a review date.' };
   }
   run(
     `UPDATE decisions SET status='decided', decided_at=datetime('now'), review_date=COALESCE(?,review_date) WHERE id=?`,
@@ -65,7 +65,7 @@ export function decide(id, { decided_by, review_date } = {}) {
 }
 
 /**
- * The Minimum Viable Chapter Test, from the manual — ten yes/no questions.
+ * The Minimum Viable Chapter Test, from the manual, ten yes/no questions.
  * This is the closest thing the OS has to a health check, and it is deliberately
  * hard to pass by adding data alone.
  */
@@ -135,7 +135,7 @@ export function minimumViableTest(chapterId) {
       //
       // This used to pass on "more than one person has served the Land Seat",
       // which a chapter satisfies by having had a busy month. It is evidence
-      // that two people once did something, not that anything is arranged —
+      // that two people once did something, not that anything is arranged,
       // and the arrangement has to exist BEFORE it is needed, because the
       // moment it is needed is the moment nobody can ask.
       //
@@ -171,7 +171,7 @@ export function agenda(chapterId) {
   );
 }
 
-/** Decisions whose review date has arrived — the loop closing on itself. */
+/** Decisions whose review date has arrived, the loop closing on itself. */
 export function dueForReview(chapterId) {
   return all(
     `SELECT * FROM decisions WHERE chapter_id=? AND status='decided'

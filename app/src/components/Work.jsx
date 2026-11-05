@@ -13,7 +13,7 @@ import { verb } from '../verbs.js';
  * across two tabs, the checking half becomes a place people visit when they
  * remember to, which is never.
  *
- * The order is deliberate. What NOBODY has picked up comes first — that is the
+ * The order is deliberate. What NOBODY has picked up comes first, that is the
  * only section a person who has just walked in can act on, and putting the
  * in-hand work above it would make the screen open on other people's business.
  */
@@ -72,7 +72,7 @@ export default function Work({ onAct, onGoTo, primary }) {
         <div className="rounded border border-dashed border-[var(--line)] px-4 py-7 text-center">
           <p className="text-sm text-[var(--ink-2)]">Nothing written down to do yet.</p>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-[var(--ink-3)]">
-            A task is one thing somebody is going to do, inside a project — with its own point on
+            A task is one thing somebody is going to do, inside a project, with its own point on
             the map, and a before-and-after if it changes the land.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
@@ -102,7 +102,7 @@ export default function Work({ onAct, onGoTo, primary }) {
           <SectionHead icon={Eye} n={pending.length}>Waiting to be checked</SectionHead>
           <p className="mb-2 text-[11px] leading-snug text-[var(--ink-3)]">
             Somebody who was not there looks at these. The person who did the work cannot check
-            their own — the commons refuses it.
+            their own, the commons refuses it.
           </p>
           <div className="space-y-3">
             {pending.map((p) => <ProofCard key={p.id} proof={p} onAct={onAct} />)}
@@ -247,7 +247,7 @@ function ProofCard({ proof, onAct }) {
             ) : /^video\//.test(m.content_type) ? (
               <video src={m.url} controls className="aspect-[4/3] w-full rounded bg-black object-cover" />
             ) : (
-              <img src={m.url} alt={`${label} — ${proof.task_title}`} loading="lazy"
+              <img src={m.url} alt={`${label}, ${proof.task_title}`} loading="lazy"
                    className="aspect-[4/3] w-full rounded border border-[var(--line)] object-cover" />
             )}
             {/* Said on the evidence itself, not in a report nobody opens. A
@@ -258,7 +258,7 @@ function ProofCard({ proof, onAct }) {
                  title={m.sha256 ?? 'no hash'}>
                 {m.hash_source === 'content' && m.sha256
                   ? `sha256 ${m.sha256.slice(0, 12)}…`
-                  : 'not hashed — this file could not be read back'}
+                  : 'not hashed, this file could not be read back'}
               </p>
             )}
           </figure>

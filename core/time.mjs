@@ -7,14 +7,14 @@
 // and `String.replace` with a string pattern replaces the FIRST occurrence
 // only. That is fine for `2026-09-21 14:00`, which the database writes, and
 // wrong for `2026-09-20 10:00 AM`, which is what `add_gathering` stores when a
-// person types it — and what this project's own seed data writes. The second
+// person types it, and what this project's own seed data writes. The second
 // space survives, `new Date("2026-09-20T10:00 AM")` is Invalid Date, and every
 // comparison against it is silently false.
 //
 // The visible cost was the join page: it picks the next gathering by comparing
 // each `starts_at` to now, so a gathering written in the twelve-hour format was
 // skipped. A person standing at the creek clean-up scanned the QR and was
-// offered the seed swap the following day, or a greyed-out "I'm coming" tab —
+// offered the seed swap the following day, or a greyed-out "I'm coming" tab,
 // on the one screen built for a room full of people.
 //
 // Written to be boring: no library, no timezone cleverness, and it returns null

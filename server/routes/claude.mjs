@@ -1,7 +1,7 @@
 // ── Claude Code, inside the app ───────────────────────────────────────────
 // The assistant panel driven by the Claude Code CLI rather than the Anthropic
 // SDK. It runs on the steward's own subscription, needs no API key, and reaches
-// the commons through the same MCP server Claude Code uses from a terminal —
+// the commons through the same MCP server Claude Code uses from a terminal,
 // which means every action goes through runTool and meets the same protocol
 // refusals a person does.
 //
@@ -16,7 +16,7 @@
 //    come from this machine, and says so rather than 404ing.
 //
 // 2. THE TOOL CHECK IS AN ALLOWLIST, THOUGH THE FLAG IS A DENYLIST.
-//    `--allowedTools` does NOT restrict — it ADDS. Passing
+//    `--allowedTools` does NOT restrict, it ADDS. Passing
 //    `--allowedTools "mcp__bioregional-os__*"` leaves Bash, Edit, Read and Write
 //    fully available; verified by asking one to run `whoami`, which it did. Only
 //    `--disallowedTools` removes them.
@@ -39,7 +39,7 @@ const GRANTED = [
   // so without it the CLI can see every commons tool and call none of them.
   //
   // It also cannot be used to get around the denial, which was worth checking
-  // rather than assuming — the last thing I assumed about these flags was
+  // rather than assuming, the last thing I assumed about these flags was
   // wrong. Asked to load Bash and run `whoami`, the same probe that exposed
   // that `--allowedTools` does not restrict, it got back:
   //
@@ -81,7 +81,7 @@ const DENIED = [
  * remove tools somebody thought of.
  */
 const PERMITTED = [
-  /^mcp__bioregional-os__/,   // the commons tools — the whole point
+  /^mcp__bioregional-os__/,   // the commons tools, the whole point
   /^ToolSearch$/,             // finds tool schemas; reaches nothing by itself
   /^TodoWrite$/,              // scratchpad, in-memory, touches nothing
   /^ExitPlanMode$/,
@@ -89,7 +89,7 @@ const PERMITTED = [
 
 const isPermitted = (name) => PERMITTED.some((p) => p.test(name));
 
-/** Only this machine. Not "not the internet" — this machine. */
+/** Only this machine. Not "not the internet", this machine. */
 function fromThisMachine(req) {
   const a = (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
   return a === '127.0.0.1' || a === '::1' || a === 'localhost';
@@ -135,7 +135,7 @@ export async function claudeStream(req, res, body) {
       message:
         'The assistant answers only on the computer running the OS. It spends that person\'s ' +
         'Claude subscription and starts a process on their machine, and nothing here asks who ' +
-        'you are — so it is not offered over wifi even when the rest of the OS is. ' +
+        'you are, so it is not offered over wifi even when the rest of the OS is. ' +
         'Everything else on this page works normally.',
     }, null, 2));
   }
@@ -152,7 +152,7 @@ export async function claudeStream(req, res, body) {
     connection: 'keep-alive',
   });
 
-  // The place it is standing in. This panel had no system prompt at all — it
+  // The place it is standing in. This panel had no system prompt at all, it
   // inherited every protocol refusal from the tools and none of the ground, so
   // it was the one surface here that answered about watersheds in general.
   // Appended, never replacing: the CLI's own identity and safety instructions
@@ -169,7 +169,7 @@ export async function claudeStream(req, res, body) {
     '--verbose',
     ...(placeAppend ? ['--append-system-prompt', placeAppend] : []),
     // Only THIS project's MCP server. Without these two flags the CLI loads the
-    // user's global MCP config as well — on this machine that meant hundreds of tools
+    // user's global MCP config as well, on this machine that meant hundreds of tools
     // including Gmail, Slack, Google Drive and QuickBooks. An assistant panel in
     // a commons app would have been able to read its steward's email. No
     // denylist would have caught that; the allowlist check below did.
@@ -177,12 +177,12 @@ export async function claudeStream(req, res, body) {
     '--strict-mcp-config',
     // The two flags do opposite jobs and BOTH are needed. --disallowedTools
     // removes; --allowedTools approves. With only the first, every commons call
-    // stopped at a permission prompt — and a headless run has nobody to answer
+    // stopped at a permission prompt, and a headless run has nobody to answer
     // it, so the assistant reported the protocol had blocked it when in fact it
     // had never reached the protocol at all. A refusal that isn't the real
     // refusal is worse than an error: it teaches the steward a rule that
     // doesn't exist. Approving these is safe precisely because they are the
-    // only route in — every one goes through runTool and meets the same Land
+    // only route in, every one goes through runTool and meets the same Land
     // Seat, reviewer and consent gates a person meets.
     '--allowedTools', ...GRANTED,
     '--disallowedTools', ...DENIED,
@@ -221,7 +221,7 @@ export async function claudeStream(req, res, body) {
         const unexpected = (m.tools ?? []).filter((t) => !isPermitted(t));
         if (unexpected.length) {
           // The guard that outlives the flag. Something is reachable that this
-          // route never intended to hand over — refuse the whole exchange rather
+          // route never intended to hand over, refuse the whole exchange rather
           // than hope the model does not use it.
           return abort(
             'The assistant was given tools this OS does not allow it, so the request was refused.',

@@ -1,8 +1,8 @@
 // ── Ecoregion / bioregion resolution ───────────────────────────────────────
 // Upstream, all openly licensed:
-//   EPA Ecoregions Level III & IV (public domain, US)  — authoritative, live query
-//   RESOLVE Ecoregions 2017 (CC-BY-4.0)                — global ECO_ID reference
-//   One Earth Bioregions 2023 (CC-BY-NC-4.0)           — 185-bioregion framing
+//   EPA Ecoregions Level III & IV (public domain, US), authoritative, live query
+//   RESOLVE Ecoregions 2017 (CC-BY-4.0), global ECO_ID reference
+//   One Earth Bioregions 2023 (CC-BY-NC-4.0), 185-bioregion framing
 // The One Earth framework is NonCommercial, so this OS treats it as a *reference
 // label* only (name + code), never redistributing its geometry. See docs/INTEROP.md.
 import { getJSON, qs } from './http.mjs';

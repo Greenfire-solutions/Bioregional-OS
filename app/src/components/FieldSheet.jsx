@@ -17,7 +17,7 @@ import { printOnly } from '../print.js';
  * 24 arrived with no digital record at all and had to be rescued by hand. So
  * every sheet carries its own chapter, place, date and code. A sheet found in a
  * coat pocket three weeks later is still transcribable by somebody who was not
- * there — and a sheet handed back can never become an orphaned record.
+ * there, and a sheet handed back can never become an orphaned record.
  */
 export default function FieldSheet() {
   const [ground, setGround] = useState(null);
@@ -69,7 +69,7 @@ export default function FieldSheet() {
         <div className="flex items-start justify-between gap-4 border-b border-[#999] pb-2">
           <div className="min-w-0">
             <div className="print-title text-base font-semibold">
-              {ground?.place ? `Field sheet — ${place}` : 'Field sheet'}
+              {ground?.place ? `Field sheet, ${place}` : 'Field sheet'}
             </div>
             <div className="print-meta mt-0.5 text-[11px] text-[var(--ink-2)]">
               {ground?.place?.watershed ? `${ground.place.watershed} watershed · ` : ''}
@@ -112,7 +112,7 @@ export default function FieldSheet() {
             Quote <strong>{code}</strong> so it lands in the right place and on the right date.
             <br />
             Nothing here goes on the internet.
-            {isExample && <><br /><strong>Demonstration commons — the projects and people are fictional examples. The readings above are real public data.</strong></>}
+            {isExample && <><br /><strong>Demonstration commons, the projects and people are fictional examples. The readings above are real public data.</strong></>}
             {credit && <><br /><span className="text-[9px]">{credit}</span></>}
           </p>
           {connect?.qr && (
@@ -133,7 +133,7 @@ export default function FieldSheet() {
 }
 
 /**
- * A short human code: place initials + date. Derived, never stored — it exists
+ * A short human code: place initials + date. Derived, never stored, it exists
  * so a person can match paper to a place and a day, and there is nothing to keep
  * in sync because it can always be recomputed from the two things on the sheet.
  */

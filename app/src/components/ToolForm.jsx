@@ -6,8 +6,8 @@ import { callTool, get, uploadFile } from '../api.js';
  * Fields that name another row, and where the list of those rows comes from.
  *
  * Without this, a generated form asks a person to type `qst_4f2a9c31` into a
- * text box. Every tool that joins two things — a task to its project, a claim
- * to its task, a check to its proof — was unreachable by anybody who had not
+ * text box. Every tool that joins two things, a task to its project, a claim
+ * to its task, a check to its proof, was unreachable by anybody who had not
  * just read the id off a JSON dump, which is to say by anybody the interface is
  * actually for. The registry knew the relationship all along; only the form did
  * not.
@@ -18,13 +18,13 @@ import { callTool, get, uploadFile } from '../api.js';
  */
 const REFERENCES = {
   quest_id: { via: 'list_quests', label: (r) => r.title },
-  task_id: { via: 'list_tasks', label: (r) => `${r.title}${r.project_title ? ` — ${r.project_title}` : ''}` },
+  task_id: { via: 'list_tasks', label: (r) => `${r.title}${r.project_title ? `, ${r.project_title}` : ''}` },
   place_id: { via: 'list_places', label: (r) => r.name },
   signal_id: { via: 'list_signals', label: (r) => r.title },
   indicator_id: { via: 'list_indicators', label: (r) => r.name },
   intake_id: { via: 'list_intake', label: (r) => String(r.body ?? '').slice(0, 60) },
   gathering_id: { via: 'list_gatherings', label: (r) => r.title },
-  proof_id: { via: 'pending_proofs', label: (r) => `${r.task_title ?? 'a task'} — ${String(r.created_at ?? '').slice(0, 10)}` },
+  proof_id: { via: 'pending_proofs', label: (r) => `${r.task_title ?? 'a task'}, ${String(r.created_at ?? '').slice(0, 10)}` },
   media_id: { via: 'list_media', label: (r) => r.original_name || r.id },
 };
 
@@ -34,7 +34,7 @@ const REFERENCES = {
  * `before_media_id` and `after_media_id` are ids in the schema and photographs
  * in the world. Offering the list of files already stored would be asking
  * somebody standing in a field to go and upload two things somewhere else
- * first, then come back and match them up by name — which is the workflow that
+ * first, then come back and match them up by name, which is the workflow that
  * makes people stop filing evidence.
  *
  * `media_id` on its own is deliberately NOT here: withdrawing a file means
@@ -47,7 +47,7 @@ const FILE_FIELDS = new Set(['before_media_id', 'after_media_id']);
  *
  * This is why there is one registry: Claude Code, the in-app assistant, the REST
  * API and this form all call the same handler, so the same protocol gates apply.
- * Adding a tool gives you a human UI for free — there is no second place to edit.
+ * Adding a tool gives you a human UI for free, there is no second place to edit.
  */
 export default function ToolForm({ tool, prefill = {}, onDone, onClose }) {
   const [schema, setSchema] = useState(null);
@@ -84,7 +84,7 @@ export default function ToolForm({ tool, prefill = {}, onDone, onClose }) {
             : (def.description ?? '').length > 44 || /body|description|detail|report|evidence|summary|notes|response|purpose|statement|condition|experiment|trigger|method|plan/.test(name)
               ? 'text' : 'line',
       }))
-      // Required fields first — the protocol's demands should be the first thing seen.
+      // Required fields first, the protocol's demands should be the first thing seen.
       .sort((a, b) => (b.required ? 1 : 0) - (a.required ? 1 : 0));
   }, [schema]);
 
@@ -198,7 +198,7 @@ function Field({ field, value, onChange }) {
       </div>
       {kind === 'enum' && (
         <select className={base} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
-          <option value="">—</option>
+          <option value="">, </option>
           {def.enum.map((o) => <option key={o} value={o}>{String(o).replace(/_/g, ' ')}</option>)}
         </select>
       )}
@@ -240,7 +240,7 @@ function Field({ field, value, onChange }) {
 /**
  * A field that names another row, offered as the things themselves.
  *
- * Falls back to a plain box when the list is empty or could not be fetched —
+ * Falls back to a plain box when the list is empty or could not be fetched,
  * a member's device may not be allowed to run the listing tool, and a select
  * with no options and no escape is a form that cannot be filled in at all.
  */
@@ -278,9 +278,9 @@ function RefField({ field, value, onChange }) {
         </div>
       ) : rows.length || known ? (
         <select className={base} value={value ?? ''} onChange={(e) => onChange(e.target.value)}>
-          <option value="">—</option>
-          {/* A value handed in by whatever opened this form — the map panel,
-              an action on a list — may not be in the list this tool returns:
+          <option value="">, </option>
+          {/* A value handed in by whatever opened this form, the map panel,
+              an action on a list, may not be in the list this tool returns:
               pending_proofs holds only what is still pending, list_tasks only
               what is open. Kept as its own option so a prefilled form never
               silently loses the thing it was opened about. */}
@@ -293,7 +293,7 @@ function RefField({ field, value, onChange }) {
         <>
           <input className={base} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
           <span className="mt-0.5 block text-[10px] text-[var(--ink-3)]">
-            {failed ? 'The list could not be loaded on this device — paste an id.' : 'Nothing to choose from yet.'}
+            {failed ? 'The list could not be loaded on this device, paste an id.' : 'Nothing to choose from yet.'}
           </span>
         </>
       )}
@@ -306,8 +306,8 @@ function RefField({ field, value, onChange }) {
  * A photograph, chosen and sent straight away.
  *
  * The upload happens on choosing rather than on Save, so the refusals the store
- * makes — an unsupported type, a file over the limit, a photograph of people
- * with no consent record — arrive next to the thing they are about to be about,
+ * makes, an unsupported type, a file over the limit, a photograph of people
+ * with no consent record, arrive next to the thing they are about to be about,
  * instead of after somebody has filled in the rest of the form and pressed a
  * button that then throws all of it away.
  */
@@ -359,7 +359,7 @@ function FileField({ field, value, onChange }) {
       </div>
       {value && (
         <p className="mt-1 text-[11px] text-[var(--moss)]">
-          {file?.name ?? 'Stored'} — held in this commons, on this machine.
+          {file?.name ?? 'Stored'}, held in this commons, on this machine.
         </p>
       )}
       {err && <p className="mt-1 text-[11px] text-[var(--clay)]">{err}</p>}
@@ -373,7 +373,7 @@ function FileField({ field, value, onChange }) {
  *
  * These two used to be written separately in every project that has ever done
  * this: the picker offers `image/*`, the browser hands over a .tiff, and the
- * server refuses it — a rejection nobody could have predicted, which reads as
+ * server refuses it, a rejection nobody could have predicted, which reads as
  * the upload being broken rather than as a rule. core/media.mjs is the list,
  * /api/media-types serves it, and this holds no second copy.
  *

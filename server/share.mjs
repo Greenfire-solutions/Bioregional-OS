@@ -1,7 +1,7 @@
 // ── Sharing on the wifi, as a decision a person makes in the app ──────────
 //
 // `--share` is a start-up flag, so turning it on meant quitting the OS, opening
-// a terminal and typing a command — and if the commons holds anything above
+// a terminal and typing a command, and if the commons holds anything above
 // members-only, reading a refusal and typing a longer one. A chapter that
 // installs by double-clicking the icon never passes any flags at all, so it was
 // on 127.0.0.1 permanently and the Devices screen told the steward to go and
@@ -10,13 +10,13 @@
 // That is the whole funnel. Every step before the first useful moment loses
 // people, and "quit the app and use the command line" is not a step a
 // non-technical steward takes: it is where they stop. Sharing is also the
-// precondition for everything social in this project — the QR at a gathering,
-// the join page, the field sheet's code — so a terminal in front of it puts a
+// precondition for everything social in this project, the QR at a gathering,
+// the join page, the field sheet's code, so a terminal in front of it puts a
 // terminal in front of the second person, the third, and the whole reason a
 // commons has more than one member.
 //
 // The loopback listener never moves. This opens a SECOND listener on 0.0.0.0
-// with the same handler, and closes it again — so sharing is reversible in a
+// with the same handler, and closes it again, so sharing is reversible in a
 // click, nothing restarts, and the steward's own browser session survives it.
 // A server that had to restart to be shared is a server nobody shares twice.
 import { createServer } from 'node:http';
@@ -75,7 +75,7 @@ export function sharingStatus() {
  * The consent gate is the same one the flag enforces and it REFUSES rather than
  * warns, for the same reason: a warning printed above a running server is a
  * warning nobody reads. `anyway` is that decision made knowingly, which is the
- * only version worth having — and in the app it can be made by somebody looking
+ * only version worth having, and in the app it can be made by somebody looking
  * at the list of what is held, which is more than the terminal ever offered.
  */
 export function startSharing({ anyway = false } = {}) {
@@ -93,7 +93,7 @@ export function startSharing({ anyway = false } = {}) {
     return {
       error: 'holds_protected_records',
       message: `This commons holds ${held.total} thing${held.total === 1 ? '' : 's'} above members-only. `
-        + 'Devices on the wifi are only ever served public material and cannot ask for more — but '
+        + 'Devices on the wifi are only ever served public material and cannot ask for more, but '
         + 'sharing a commons that holds restricted or sacred records is a decision for the people '
         + 'those records belong to, not for whoever is at the keyboard.',
       held: held.by_kind,

@@ -1,6 +1,6 @@
 // ── Everything that can be put on the map ─────────────────────────────────
 // The map drew three things: places, hubs and signals. Everything else a
-// commons does — the projects, the needs somebody brought, the gatherings —
+// commons does, the projects, the needs somebody brought, the gatherings,
 // existed only in lists, which meant the one view that is actually about a
 // PLACE could not show what was happening in it.
 //
@@ -10,7 +10,7 @@
 //
 // THAT LAST PART IS THE WHOLE CARE OF THIS FILE. A quest and an observation
 // carry their own coordinates: somebody stood there. A need and a gathering do
-// not — the schema has no lat/lng for either — so they can only be drawn at the
+// not, the schema has no lat/lng for either, so they can only be drawn at the
 // centroid of the place they are attached to, or the chapter's own point. Those
 // are different claims. Drawing them identically says "this need is HERE" when
 // what is true is "this need belongs to a group whose centre is here", and a
@@ -18,7 +18,7 @@
 // because nobody can see it doing it.
 //
 // So every feature says `precise: true|false`, and the interface draws the two
-// differently — the same rule core/provenance.mjs already applies to signals,
+// differently, the same rule core/provenance.mjs already applies to signals,
 // extended to everything else that reaches the map.
 import { all, one } from '../core/db.mjs';
 import { parseStamp } from '../core/time.mjs';
@@ -29,7 +29,7 @@ import { openGatesSql } from './quest.mjs';
  * The kinds, declared once.
  *
  * app/src/mapKinds.js holds the colour and shape for each of these keys, and a
- * test asserts the two lists are the same set — so a kind cannot be drawn and
+ * test asserts the two lists are the same set, so a kind cannot be drawn and
  * missing from the key, or in the key and never drawn, which is the drift this
  * project keeps finding everywhere else.
  */
@@ -48,7 +48,7 @@ export const MAP_KINDS = Object.freeze([
  * The one thing worth doing to a feature, decided here.
  *
  * It used to be decided in the panel component, which made a second home for
- * "what to do about a blocked project" — engines/board.mjs already returns
+ * "what to do about a blocked project", engines/board.mjs already returns
  * `action: { tool, input }` on every item it emits, and the interface supplies
  * only the wording. Two homes is how a rule gets fixed in one of them.
  *
@@ -87,7 +87,7 @@ function actionFor(f) {
       // title and leave the unprovisioned one exactly as it was.
       return f.care != null && f.care < 2
         ? { tool: 'update_gathering', input: { gathering_id: f.id },
-            note: 'Meals, transport, childcare, accessibility — at least two of four.' }
+            note: 'Meals, transport, childcare, accessibility, at least two of four.' }
         : { goTo: 'gatherings' };
     case 'observation':
       return { tool: 'open_quest', input: { signal_id: f.id, title: f.title },
@@ -104,7 +104,7 @@ function actionFor(f) {
  *
  * `actionFor` picks the one action that matches what is wrong with a feature,
  * which is right for a primary button and leaves a map on which nothing can be
- * corrected, moved or dropped. Those are not "what is wrong with it" — they are
+ * corrected, moved or dropped. Those are not "what is wrong with it", they are
  * what a person does with a thing they are looking at, and every map anybody
  * has ever used offers them.
  *
@@ -113,7 +113,7 @@ function actionFor(f) {
  * question, and the two drift.
  *
  * `move: true` marks an action the interface carries out by arming the map and
- * waiting for a press, rather than by opening a form — nobody types a
+ * waiting for a press, rather than by opening a form, nobody types a
  * coordinate they can point at. Only kinds whose coordinate has nothing derived
  * from it are movable: a place's ecoregion, watershed and soil are all resolved
  * FROM its point, so moving one silently invalidates four Atlas layers, and
@@ -134,7 +134,7 @@ function moreFor(f) {
         { tool: 'update_task', input: { task_id: f.id }, label: 'Correct it' },
         { tool: 'update_task', input: { task_id: f.id }, label: 'Move it', move: true },
         // Not "Delete". There is none, and a button that says so would be
-        // promising something the engine refuses — it needs a reason and it
+        // promising something the engine refuses, it needs a reason and it
         // keeps the row. "Drop it" is what actually happens.
         { tool: 'set_task_status', input: { task_id: f.id, status: 'abandoned' }, label: 'Drop it' },
       ];
@@ -211,7 +211,7 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
         kind: 'project', id: q.id, title: q.title, ...at,
         // The badge is the number of things in the way, because that is what a
         // person wants to know about a project without opening it. Zero is not
-        // drawn as "0" — an empty badge reads as nothing to do, which is right.
+        // drawn as "0", an empty badge reads as nothing to do, which is right.
         badge: open || null,
         state: open ? 'blocked' : 'running',
         sub: `${String(q.stage).replace(/_/g, ' ')}${q.maintenance_owner ? ` · ${q.maintenance_owner}` : ''}`,
@@ -273,7 +273,7 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
       if (!at) continue;
       out.push({
         kind: 'need', id: r.id, title: truncate(r.body, 70), ...at,
-        // Zero is an answer here — "brought today" — unlike a project's zero,
+        // Zero is an answer here, "brought today", unlike a project's zero,
         // which means nothing is in its way and is better left blank.
         badge: daysSince(r.created_at),
         sub: `${r.submitted_by || 'Someone'} · waiting`,
@@ -344,7 +344,7 @@ export function mapFeatures(chapterId, { kinds = null } = {}) {
     kinds: MAP_KINDS,
     counts,
     borrowed: out.filter((f) => !f.precise).length,
-    note: 'A need and a gathering have no coordinates of their own — the schema has none — so ' +
+    note: 'A need and a gathering have no coordinates of their own, the schema has none, so ' +
           'they are drawn at the centre of the place they belong to and marked as borrowed. ' +
           '"This is here" and "this belongs to a group whose centre is here" are different claims.',
   };

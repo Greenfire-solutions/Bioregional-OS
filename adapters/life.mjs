@@ -3,7 +3,7 @@
 // ground is protected.
 //
 // This is the richest open data in the whole catalogue and the only layer where
-// getting the plumbing right is not enough — getting the *disclosure* right is
+// getting the plumbing right is not enough, getting the *disclosure* right is
 // the harder half. Two rules are built into the shape of this file rather than
 // checked afterwards:
 //
@@ -12,7 +12,7 @@
 //      publish, because it is a fact about the bioregion, not about a nest.
 //
 //   2. NOTHING RARE IS EVER PLACED. For anything threatened, this adapter asks
-//      only for COUNTS — GBIF is queried with limit=0 and facets only, so a
+//      only for COUNTS, GBIF is queried with limit=0 and facets only, so a
 //      coordinate for a rare species never enters the process at all. That is a
 //      stronger guarantee than fetching records and filtering them afterwards,
 //      because a filter can be forgotten and a query that returns no rows
@@ -28,7 +28,7 @@ import { markFetched } from './registry.mjs';
 /**
  * The level anything with a conservation status is held at. Named, exported and
  * asserted in the test suite rather than left as a string literal inside one
- * function — a rule that protects something is a rule worth being able to test.
+ * function, a rule that protects something is a rule worth being able to test.
  */
 export const THREATENED_SENSITIVITY = 'restricted';
 
@@ -39,7 +39,7 @@ export const THREATENED_SENSITIVITY = 'restricted';
  * itself.
  *
  * The flag exists because `name` alone is a fallback between two plausible
- * answers — a common name or a Latin binomial — and the caller cannot tell
+ * answers, a common name or a Latin binomial, and the caller cannot tell
  * which won. That is the shape that puts "Malvaviscus arboreus" into a sentence
  * written for "Turk's Cap" with nothing anywhere recording that it happened.
  */
@@ -81,7 +81,7 @@ const unavailable = (err) => ({ available: false, reason: err?.message ?? String
 // ── what lives here ────────────────────────────────────────────────────────
 
 /**
- * The ranked species list. No coordinates are requested and none are returned —
+ * The ranked species list. No coordinates are requested and none are returned,
  * species_counts is a tally, which is why this one is safe at 'public'.
  */
 export async function speciesHere(lat, lng, { radiusKm = 10, limit = 20, group = null } = {}) {
@@ -106,7 +106,7 @@ export async function speciesHere(lat, lng, { radiusKm = 10, limit = 20, group =
     // Plants get counted separately because this is the layer a medicine walk,
     // a seed collection and a restoration planting all start from.
     // `name` is a display name that may be either a common name or a Latin
-    // binomial, so it carries a flag saying which — the same fix as `at_is` on
+    // binomial, so it carries a flag saying which, the same fix as `at_is` on
     // the loops engine. Without it a caller renders "Malvaviscus arboreus" in a
     // sentence written for "Turk's Cap" and cannot tell that it happened.
     // `common_name` is explicitly null when there is none, so nobody has to
@@ -123,7 +123,7 @@ export async function speciesHere(lat, lng, { radiusKm = 10, limit = 20, group =
 }
 
 /**
- * What is under pressure here — names and statuses only, held at 'restricted'.
+ * What is under pressure here, names and statuses only, held at 'restricted'.
  * Deliberately no coordinates, no counts per location, no map layer.
  */
 export async function threatenedHere(lat, lng, { radiusKm = 10, limit = 25 } = {}) {
@@ -153,7 +153,7 @@ export async function threatenedHere(lat, lng, { radiusKm = 10, limit = 25 } = {
     disclosure:
       'Names and statuses only. No coordinates are requested from any upstream for these taxa, ' +
       'and none are stored. Publishing this list at "public" can undo the obscuring that ' +
-      'protects them — keep it at council or restricted.',
+      'protects them, keep it at council or restricted.',
   };
 }
 
@@ -172,7 +172,7 @@ export async function recordDepth(lat, lng, { radiusKm = 10 } = {}) {
   })}&facet=iucnRedListCategory&facet=year&facet=kingdomKey&facetLimit=8&year.facetLimit=250`;
   // year.facetLimit is per-facet on purpose: the other facets want their top
   // handful, but the year facet has to cover the WHOLE range or "earliest" is
-  // really "earliest of the eight busiest years" — which in a well-recorded
+  // really "earliest of the eight busiest years", which in a well-recorded
   // place reads as 2013 when the true answer is 1801.
   const { data, cached, stale } = await getJSON(url, { ttlMs: WEEK, timeout: 30000 });
   if (!data) return { available: false, reason: 'no answer from GBIF', source: null };
@@ -215,7 +215,7 @@ export async function recordDepth(lat, lng, { radiusKm = 10 } = {}) {
       data_deficient: iucn.DD ?? 0,
       least_concern: iucn.LC ?? 0,
     },
-    note: 'Counts only — this query asks for zero records, so no coordinate for any taxon is fetched.',
+    note: 'Counts only, this query asks for zero records, so no coordinate for any taxon is fetched.',
   };
 }
 
@@ -224,7 +224,7 @@ export async function recordDepth(lat, lng, { radiusKm = 10 } = {}) {
 /**
  * PAD-US. The authoritative USGS host has been answering 502; the Forest
  * Service mirror covers only Forest Service land. Both are tried, and when
- * neither answers this says so rather than implying the ground is unprotected —
+ * neither answers this says so rather than implying the ground is unprotected,
  * "no data" and "not protected" are very different answers to a quest gate.
  */
 export async function protectedArea(lat, lng) {

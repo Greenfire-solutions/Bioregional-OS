@@ -12,22 +12,22 @@
 // The distinction it is built around, and the only interesting one here:
 //
 //   A REFUSAL IS A PASS. `missing_required`, `not_found`, `no_chapter`,
-//   `review_incomplete` — these are the system working. A tool that refuses
+//   `review_incomplete`, these are the system working. A tool that refuses
 //   cleanly and says why is doing its job.
 //
 //   A CRASH IS A FAILURE. A raw SQLite message, a TypeError, "undefined is not
-//   a function" — anything that escaped as an exception rather than being
+//   a function", anything that escaped as an exception rather than being
 //   turned into an answer a caller can act on. That is the class of thing that
 //   makes a button do nothing, and it is invisible from the outside because the
 //   screen simply does not change.
 //
-// Everything is exercised against a THROWAWAY database — either built by the
+// Everything is exercised against a THROWAWAY database, either built by the
 // seed the app ships, or, with --live, a VACUUM INTO copy of your real commons
 // so the prover meets your actual data. Either way the writes are real writes
 // and land on a file that is deleted at the end.
 //
-// --live used to mean "skip the seeding", which left every tool — including
-// every write — running against the real commons. It read as read-only in the
+// --live used to mean "skip the seeding", which left every tool, including
+// every write, running against the real commons. It read as read-only in the
 // header and was not, which is the most dangerous shape a flag can have. It
 // copies now, and the guard below refuses to run against anything that is not
 // the copy.
@@ -42,8 +42,8 @@ const VERBOSE = process.argv.includes('--verbose');
 const dir = mkdtempSync(join(tmpdir(), 'bros-prove-'));
 const target = join(dir, 'prove.db');
 
-// With --live, copy the real commons FIRST — via VACUUM INTO, because a file
-// copy of a WAL database is short by whatever has not been checkpointed — and
+// With --live, copy the real commons FIRST, via VACUUM INTO, because a file
+// copy of a WAL database is short by whatever has not been checkpointed, and
 // then point everything at the copy. The real one is opened read-only, once,
 // and closed before anything else runs.
 if (LIVE) {
@@ -58,20 +58,20 @@ if (LIVE) {
   const d = new DatabaseSync(src, { readOnly: true });
   d.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`);
   d.close();
-  console.log(`  copied your commons to a throwaway — the original is untouched`);
+  console.log(`  copied your commons to a throwaway, the original is untouched`);
 }
 process.env.BROS_DB = target;
 
 // Seeded in a SUBPROCESS, before this process opens the file. core/seed.mjs is
-// a script rather than a module — it runs on import and closes the database at
-// the end — so importing it here would hand back a closed handle, and the first
+// a script rather than a module, it runs on import and closes the database at
+// the end, so importing it here would hand back a closed handle, and the first
 // query would fail in a way that looked like a bug in the thing being proved.
 if (!LIVE) {
   const { execFileSync } = await import('node:child_process');
   execFileSync(process.execPath,
     // fileURLToPath, not .pathname. This project lives under "Main projects"
     // and a URL pathname keeps the space percent-encoded, so the child was
-    // handed a file that does not exist — the same trap scripts/lib.mjs's
+    // handed a file that does not exist, the same trap scripts/lib.mjs's
     // isMain() exists for.
     ['--disable-warning=ExperimentalWarning', fileURLToPath(new URL('../core/seed.mjs', import.meta.url))],
     { env: { ...process.env, BROS_DB: process.env.BROS_DB }, stdio: 'ignore' });
@@ -91,7 +91,7 @@ const { api } = await import('../server/routes/api.mjs');
 const chapterId = one('SELECT id FROM chapters ORDER BY founded_at LIMIT 1')?.id ?? null;
 
 // ── What a tool needs, filled from the database it is being run against ────
-// A tool that requires an id cannot be proved by passing nothing — it would
+// A tool that requires an id cannot be proved by passing nothing, it would
 // refuse for the right reason and tell us nothing about whether it works. So
 // required ids are resolved to real rows, and only what genuinely cannot be
 // resolved is left out.
@@ -124,7 +124,7 @@ const ID = {
   value: () => 1,
   // Resolved from the quest itself, not hardcoded.
   //
-  // This was `'listening'`, and the seeded quest sits at `council_review` — so
+  // This was `'listening'`, and the seeded quest sits at `council_review`, so
   // every prove run was rewinding it eleven stages and counting that as a
   // successful advance. That was the stage-order hole, reachable through the
   // tool layer, firing on every run and reported as a pass. With the hole
@@ -176,7 +176,7 @@ function inputFor(t) {
 // A structured refusal has a machine-readable code this project chose. A crash
 // arrives as whatever the runtime said. The list is of the SHAPES a refusal
 // takes, not of every code, so a new refusal is a pass by default and a new
-// exception is a failure by default — which is the direction that fails safe.
+// exception is a failure by default, which is the direction that fails safe.
 const CRASH = /is not a function|undefined is not|cannot read propert|SQLITE_|CHECK constraint|no such (table|column)|unexpected token|circular structure|maximum call stack/i;
 
 function classify(out) {
@@ -219,8 +219,8 @@ const ROUTES = [...new Set([
   ...((await import('node:fs')).readFileSync(new URL('../server/routes/api.mjs', import.meta.url), 'utf8')
     .match(/case '([a-z0-9/_-]+)':/g)?.map((m) => m.slice(6, -2)) ?? []),
   // Routes answered BEFORE the switch, and therefore invisible to the regex
-  // above. They are the ones that carry bytes rather than JSON — an upload
-  // reading a raw body, and a read that writes its own response — which is
+  // above. They are the ones that carry bytes rather than JSON, an upload
+  // reading a raw body, and a read that writes its own response, which is
   // exactly why they could not be `case` labels.
   //
   // Named here rather than left out, because "presses every button" has to keep
@@ -241,7 +241,7 @@ for (const p of ROUTES) {
     const out = await api(req, res, url);
     // An HTTP envelope is `{ status, body }`, and its refusal lives one level
     // down. Testing only `out.error` reported every envelope refusal as a clean
-    // run — `layers/ecoregions` answers 400 without a bbox and this called it
+    // run, `layers/ecoregions` answers 400 without a bbox and this called it
     // `ok`, which is the prover making the exact mistake it exists to catch.
     const envelope = out && typeof out === 'object'
       && Number.isInteger(out.status) && 'body' in out;
@@ -265,14 +265,14 @@ for (const [name, state, why, ms] of rows) {
   if (state === 'ok' && !VERBOSE) continue;
   const col = state === 'ok' ? c.g : state === 'refused' ? c.d : state === 'upstream' ? c.y : c.r;
   const mark = state === 'ok' ? '✓' : state === 'refused' ? '·' : state === 'upstream' ? '~' : '✗';
-  console.log(`  ${col}${mark}${c.x} ${name.padEnd(28)} ${c.d}${state}${why ? ` — ${why}` : ''}${c.x}`);
+  console.log(`  ${col}${mark}${c.x} ${name.padEnd(28)} ${c.d}${state}${why ? `, ${why}` : ''}${c.x}`);
 }
 console.log(`  ${'─'.repeat(66)}`);
 console.log(`  ${count('ok')} ran · ${count('refused')} refused cleanly · ${count('upstream')} need an upstream · ` +
             `${broken.length} broken`);
 console.log(`  routes: ${routeRows.filter((r) => r[1] === 'ok').length} answered · ` +
             `${routeRows.filter((r) => r[1] === 'refused').length} refused · ${routeBroken.length} broken`);
-for (const [p, , why] of routeBroken) console.log(`    ${c.r}✗${c.x} /api/${p} — ${why}`);
+for (const [p, , why] of routeBroken) console.log(`    ${c.r}✗${c.x} /api/${p}, ${why}`);
 console.log();
 
 rmSync(dir, { recursive: true, force: true });

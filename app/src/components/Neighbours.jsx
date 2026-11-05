@@ -6,7 +6,7 @@ import { callTool } from '../api.js';
  * The neighbours. §5.12.
  *
  * Other chapters, one line each, as this commons last read them. The entire
- * design is a set of refusals aimed at §3.6 — the Nextdoor failure mode, where
+ * design is a set of refusals aimed at §3.6, the Nextdoor failure mode, where
  * a list of what other people are doing becomes a feed and the feed becomes a
  * complaint engine.
  *
@@ -14,7 +14,7 @@ import { callTool } from '../api.js';
  * No counter of unread anything. No reply, no reaction, nothing that travels
  * back. No ordering that rewards whoever posted most recently beyond a quiet
  * marker on what actually changed. And a line rather than a card, because the
- * point is peripheral awareness — you should be able to not read this.
+ * point is peripheral awareness, you should be able to not read this.
  *
  * If a chapter is interesting, their link goes to their own site, which is
  * somebody else's commons rather than more of this app's content.
@@ -59,7 +59,7 @@ export default function Neighbours() {
             {n.is_chapter && <span className="text-[var(--moss)]"> · chapter</span>}
             {/* The only thing here that is ever news, and it is a word, not a badge. */}
             {n.changed && <span className="text-[var(--ink-3)]"> · changed</span>}
-            <span className="text-[var(--ink-2)]"> — {n.line}</span>
+            <span className="text-[var(--ink-2)]">, {n.line}</span>
           </li>
         ))}
       </ul>

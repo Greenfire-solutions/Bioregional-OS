@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 // One command that gets a person from "I downloaded a folder" to "it's running".
-// Safe to run again at any time — it only does what still needs doing.
+// Safe to run again at any time, it only does what still needs doing.
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, title, ok, warn, bad, info, step, cmd, run, c, line } from './lib.mjs';
 
 title('Setting up BioRegional OS');
 
-// 1 — Node
+// 1, Node
 const major = Number(process.versions.node.split('.')[0]);
 if (major < 22) {
   bad(`This needs Node 22 or newer. You have ${process.versions.node}.`);
-  info('Install the "LTS" version from https://nodejs.org — then run this again.');
+  info('Install the "LTS" version from https://nodejs.org, then run this again.');
   process.exit(1);
 }
 ok(`Node ${process.versions.node}`);
 
-// 2 — the screen part
+// 2, the screen part
 if (!existsSync(join(ROOT, 'app', 'node_modules'))) {
   console.log('\n  Installing the parts that draw the map. This takes a minute or two…\n');
   if (!run('npm', ['install', '--no-audit', '--no-fund'], { cwd: join(ROOT, 'app') })) {
@@ -27,14 +27,14 @@ if (!existsSync(join(ROOT, 'app', 'node_modules'))) {
 }
 ok('Map and interface parts installed');
 
-// 3 — the engine's own parts
+// 3, the engine's own parts
 if (!existsSync(join(ROOT, 'node_modules', '@anthropic-ai'))) {
   console.log('\n  Installing the engine parts…\n');
   run('npm', ['install', '--no-audit', '--no-fund']);
 }
 ok('Engine parts installed');
 
-// 4 — build the interface
+// 4, build the interface
 console.log('\n  Building the interface…\n');
 if (!run('npm', ['run', 'build'], { cwd: join(ROOT, 'app') })) {
   bad('The interface did not build.');
@@ -43,13 +43,13 @@ if (!run('npm', ['run', 'build'], { cwd: join(ROOT, 'app') })) {
 }
 ok('Interface built');
 
-// 5 — a place to keep the answers
+// 5, a place to keep the answers
 const env = join(ROOT, '.env');
 if (!existsSync(env)) {
   writeFileSync(env,
 `# BioRegional OS settings. This file stays on your computer.
 #
-# OPTIONAL — only needed if you want the built-in assistant to talk back inside
+# OPTIONAL, only needed if you want the built-in assistant to talk back inside
 # the app. You do NOT need this to use the OS, and you do NOT need it if you
 # drive the OS from Claude Code instead (see docs/CLAUDE_CODE.md).
 #
@@ -63,7 +63,7 @@ if (!existsSync(env)) {
   ok('Settings file already there');
 }
 
-// 6 — data
+// 6, data
 const dbFile = join(ROOT, 'data', 'commons.db');
 if (!existsSync(dbFile)) {
   console.log('');
@@ -80,7 +80,7 @@ try {
   const { syncSources } = await import('../adapters/registry.mjs');
   const { close } = await import('../core/db.mjs');
   const r = syncSources();
-  ok(`${r.total} open data sources registered — see them with: npm run os, then ask "what data can you reach?"`);
+  ok(`${r.total} open data sources registered, see them with: npm run os, then ask "what data can you reach?"`);
   close();
 } catch (err) {
   warn(`Could not register the data sources (${err.message}). Nothing else is affected.`);

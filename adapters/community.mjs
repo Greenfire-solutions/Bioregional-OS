@@ -1,5 +1,5 @@
 // ── Settlement, care, skills and flows ────────────────────────────────────
-// Atlas layers 7, 8, 9 and 10 — four layers, one query.
+// Atlas layers 7, 8, 9 and 10, four layers, one query.
 //
 // What a commons needs to know about the people already in it: where care can
 // be reached, what is already organized, who makes and repairs things, and how
@@ -11,7 +11,7 @@
 // in OSM is a bus shelter, a gazebo or a pergola. Around Barton Creek it matches
 // 135 objects and NOT ONE of them is a refuge. Mapping that onto "care
 // infrastructure" would have told a chapter it has 135 shelters when it has
-// none — confident, plausible, and completely wrong. A refuge is
+// none, confident, plausible, and completely wrong. A refuge is
 // `amenity=social_facility` with `social_facility=shelter`. The categories below
 // are built from what the tags MEAN, not from what they sound like.
 import { getJSON, qs } from './http.mjs';
@@ -55,7 +55,7 @@ export const CATEGORIES = [
   { key: 'allotment', layer: 10, label: 'Allotments', selector: '["landuse"="allotments"]', match: (t) => t.landuse === 'allotments' },
   { key: 'recycling', layer: 10, label: 'Recycling and reuse', selector: '["amenity"="recycling"]["recycling_type"="centre"]', match: (t) => t.amenity === 'recycling' && t.recycling_type === 'centre' },
   // Split deliberately. `power=generator` matches every mapped rooftop solar
-  // panel — 242 of them within 3 km of Barton Creek against 2 substations — so
+  // panel, 242 of them within 3 km of Barton Creek against 2 substations, so
   // lumping them together made "energy infrastructure" the largest category in
   // the whole layer and the headline read "most numerous: energy infrastructure
   // (244)". True, and useless. Distributed generation is a real and interesting
@@ -131,7 +131,7 @@ export async function communityHere(lat, lng, { radiusKm = 3, limit = 600 } = {}
     // about, so the leftovers are counted rather than dropped.
     uncategorised,
     truncated: elements.length >= limit
-      ? `Overpass returned the ${limit}-object cap — there is more here than this.` : null,
+      ? `Overpass returned the ${limit}-object cap, there is more here than this.` : null,
     // Nobody should read this as a directory. OSM is maintained by volunteers and
     // a clinic that closed last year can sit on the map for years.
     caveat: 'Community-maintained map data. Good for finding what exists; never a substitute ' +
@@ -160,7 +160,7 @@ export function layersCovered(result) {
 }
 
 function readableCommunity(categories, byLayer, radiusKm) {
-  if (!categories.length) return `Nothing mapped within ${radiusKm} km — which may mean nothing is there, or that nobody has mapped it.`;
+  if (!categories.length) return `Nothing mapped within ${radiusKm} km, which may mean nothing is there, or that nobody has mapped it.`;
   const care = categories.filter((c) => c.layer === 8);
   // Rank on things a person could walk to, so a count-only category never
   // becomes the headline. No `?? categories[0]` here: falling back to a

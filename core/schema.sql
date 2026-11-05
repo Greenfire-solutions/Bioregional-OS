@@ -1,5 +1,5 @@
 -- ============================================================
--- BioRegional OS — core schema
+-- BioRegional OS, core schema
 -- Implements the BioRegional Commons protocol (Green Fire, v1.1)
 -- Every table maps to a named part of the manual.
 -- Interop field names follow upstream open standards where they exist:
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS chapters (
   -- person is that two names once appeared on decisions has not arranged
   -- anything, it has had a busy month. Community networks go dark for months
   -- over one person's laptop, and the arrangement has to exist BEFORE it is
-  -- needed — asking afterwards is asking the wrong person.
+  -- needed, asking afterwards is asking the wrong person.
   steward           TEXT,
   deputy            TEXT,
   deputy_agreed_at  TEXT,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS chapters (
   locality TEXT, region TEXT, country TEXT
 );
 
--- ---------- Stage 1: Locate — places, watersheds, bioregions ----------
+-- ---------- Stage 1: Locate, places, watersheds, bioregions ----------
 CREATE TABLE IF NOT EXISTS places (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS places (
   biome            TEXT,
   watershed_huc    TEXT,   -- USGS Watershed Boundary Dataset HUC code
   watershed_name   TEXT,
-  -- Atlas layer 4 — land and soil. Resolved once and then left alone: soil does
+  -- Atlas layer 4, land and soil. Resolved once and then left alone: soil does
   -- not change on a heartbeat. (USDA SSURGO, ISRIC SoilGrids, USGS 3DEP, NLCD)
   soil_series      TEXT,
   soil_map_unit    TEXT,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS places (
   elevation_m      REAL,
   land_cover       TEXT,
   land_cover_code  INTEGER,
-  -- Atlas layer 6 — the standing hazard condition, which is a property of the
+  -- Atlas layer 6, the standing hazard condition, which is a property of the
   -- place and not an event, so it does not belong in the signal stream.
   flood_zone       TEXT,
   in_floodplain    INTEGER,
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS hubs (
   stewards_count INTEGER NOT NULL DEFAULT 0
 );
 
--- ---------- Stage 4: Map — the Living Commons Atlas (12 layers) ----------
+-- ---------- Stage 4: Map, the Living Commons Atlas (12 layers) ----------
 CREATE TABLE IF NOT EXISTS atlas_layers (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS atlas_layers (
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ---------- Stage 2: Listen — community intake ----------
+-- ---------- Stage 2: Listen, community intake ----------
 CREATE TABLE IF NOT EXISTS intake (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS intake (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ---------- Stage 3: Observe — signals from land and people ----------
+-- ---------- Stage 3: Observe, signals from land and people ----------
 CREATE TABLE IF NOT EXISTS signals (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS quest_gates (
   UNIQUE (quest_id, gate)
 );
 
--- ---------- Stage 11: Measure — monitoring that changes decisions ----------
+-- ---------- Stage 11: Measure, monitoring that changes decisions ----------
 CREATE TABLE IF NOT EXISTS indicators (
   id          TEXT PRIMARY KEY,
   quest_id    TEXT REFERENCES quests(id) ON DELETE CASCADE,
@@ -253,7 +253,7 @@ CREATE TABLE IF NOT EXISTS measurements (
   source_adapter TEXT
 );
 
--- ---------- Stage 5: Convene — council, decisions, the Land Seat ----------
+-- ---------- Stage 5: Convene, council, decisions, the Land Seat ----------
 CREATE TABLE IF NOT EXISTS decisions (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS decisions (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ---------- Stage 9 & 7: Culture — gatherings tied to real projects ----------
+-- ---------- Stage 9 & 7: Culture, gatherings tied to real projects ----------
 CREATE TABLE IF NOT EXISTS gatherings (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS agents (
   -- person is that two names once appeared on decisions has not arranged
   -- anything, it has had a busy month. Community networks go dark for months
   -- over one person's laptop, and the arrangement has to exist BEFORE it is
-  -- needed — asking afterwards is asking the wrong person.
+  -- needed, asking afterwards is asking the wrong person.
   steward           TEXT,
   deputy            TEXT,
   deputy_agreed_at  TEXT,
@@ -356,7 +356,7 @@ CREATE TABLE IF NOT EXISTS exchange_events (
   occurred_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ---------- Stage 9: Teach & Tell — learning that travels ----------
+-- ---------- Stage 9: Teach & Tell, learning that travels ----------
 CREATE TABLE IF NOT EXISTS learn (
   id          TEXT PRIMARY KEY,
   chapter_id  TEXT NOT NULL REFERENCES chapters(id) ON DELETE CASCADE,
@@ -403,13 +403,13 @@ CREATE TABLE IF NOT EXISTS ai_log (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ---------- Stage 12: Federation — chapters that share without merging ----------
+-- ---------- Stage 12: Federation, chapters that share without merging ----------
 CREATE TABLE IF NOT EXISTS federation_peers (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   -- What this peer actually IS, not what discovery hoped it was. The
   -- Murmurations index near any point answers with organisations of every
-  -- kind — taxi co-operatives, web hosts, individual people — and recording
+  -- kind, taxi co-operatives, web hosts, individual people, and recording
   -- those as bioregional chapters is a claim the data does not support.
   kind        TEXT NOT NULL DEFAULT 'unknown'
               CHECK (kind IN ('chapter','network','registry','index','organisation','unknown')),
@@ -429,7 +429,7 @@ CREATE TABLE IF NOT EXISTS federation_peers (
   notes       TEXT
 );
 
--- ---------- Stage 4: Map — datasets a locality publishes, found not enumerated ----------
+-- ---------- Stage 4: Map, datasets a locality publishes, found not enumerated ----------
 -- A candidate is NOT a layer. A dataset discovered on a city portal arrives with
 -- a licence nobody has read, and the whole point of the upstream registry is
 -- that no unreviewed licence reaches an export. So discovery lands here and only
@@ -492,7 +492,7 @@ CREATE INDEX IF NOT EXISTS idx_events_quest    ON exchange_events(quest_id);
 --
 -- It could not be finished, and the way it failed was worse than being long.
 -- The board took the top five by priority every time it was asked, so closing a
--- gate — an evening of door-knocking, evidence written, a reviewer named — moved
+-- gate, an evening of door-knocking, evidence written, a reviewer named, moved
 -- one digit and the next identical line stepped into the slot. The five lines
 -- were the same next week. A steward learns from that that their work does not
 -- move the screen, which is a harder thing to come back from than a long list.
@@ -504,7 +504,7 @@ CREATE INDEX IF NOT EXISTS idx_events_quest    ON exchange_events(quest_id);
 -- the commons, and holds no copy of anything the protocol owns.
 --
 -- Deliberately NOT stored: whether a past round was finished. No counter, no
--- comparison between weeks, nothing that could become a streak — §3.4 refuses
+-- comparison between weeks, nothing that could become a streak, §3.4 refuses
 -- those on evidence, and a "rounds completed" number is a streak with a
 -- calendar on it. `closed_at` exists so a week can end, not so weeks can be
 -- scored, and nothing reads a closed round back.
@@ -541,7 +541,7 @@ CREATE TABLE IF NOT EXISTS seasons (
 
 -- ---------- Local settings: values this machine generated for itself ------
 -- Not configuration a person edits. Things the OS minted and must keep, like
--- the salt the enrolment hashes are keyed with — which exists so that a token
+-- the salt the enrolment hashes are keyed with, which exists so that a token
 -- lifted from one commons means nothing in another, and so that copying
 -- commons.db does not hand its reader the ability to enrol a device.
 CREATE TABLE IF NOT EXISTS settings (
@@ -554,7 +554,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- No accounts. No passwords. No sign-in.
 --
 -- The evidence is blunt: asked whether to create two thousand accounts for
--- enumerators, KoboToolbox's own community said no — give each person an
+-- enumerators, KoboToolbox's own community said no, give each person an
 -- identifier they type in, and attribute by that. A deployment that took the
 -- credential path reported enumerators using the shared login to browse the
 -- whole database. The failure mode of credentials in this setting is
@@ -596,14 +596,14 @@ CREATE TABLE IF NOT EXISTS people (
 CREATE TRIGGER IF NOT EXISTS people_no_delete
 BEFORE DELETE ON people
 BEGIN
-  SELECT RAISE(ABORT, 'people are never deleted — set status to withdrawn, left or blocked');
+  SELECT RAISE(ABORT, 'people are never deleted, set status to withdrawn, left or blocked');
 END;
 
 -- A DEVICE, not a user. This is what actually gets enrolled.
 --
 -- ODK's lesson, learned the expensive way: nothing binds a token to a handset,
 -- so one code scans into unlimited phones. Their answer is not prevention but
--- forensics — every submission carries a device id, and "if you see the same
+-- forensics, every submission carries a device id, and "if you see the same
 -- token used with different deviceids, you can know who shared it". So the
 -- secret is stored hashed, every write can name the device, and revocation
 -- keeps the row.
@@ -624,7 +624,7 @@ CREATE TABLE IF NOT EXISTS devices (
 CREATE TRIGGER IF NOT EXISTS devices_no_delete
 BEFORE DELETE ON devices
 BEGIN
-  SELECT RAISE(ABORT, 'devices are never deleted — set role to blocked and revoked_at');
+  SELECT RAISE(ABORT, 'devices are never deleted, set role to blocked and revoked_at');
 END;
 
 -- A one-time enrolment code. Single purpose, expiring, and hashed like the
@@ -645,7 +645,7 @@ CREATE TABLE IF NOT EXISTS capabilities (
 );
 
 -- ============================================================
--- Stage 8: Prototype — the work itself, and the evidence it happened
+-- Stage 8: Prototype, the work itself, and the evidence it happened
 -- ============================================================
 -- A quest is a PROJECT: a need, a desired condition, a smallest experiment.
 -- Nothing in the schema said what anybody was actually doing on a Saturday
@@ -679,7 +679,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_at      TEXT,
   -- Whether finishing this task requires a before-and-after pair.
   -- Default ON. A task that changes something on the land and leaves no
-  -- evidence it did is the thing this whole table exists to prevent — and the
+  -- evidence it did is the thing this whole table exists to prevent, and the
   -- cost of turning it off is one deliberate act by whoever wrote the task,
   -- which is the same shape as every other gate in this protocol.
   requires_before_after INTEGER NOT NULL DEFAULT 1,
@@ -701,7 +701,7 @@ CREATE TABLE IF NOT EXISTS task_assignees (
   task_id     TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   -- A person in the commons, when one is known, and a typed name when not.
   -- Both, because attribution that REQUIRES an enrolled record is attribution
-  -- that does not happen on a Saturday — and a name is better than nothing at
+  -- that does not happen on a Saturday, and a name is better than nothing at
   -- all, which is what the free-text maintenance_owner columns already proved.
   person_id   TEXT REFERENCES people(id) ON DELETE SET NULL,
   person_name TEXT NOT NULL,
@@ -715,7 +715,7 @@ CREATE TABLE IF NOT EXISTS task_assignees (
 CREATE TRIGGER IF NOT EXISTS task_assignees_no_delete
 BEFORE DELETE ON task_assignees
 BEGIN
-  SELECT RAISE(ABORT, 'nobody is removed from a task — set released_at instead');
+  SELECT RAISE(ABORT, 'nobody is removed from a task, set released_at instead');
 END;
 
 -- ---------- The stored file, and what is actually known about it ----------
@@ -765,15 +765,15 @@ CREATE TABLE IF NOT EXISTS media (
 CREATE TRIGGER IF NOT EXISTS media_no_delete
 BEFORE DELETE ON media
 BEGIN
-  SELECT RAISE(ABORT, 'media rows are never deleted — set withdrawn_at, which removes the file');
+  SELECT RAISE(ABORT, 'media rows are never deleted, set withdrawn_at, which removes the file');
 END;
 
 -- ---------- The before-and-after pair ----------
 -- Evidence that a task changed something, in the one form a person can check
 -- without being there: the same ground, twice.
 --
--- A pair, not two loose files. The whole claim is comparative — this is what it
--- was, this is what it is — and two independent uploads with a shared tag lets
+-- A pair, not two loose files. The whole claim is comparative, this is what it
+-- was, this is what it is, and two independent uploads with a shared tag lets
 -- one arrive without the other and still read as evidence.
 CREATE TABLE IF NOT EXISTS proofs (
   id          TEXT PRIMARY KEY,
@@ -813,7 +813,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS task_assignees_one_active
 -- the field. A device handed over in a room is the right credential for a
 -- phone at a creek.
 --
--- What it did not cover is the other half of a commons — the handful of people
+-- What it did not cover is the other half of a commons, the handful of people
 -- who sit down at a screen and do council work, who are not all the same
 -- person, and who between them had exactly one identity: "whoever is at the
 -- keyboard". Every override, every closed gate and every answered need was
@@ -856,7 +856,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE TRIGGER IF NOT EXISTS accounts_no_delete
 BEFORE DELETE ON accounts
 BEGIN
-  SELECT RAISE(ABORT, 'accounts are never deleted — set status to suspended or left');
+  SELECT RAISE(ABORT, 'accounts are never deleted, set status to suspended or left');
 END;
 
 -- A signed-in browser. The token itself is never stored, only its HMAC, for
@@ -879,7 +879,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id, expires_at);
 
 -- ============================================================
--- Stage 10: Exchange — a ledger a commons defines for itself
+-- Stage 10: Exchange, a ledger a commons defines for itself
 -- ============================================================
 -- NOT a currency. A kit for making one.
 --
@@ -906,7 +906,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id, expires_
 --
 -- AND THE GOVERNMENT IS THE ONE ALREADY HERE. Defining a currency, changing its
 -- rules, opening a pool or setting a limit all require a council DECISION that
--- has actually been decided — the `decisions` table, its seven methods, its
+-- has actually been decided, the `decisions` table, its seven methods, its
 -- Land Seat report and its red flags. This does not invent a second way for a
 -- commons to make up its mind. It refuses to move without the first one.
 
@@ -932,7 +932,7 @@ CREATE TABLE IF NOT EXISTS currencies (
   -- and argue about.
   zero_sum    INTEGER NOT NULL DEFAULT 1,
   -- How far below zero a holder may go. In a mutual-credit ring this is the
-  -- whole design — it is how much the group is willing to be owed by any one
+  -- whole design, it is how much the group is willing to be owed by any one
   -- member. NULL means no limit, which is a choice a commons may make and will
   -- then be able to see the consequences of.
   credit_limit REAL,
@@ -943,7 +943,7 @@ CREATE TABLE IF NOT EXISTS currencies (
   -- worth. The one automatic issuance path, and it hangs off the evidence
   -- chain rather than off somebody's say-so.
   per_verified_proof REAL,
-  -- The decision that created this. REQUIRED and checked — see engines/ledger.
+  -- The decision that created this. REQUIRED and checked, see engines/ledger.
   decided_by  TEXT REFERENCES decisions(id) ON DELETE SET NULL,
   created_by  TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
@@ -964,8 +964,8 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   currency_id TEXT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
   -- The two legs of one movement.
   group_id    TEXT NOT NULL,
-  -- Who holds it. An agent in the ValueFlows sense — a person, an organisation
-  -- or the commons itself — because `agents` is already the holder of record in
+  -- Who holds it. An agent in the ValueFlows sense, a person, an organisation
+  -- or the commons itself, because `agents` is already the holder of record in
   -- this schema and a second idea of "who" is how two answers to "how much do
   -- they have" come about.
   agent_id    TEXT REFERENCES agents(id) ON DELETE SET NULL,
@@ -999,18 +999,18 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
 CREATE TRIGGER IF NOT EXISTS ledger_no_delete
 BEFORE DELETE ON ledger_entries
 BEGIN
-  SELECT RAISE(ABORT, 'ledger entries are never deleted — write a reversal');
+  SELECT RAISE(ABORT, 'ledger entries are never deleted, write a reversal');
 END;
 
 CREATE TRIGGER IF NOT EXISTS ledger_no_amend
 BEFORE UPDATE OF amount, agent_id, currency_id, kind, group_id ON ledger_entries
 BEGIN
-  SELECT RAISE(ABORT, 'ledger entries are never amended — write a reversal');
+  SELECT RAISE(ABORT, 'ledger entries are never amended, write a reversal');
 END;
 
 -- ---------- A pool: what the credits are actually good for ----------------
 -- Optional, and the honest part of any local currency. A pool holds real
--- things — money, seeds, tools, hours of a truck — that units can be redeemed
+-- things, money, seeds, tools, hours of a truck, that units can be redeemed
 -- against, and says on what terms.
 --
 -- A currency with no pool is not broken; it is a promise between people, which
@@ -1022,7 +1022,7 @@ CREATE TABLE IF NOT EXISTS pools (
   currency_id TEXT NOT NULL REFERENCES currencies(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   -- What is in it, in the community's own words and units: "£420", "60 kg
-  -- seed garlic", "8 hours of the van". Free text ON PURPOSE — the moment this
+  -- seed garlic", "8 hours of the van". Free text ON PURPOSE, the moment this
   -- becomes an enum it becomes a list of what somebody else thought a commons
   -- could hold.
   holds       TEXT NOT NULL,

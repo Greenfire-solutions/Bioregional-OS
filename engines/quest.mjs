@@ -13,7 +13,7 @@ export const STAGES = [
 /**
  * Every gate the manual names, created unsatisfied on every quest.
  *
- * Four of the nine were declared in the schema and never instantiated — so no
+ * Four of the nine were declared in the schema and never instantiated, so no
  * project was ever blocked pending an ECOLOGICAL ASSESSMENT, which in a
  * bioregional OS is the gate most obviously load-bearing, nor pending
  * indigenous consent, youth safeguarding or data consent. The CHECK constraint
@@ -25,10 +25,10 @@ export const STAGES = [
  *
  * All nine are required, and that is deliberate rather than severe. A gate here
  * closes on EVIDENCE plus a named reviewer, and "not applicable, because no
- * minors are involved in a culvert survey — R. Alvarez" is evidence. So the
+ * minors are involved in a culvert survey, R. Alvarez" is evidence. So the
  * cost of a gate that does not apply is one sentence from a person, and the
- * permanent record is of somebody having considered it. The alternative —
- * defaulting the awkward four to not-required — makes exactly the four gates
+ * permanent record is of somebody having considered it. The alternative,
+ * defaulting the awkward four to not-required, makes exactly the four gates
  * about consent and safety the four that are silently skipped.
  */
 export const GATES = [
@@ -45,18 +45,18 @@ const BUILD_GATES = GATES;
  *
  * Everything else here is graduated: a named person may pass a gate with a
  * written reason, and the reason is kept and shown forever. That is Ostrom's
- * fifth principle — graduated sanctions, not binary refusal — and it exists
+ * fifth principle, graduated sanctions, not binary refusal, and it exists
  * because a small group that cannot get past a blank field at nine o'clock on a
- * Sunday stops using the tool and never says why. The design–reality gap closes
+ * Sunday stops using the tool and never says why. The design-reality gap closes
  * systems more reliably than any missing feature.
  *
  * These three do not graduate, because an override is a decision made by
  * whoever is at the keyboard, and these are not that person's to make:
  *
- *   rights_holder_consent — it is not yours to waive on somebody's behalf
- *   indigenous_consent    — a consultation slot, and no dataset and no
+ *   rights_holder_consent, it is not yours to waive on somebody's behalf
+ *   indigenous_consent, a consultation slot, and no dataset and no
  *                           deadline may close it
- *   youth_safeguarding    — the person it protects is not in the room
+ *   youth_safeguarding, the person it protects is not in the room
  *
  * The test of the line: could the person clicking override be the person the
  * gate protects? If not, it does not graduate.
@@ -95,7 +95,7 @@ export function ensureGates(chapterId, questId) {
  *
  * Four places spelled this out and two of them forgot `overridden_at`, so a
  * gate a named person had passed with a written reason counted as clear in
- * canAdvance and as blocking in the operator — the same project reported two
+ * canAdvance and as blocking in the operator, the same project reported two
  * different states depending on which screen you were looking at. A predicate
  * that exists in four copies has one correct copy and three that will drift.
  */
@@ -133,7 +133,7 @@ export function satisfyGate(questId, gate, { evidence, reviewed_by }) {
 /**
  * Pass a gate without satisfying it, on somebody's named authority.
  *
- * Not a way to make a gate optional — a way to make going past it an act with a
+ * Not a way to make a gate optional, a way to make going past it an act with a
  * name and a reason attached, visible for as long as the quest exists. The
  * commons can then argue with the person rather than with the software.
  */
@@ -145,7 +145,7 @@ export function overrideGate(questId, gate, { reason, overridden_by } = {}) {
                (gate === 'rights_holder_consent'
                  ? 'Consent is not yours to waive on somebody else\'s behalf.'
                  : gate === 'indigenous_consent'
-                   ? 'This is a consultation slot. No dataset and no deadline closes it — only a ' +
+                   ? 'This is a consultation slot. No dataset and no deadline closes it, only a ' +
                      'rights holder does.'
                    : 'The person this protects is not in the room.'),
       hard_gates: HARD_GATES,
@@ -155,7 +155,7 @@ export function overrideGate(questId, gate, { reason, overridden_by } = {}) {
     return {
       error: 'reason_and_name_required',
       message: 'An override needs a reason and the name of the person giving it. Both are kept ' +
-               'and shown for as long as the project exists — that is the whole of what makes ' +
+               'and shown for as long as the project exists, that is the whole of what makes ' +
                'this different from switching the gate off.',
     };
   }
@@ -187,7 +187,7 @@ export function canAdvance(questId, toStage) {
   // of them looks at where the quest currently is. `q.stage` was read once, at
   // the bottom, purely to report `from:`.
   //
-  // So a quest sitting at `council_review` could be sent to `signal` — index 0,
+  // So a quest sitting at `council_review` could be sent to `signal`, index 0,
   // none of the depth checks fire, `blocked` comes back empty and the UPDATE
   // runs. Proved on a throwaway commons rather than argued: it rewound eleven
   // stages and then teleported four forward, in silence, twice.
@@ -195,12 +195,12 @@ export function canAdvance(questId, toStage) {
   // The tool's own description has always said "Move a quest to the NEXT
   // stage", and the interface offers one button called "Advance a stage". Both
   // read as though this were enforced, which is the condition this project
-  // calls worse than no gate at all — a control that an auditor comparing the
+  // calls worse than no gate at all, a control that an auditor comparing the
   // manual to the code would tick off.
   //
   // One step forward, and nothing else. A quest that needs to go backwards is a
-  // protocol question — who may send work back, and what is recorded when they
-  // do — and inventing an answer here would be the same mistake in the other
+  // protocol question, who may send work back, and what is recorded when they
+  // do, and inventing an answer here would be the same mistake in the other
   // direction. It is written down in STATUS.md instead.
   //
   // Checked FIRST and returned alone, deliberately. Listing "gate not
@@ -213,7 +213,7 @@ export function canAdvance(questId, toStage) {
     // this case a finished quest is told "a quest does not go backwards", which
     // is both wrong and confusing: nothing went wrong, the work is done.
     //
-    // Whether it can re-enter the loop is the open question — turning.mjs
+    // Whether it can re-enter the loop is the open question, turning.mjs
     // describes the season hinge as 12 → 6, and canAdvance now forbids exactly
     // that. Recorded in STATUS.md; refusing plainly beats guessing at it here.
     const finished = next === null;
@@ -248,17 +248,17 @@ export function canAdvance(questId, toStage) {
   if (idx >= STAGES.indexOf('test')) {
     const withBaseline = one(
       'SELECT COUNT(*) n FROM indicators WHERE quest_id=? AND baseline_value IS NOT NULL', questId)?.n ?? 0;
-    if (!withBaseline) blocked.push('no indicator with a baseline — nothing to measure change against');
+    if (!withBaseline) blocked.push('no indicator with a baseline, nothing to measure change against');
   }
   if (idx >= STAGES.indexOf('report_replicate')) {
     const learn = one('SELECT COUNT(*) n FROM learn WHERE quest_id=?', questId)?.n ?? 0;
-    if (!learn) blocked.push('nothing written down — knowledge cannot travel');
+    if (!learn) blocked.push('nothing written down, knowledge cannot travel');
   }
   return {
     ok: blocked.length === 0, blocked, overridden: check_notes,
     from: q.stage, to: toStage, next_stage: next,
     // The interface shows `message` and falls back to the bare error code, so a
-    // refusal with no message reaches a person as the single word "blocked" —
+    // refusal with no message reaches a person as the single word "blocked",
     // every reason computed, none of them shown. The list IS the answer.
     message: blocked.length
       ? `Not yet. ${blocked.join('. ')}.`
@@ -273,7 +273,7 @@ export function advance(questId, toStage) {
   return one('SELECT * FROM quests WHERE id=?', questId);
 }
 
-/** Gatherings must carry care provision — that is infrastructure, not catering. */
+/** Gatherings must carry care provision, that is infrastructure, not catering. */
 export function careGaps(chapterId) {
   return all(
     `SELECT id, title, starts_at, care_meals, care_transport, care_childcare, care_accessibility
@@ -287,20 +287,20 @@ export function careGaps(chapterId) {
  * Stage 6, Prioritize: "What is urgent, regenerative, feasible, and maintainable?"
  *
  * The manual asks for a seasonal priority list and refers, once, to a "project
- * score" — in the sentence that says a high one never overrides a red flag. The
+ * score", in the sentence that says a high one never overrides a red flag. The
  * rule was implemented and the score it refers to never existed, which meant the
  * protocol's own safeguard guarded nothing.
  *
  * Two decisions shape this, and both are refusals:
  *
  * NOTHING HERE IS SELF-ASSESSED. Every component is read from rows somebody
- * already had to create — the severity of the originating observation, whether
+ * already had to create, the severity of the originating observation, whether
  * an indicator carries a baseline, how many gates are closed, whether a
  * maintenance owner is named. A project cannot be made to look urgent by
  * someone ticking "urgent". The failure mode of a scored form is that the score
  * measures who is most comfortable claiming importance.
  *
- * A BLOCKED PROJECT HAS NO SCORE AT ALL. Not a low one — `overall` is null and
+ * A BLOCKED PROJECT HAS NO SCORE AT ALL. Not a low one, `overall` is null and
  * `blocked` carries the reasons. A low number still sorts, and anything that
  * sorts will eventually be read as "nearly ready". Making the composite
  * structurally absent is the manual's sentence turned from advice into a
@@ -323,7 +323,7 @@ export function score(questId) {
 
   // ── urgent ──────────────────────────────────────────────────────────────
   // What the land said, and how long ago it said it. An old critical signal is
-  // more urgent than a new one, not less — it has been waiting.
+  // more urgent than a new one, not less, it has been waiting.
   const sev = signal?.severity ?? null;
   const ageDays = signal?.at ? daysSince(signal.at) : null;
   const urgent = clamp(
@@ -372,7 +372,7 @@ export function score(questId) {
     id: q.id,
     stage: q.stage,
     parts,
-    // Null while anything is blocking. See the note above — this is the
+    // Null while anything is blocking. See the note above, this is the
     // manual's sentence expressed as a missing value rather than a warning.
     overall: blocked.length ? null
       : Number(((urgent + regenerative + feasible + maintainable) / 4).toFixed(2)),
@@ -391,7 +391,7 @@ export function score(questId) {
 /**
  * Stage 6's required output: the seasonal priority list.
  *
- * Blocked projects are not omitted — they are listed separately, because "what
+ * Blocked projects are not omitted, they are listed separately, because "what
  * should we do next season" and "what is stopping the things we already chose"
  * are the same conversation and hiding the second one makes the first look
  * shorter than it is.

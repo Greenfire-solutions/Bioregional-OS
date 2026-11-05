@@ -1,5 +1,5 @@
 // ==========================================
-// SEED DATA — AUSTIN / BARTON CREEK DEMO
+// SEED DATA, AUSTIN / BARTON CREEK DEMO
 // ==========================================
 // All figures below are prototype placeholders for interface
 // demonstration only. Nothing here is live, verified, scientifically
@@ -9,15 +9,15 @@
  * The demonstration commons.
  *
  * Declared here, once, because four files need to ask "is this the example
- * data?" — the weekly card, the printed sheet, the GeoJSON export and a KOI
- * bundle — and four copies of a string literal is how one of them ends up
+ * data?", the weekly card, the printed sheet, the GeoJSON export and a KOI
+ * bundle, and four copies of a string literal is how one of them ends up
  * disagreeing with the rest after a rename.
  *
  * It matters because this seed reads like real reporting. "Unpermitted
  * Stormwater Outfall Discharge", severity Critical, naming a real creek and a
  * real city department, with an author attached. Inside the app that sits under
- * an example-data banner. In an artifact that has travelled — a GeoJSON opened
- * in QGIS, a bundle landed in somebody else's commons — there is no banner, no
+ * an example-data banner. In an artifact that has travelled, a GeoJSON opened
+ * in QGIS, a bundle landed in somebody else's commons, there is no banner, no
  * interface and nobody who knows where the file came from.
  */
 export const DEMO_CHAPTER_ID = 'barton-creek';
@@ -27,13 +27,13 @@ export const DEMO_CHAPTER_ID = 'barton-creek';
  *
  * The first version of this said "nothing here is a real observation". That was
  * false, and backwards: a GeoJSON of the example commons carries 66 live USGS
- * gage readings and a live NOAA heat advisory — 67 of its 73 features are real
+ * gage readings and a live NOAA heat advisory, 67 of its 73 features are real
  * data about a real creek. Six are invented. The blanket denial also
  * contradicted the attribution block sitting beside it in the same object,
  * which correctly credits NOAA and USGS.
  *
  * A marker that tells a reader to distrust the authoritative half is worse than
- * no marker, because a wrong claim travels as confidently as a right one — and
+ * no marker, because a wrong claim travels as confidently as a right one, and
  * a hazard alert is the last thing to teach somebody to doubt.
  *
  * The commons is fiction. The land underneath it is not.
@@ -42,7 +42,7 @@ export const DEMO_NOTICE = Object.freeze({
   label: 'DEMONSTRATION DATA',
   commons:
     'The chapter, its members, projects, decisions, gatherings and hand-written observations ' +
-    'are invented — a fictional commons used to show how this works. No person, group or ' +
+    'are invented, a fictional commons used to show how this works. No person, group or ' +
     'decision named here exists.',
   land:
     'The readings are not invented. Gage heights, discharge, hazard alerts, soil, land cover ' +
@@ -57,7 +57,7 @@ export const INITIAL_PLACES = [
   {
     id: 'place-1',
     name: 'Barton Creek Greenbelt Reach',
-    region: 'Austin, Texas — Central Zilker',
+    region: 'Austin, Texas, Central Zilker',
     watershed: 'Barton Creek Watershed',
     bioregion: 'Edwards Plateau / Texas Hill Country',
     ecoregion: 'Balcones Canyonlands',
@@ -72,7 +72,7 @@ export const INITIAL_PLACES = [
   {
     id: 'place-2',
     name: 'Lower Colorado River Eastside Commons',
-    region: 'Austin, Texas — East Riverside',
+    region: 'Austin, Texas, East Riverside',
     watershed: 'Colorado River (Austin reach)',
     bioregion: 'Blackland Prairie Transition Zone',
     ecoregion: 'Texas Blackland Prairies',

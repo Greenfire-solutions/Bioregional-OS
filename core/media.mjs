@@ -34,7 +34,7 @@ export const MIME = Object.freeze({
  *
  * It is an image to a person and a script host to a browser, so a stored .svg
  * served inline on the app's own origin is stored cross-site scripting against
- * everybody who later opens the commons — including the steward, whose browser
+ * everybody who later opens the commons, including the steward, whose browser
  * is the one connection this system grants everything to.
  */
 export const ALLOWED = Object.freeze(Object.keys(MIME));

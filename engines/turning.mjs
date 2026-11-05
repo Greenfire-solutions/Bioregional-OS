@@ -2,7 +2,7 @@
 // §5.10. Closing a season and opening the next one.
 //
 // The protocol's loop is seasonal, and everything else in this OS is daily or
-// weekly — which means the twelve-stage cycle has never actually turned. It
+// weekly, which means the twelve-stage cycle has never actually turned. It
 // runs forward and nothing ever closes. This is the stage 11 → 12 → 6 hinge:
 //
 //   11. Measure            What changed, for whom, and with what uncertainty?
@@ -15,7 +15,7 @@
 // The design decision that shapes the whole file: the machine computes what
 // changed, and REFUSES to close a season until a person has answered the
 // questions no machine can. The protocol's quarterly learning review asks eight
-// questions, and five of them are queries — what changed, what travelled, what
+// questions, and five of them are queries, what changed, what travelled, what
 // finished, what is still open, what the indicators did. Three of them are not:
 //
 //   What did NOT change?
@@ -25,7 +25,7 @@
 // Those three are the entire value of a review. A commons that answers only the
 // five computable ones has generated a progress report, and a progress report
 // is the genre in which nothing has ever gone wrong. "Whose experience is
-// missing" in particular cannot be derived from a database BY DEFINITION —
+// missing" in particular cannot be derived from a database BY DEFINITION,
 // the people missing from it are the ones not in it. So closing refuses without
 // them, the same way a council item refuses without a Land Seat report.
 //
@@ -42,7 +42,7 @@ import { vitals } from './vitals.mjs';
 /**
  * Everything the database can say about the season, computed and read-only.
  *
- * Safe to call at any time — this is what a council reads BEFORE deciding what
+ * Safe to call at any time, this is what a council reads BEFORE deciding what
  * stops and what continues, not the act of closing.
  */
 export function seasonReview(chapterId) {
@@ -50,7 +50,7 @@ export function seasonReview(chapterId) {
 
   const open = currentSeason(chapterId);
   // Everything since this season opened, or the last 90 days if a chapter has
-  // never opened one — a review of "all of history" on a three-year-old commons
+  // never opened one, a review of "all of history" on a three-year-old commons
   // is not a season review, it is an annual report nobody asked for.
   const since = open?.opened_at ?? isoDaysAgo(90);
 
@@ -112,7 +112,7 @@ export function seasonReview(chapterId) {
       WHERE l.chapter_id = ? AND l.travels = 1 AND date(l.created_at) >= date(?)`, chapterId, since);
 
   // Finished and never written up. Stage 12's own output is a reusable toolkit,
-  // and a project that ended without one did not reach stage 12 — it stopped at
+  // and a project that ended without one did not reach stage 12, it stopped at
   // stage 8 and everybody went home.
   const unwritten = finished.filter((q) =>
     !one('SELECT 1 x FROM learn WHERE quest_id = ?', q.id));
@@ -182,7 +182,7 @@ export const MUST_ANSWER = Object.freeze([
     why: 'The effects worth knowing about are the ones nobody set an indicator for.' },
   { field: 'whose_experience_is_missing',
     question: 'Whose experience is missing?',
-    why: 'This one cannot be computed by definition — the people missing from the database ' +
+    why: 'This one cannot be computed by definition, the people missing from the database ' +
          'are the ones not in it.' },
 ]);
 
@@ -190,20 +190,20 @@ export const MUST_ANSWER = Object.freeze([
 export function openSeason(chapterId, { name, priorities } = {}) {
   if (!chapterId) return { error: 'no_chapter' };
   if (!String(name ?? '').trim()) {
-    return { error: 'name_required', message: 'A season needs a name the chapter will recognise — ' +
+    return { error: 'name_required', message: 'A season needs a name the chapter will recognise, ' +
       '"Autumn 2026", "the low-water season". It is what the next review will be read against.' };
   }
   const open = currentSeason(chapterId);
   if (open) {
     return {
       error: 'season_already_open',
-      message: `"${open.name}" is still open. Close it first — that is the point of the ritual, ` +
+      message: `"${open.name}" is still open. Close it first, that is the point of the ritual, ` +
                'and two open seasons means neither ever gets reviewed.',
       season: open,
     };
   }
   // The priority list is stage 6's required output, so it comes from stage 6.
-  // Projects that can be ranked, ranked — then whatever the operator says is
+  // Projects that can be ranked, ranked, then whatever the operator says is
   // blocking, because a season whose list is only its blockages has no
   // direction and a season that ignores them has no honesty.
   const stage6 = safely(() => priorities(chapterId));
@@ -224,7 +224,7 @@ export function openSeason(chapterId, { name, priorities } = {}) {
     suggested_from_the_operator: !priorities?.length,
     sentence: `"${row.name}" is open. ${suggested.length && !priorities?.length
       ? `Its priority list starts as the ${suggested.length} thing${suggested.length === 1 ? '' : 's'} ` +
-        'the operator says are blocking or slipped — change it to whatever the council actually decided.'
+        'the operator says are blocking or slipped, change it to whatever the council actually decided.'
       : 'Nothing is blocking, so the list is whatever the council chooses to make it.'}`,
   };
 }
@@ -234,7 +234,7 @@ export function openSeason(chapterId, { name, priorities } = {}) {
  * stop / continue / change / travel.
  *
  * Refuses without the three answers no machine can supply. That refusal is the
- * feature — see the file header.
+ * feature, see the file header.
  */
 export function closeSeason(chapterId, input = {}) {
   if (!chapterId) return { error: 'no_chapter' };
@@ -242,7 +242,7 @@ export function closeSeason(chapterId, input = {}) {
   if (!open) {
     return {
       error: 'no_open_season',
-      message: 'No season is open to close. Open one first — a review with no period attached ' +
+      message: 'No season is open to close. Open one first, a review with no period attached ' +
                'is a review of everything, which is a review of nothing.',
       action: { tool: 'open_season', input: {} },
     };
@@ -295,7 +295,7 @@ export function seasons(chapterId) {
        FROM seasons WHERE chapter_id = ? ORDER BY opened_at DESC`, chapterId);
   // Parsed on BOTH branches. It was parsed for closed seasons and returned raw
   // for the open one, so the same field was an array in one half of the answer
-  // and a JSON string in the other — and the open season is the half anything
+  // and a JSON string in the other, and the open season is the half anything
   // would actually try to render.
   const withPriorities = (r) => ({ ...r, priorities: parse(r.priorities) });
   return {
@@ -303,7 +303,7 @@ export function seasons(chapterId) {
     closed: rows.filter((r) => r.closed_at).map(withPriorities),
     total: rows.length,
     sentence: !rows.length
-      ? 'No season has been opened yet. The twelve-stage loop is seasonal — without one it ' +
+      ? 'No season has been opened yet. The twelve-stage loop is seasonal, without one it ' +
         'runs forward and never closes, and nobody gets the experience of having finished anything.'
       : rows.find((r) => !r.closed_at)
         ? `"${rows.find((r) => !r.closed_at).name}" is open.`

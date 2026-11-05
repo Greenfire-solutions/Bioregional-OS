@@ -2,7 +2,7 @@
 
 BioRegional OS is assembled from the open bioregional/regenerative ecosystem. It
 does **not** vendor anyone's codebase. It speaks their **protocols, schemas and
-open data**, which is what actually makes systems interoperate — and which keeps
+open data**, which is what actually makes systems interoperate, and which keeps
 the licensing clean.
 
 ## Why adapters instead of copied code
@@ -10,7 +10,7 @@ the licensing clean.
 Most of the ecosystem is strong copyleft: Terraso is AGPL-3.0, farmOS GPL-2.0,
 LiteFarm GPL-3.0, CoMapeo GPL-3.0, Murmurations GPL-3.0, Open Food Network
 AGPL-3.0. Bundling those into one distributed work creates obligations across the
-whole thing, and — more practically — a copy of someone's code goes stale the day
+whole thing, and, more practically, a copy of someone's code goes stale the day
 you make it. A protocol adapter does not.
 
 **This project is AGPL-3.0-or-later**, which is compatible with all of the above
@@ -27,7 +27,7 @@ the community their changes.
 | Water in context | **USGS NWIS Statistics** | Public domain | Median / p10 / p90 for *this calendar day* across the full record, so "low" means low for a September. RDB. `adapters/watershed.mjs` |
 | Weather + hazards | **NWS api.weather.gov** | Public domain (US Gov) | Current conditions, today's forecast, active hazard alerts. No key, no account. `adapters/weather.mjs` |
 | Weather (rest of world) | **Open-Meteo** | CC-BY-4.0, no account | Global fallback where the NWS has no coverage. Carries no official hazard feed, and says so rather than implying all-clear. |
-| Sun and moon | *none — computed here* | Public domain algorithm (NOAA) | Sunrise, sunset, daylight and its daily change, moon phase, next solstice/equinox. `adapters/sky.mjs`. The one reading that can never be stale or rate-limited. |
+| Sun and moon | *none, computed here* | Public domain algorithm (NOAA) | Sunrise, sunset, daylight and its daily change, moon phase, next solstice/equinox. `adapters/sky.mjs`. The one reading that can never be stale or rate-limited. |
 | Geocoding | **Nominatim** (OpenStreetMap) | ODbL, no key | Free-form place lookup for the first run. One request per second, enforced in `adapters/geocode.mjs`. Nothing is bulk-downloaded. |
 | Geocoding (fallback) | **Open-Meteo geocoding** | CC-BY-4.0, no account | A settlement gazetteer for when Nominatim is unavailable. |
 | Discovery / federation | **Murmurations Protocol** | GPL-3.0 (service) | Profile generation, live schema validation, Index search. `adapters/murmurations.mjs` |
@@ -40,9 +40,9 @@ the community their changes.
 
 ## What is not wired yet
 
-The table above covers Atlas layers 1 and 2 and part of 3. Layers 4-12 — land and
+The table above covers Atlas layers 1 and 2 and part of 3. Layers 4-12, land and
 soil, habitat and biodiversity, climate hazards, settlement, care systems, skills,
-flows, culture — have open data available for all of them. The catalogue, with every
+flows, culture, have open data available for all of them. The catalogue, with every
 endpoint verified live, the licences checked, and the sources that must **not** default
 to public sensitivity, is in **[DATA_SOURCES.md](DATA_SOURCES.md)**.
 
@@ -51,9 +51,9 @@ to public sensitivity, is in **[DATA_SOURCES.md](DATA_SOURCES.md)**.
 The 3D map covers the United States live, from EPA. For elsewhere, drop a GeoJSON
 at `data/upstream/global-ecoregions.geojson`:
 
-- **RESOLVE Ecoregions 2017** — 844 ecoregions, **CC-BY-4.0**. Safe to vendor and
+- **RESOLVE Ecoregions 2017**: 844 ecoregions, **CC-BY-4.0**. Safe to vendor and
   redistribute with attribution. Recommended.
-- **One Earth Bioregions 2023** — 185 bioregions, **CC-BY-NC-4.0**. NonCommercial,
+- **One Earth Bioregions 2023**: 185 bioregions, **CC-BY-NC-4.0**. NonCommercial,
   so this project does **not** redistribute its geometry. Its bioregion names are
   used as reference labels only. If your use is noncommercial you may add it
   yourself; if you intend to sell anything built on this, don't.
@@ -61,7 +61,7 @@ at `data/upstream/global-ecoregions.geojson`:
 ## The Green Fire doctrine
 
 `content/greenfire/doctrine.json` carries the civic and ecological framework from
-the Green Fire Research and Innovation Center — the twelve-stage loop, the seven
+the Green Fire Research and Innovation Center, the twelve-stage loop, the seven
 engines, the four scales, the Land Seat, care infrastructure, elder-guidance
 protocol, and the AI limits.
 

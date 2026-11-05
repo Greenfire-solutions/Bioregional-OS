@@ -1,5 +1,5 @@
 // ── Murmurations Protocol adapter ─────────────────────────────────────────
-// Upstream: MurmurationsNetwork (GPL-3.0) — index + library + schemas.
+// Upstream: MurmurationsNetwork (GPL-3.0), index + library + schemas.
 // This is the piece that lets a chapter be *discovered by* and *discover*
 // the wider regenerative-economy network without anyone owning the directory.
 // Protocol: you host a JSON profile at a URL, post that URL to the Index,
@@ -17,7 +17,7 @@ export function chapterProfile(chapter, { primaryUrl } = {}) {
     linked_schemas: ['organizations_schema-v1.0.0'],
     name: chapter.name,
     primary_url: url || undefined,
-    description: [chapter.provisional_scope, chapter.represents].filter(Boolean).join(' — ') || undefined,
+    description: [chapter.provisional_scope, chapter.represents].filter(Boolean).join(', ') || undefined,
     mission: chapter.represents || undefined,
     latitude: chapter.lat ?? undefined,
     longitude: chapter.lng ?? undefined,
@@ -29,11 +29,11 @@ export function chapterProfile(chapter, { primaryUrl } = {}) {
 }
 
 /**
- * An Offers & Wants profile from an intake item — how a need reaches the network.
+ * An Offers & Wants profile from an intake item, how a need reaches the network.
  *
  * REFUSES a private item, and that refusal is the whole point of the function
  * having one. `intake.private` is honoured in the listing route, in the tool
- * that reads intake, and in the sensitivity it is filed at — and was not
+ * that reads intake, and in the sensitivity it is filed at, and was not
  * honoured HERE, in the one place that publishes to a world-readable global
  * index that cannot be un-published. A need marked private is marked private
  * because it carries somebody's personal circumstances.
@@ -48,7 +48,7 @@ export function offerWantProfile(item, chapter, { primaryUrl } = {}) {
   if (item?.private) {
     return {
       error: 'private',
-      message: 'This need is marked private. It stays in the commons — it does not go to a ' +
+      message: 'This need is marked private. It stays in the commons, it does not go to a ' +
                'public index that cannot take it back.',
     };
   }
@@ -85,7 +85,7 @@ export async function postToIndex(profileUrl) {
 }
 
 /**
- * Find other nodes in the network near this chapter — the federation discovery
+ * Find other nodes in the network near this chapter, the federation discovery
  * path. Returns peers ready to be written into federation_peers.
  */
 export async function discoverNearby({ lat, lng, range = '100km', schema = 'organizations_schema-v1.0.0', tags } = {}) {
@@ -110,7 +110,7 @@ export async function discoverNearby({ lat, lng, range = '100km', schema = 'orga
 /**
  * What a discovered node actually is, read from what it published.
  *
- * The index answers a geographic query with every organisation near the point —
+ * The index answers a geographic query with every organisation near the point,
  * asked around Austin it returns a taxi co-operative, a web host, a copywriting
  * agency and an individual researcher. Recording all of those as *chapters*,
  * which is what this did, makes the federation table assert something the data

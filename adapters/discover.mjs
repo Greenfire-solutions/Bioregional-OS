@@ -3,7 +3,7 @@
 //
 // Every other adapter here is a RESOLVER: give it a point, it returns a value.
 // This one is a DISCOVERER: give it a place and a subject, and it returns
-// datasets — things somebody's own city or county already publishes about the
+// datasets, things somebody's own city or county already publishes about the
 // ground they live on.
 //
 // That difference matters because the alternative does not scale. Austin's open
@@ -11,13 +11,13 @@
 // federal feed has it, and nobody could have guessed the name. The equivalent
 // exists for thousands of localities under names nobody can guess either. A
 // hardcoded list serves one chapter. Asking the catalogue serves every chapter,
-// including the ones that do not exist yet — and a bioregional tool should get
+// including the ones that do not exist yet, and a bioregional tool should get
 // SHARPER the more local you are, not vaguer.
 //
 // Two catalogues, both keyless:
-//   • Socrata Discovery API — indexes Socrata portals, and carries a real
+//   • Socrata Discovery API: indexes Socrata portals, and carries a real
 //     licence string, which is the only reason auto-approval is possible at all.
-//   • ArcGIS Hub — indexes ArcGIS portals, and does NOT carry a usable licence.
+//   • ArcGIS Hub: indexes ArcGIS portals, and does NOT carry a usable licence.
 //     See classifyLicense: its `license` field is 'none' or 'custom' almost
 //     everywhere, and 'none' means "nobody filled this in", never "free to use".
 import { getJSON, qs } from './http.mjs';
@@ -34,13 +34,13 @@ const DAY = 1000 * 60 * 60 * 24;
  *
  * This function is the whole safety story of this adapter, so it is an
  * ALLOWLIST and nothing else reaches 'public_domain'. The failure that matters
- * is not missing a public-domain dataset — that costs one human glance. It is
+ * is not missing a public-domain dataset, that costs one human glance. It is
  * auto-publishing something whose terms nobody read, into an export that leaves
  * the machine.
  *
  * The specific trap, verified against live data: ArcGIS Hub returns the literal
  * string 'none' for the overwhelming majority of its datasets. That means "no
- * licence was recorded", which is the OPPOSITE of public domain — absent a
+ * licence was recorded", which is the OPPOSITE of public domain, absent a
  * licence, the default is all rights reserved. Anything that reads 'none' as
  * 'no restrictions' would auto-publish most of the ArcGIS catalogue. Likewise
  * 'custom', and ArcGIS's structuredLicense.text, which in practice is a
@@ -57,7 +57,7 @@ export function classifyLicense(raw) {
       class: 'unknown', auto_approvable: false, raw: text || null, matched: null,
       why: text
         ? `the portal recorded the licence as "${text}", which records an absence rather than a permission`
-        : 'the portal recorded no licence at all — and absent a licence the default is all rights reserved, not free to use',
+        : 'the portal recorded no licence at all, and absent a licence the default is all rights reserved, not free to use',
     };
   }
 
@@ -85,7 +85,7 @@ export function classifyLicense(raw) {
 
 /**
  * Auto-approvable. Every entry is either a dedication by the rights holder or a
- * statement that the work carries no copyright — never a third party's guess.
+ * statement that the work carries no copyright, never a third party's guess.
  */
 const PUBLIC_DOMAIN = [
   [/^(u\.?s\.? )?public domain( \(.*\))?$/, 'public domain'],
@@ -98,7 +98,7 @@ const PUBLIC_DOMAIN = [
   [/^no (known )?copyright/, 'no known copyright'],
 ];
 
-/** Open, but someone has to accept the terms — attribution, share-alike, non-commercial. */
+/** Open, but someone has to accept the terms, attribution, share-alike, non-commercial. */
 const OPEN_WITH_CONDITIONS = [
   [/\bcc[- ]by[- ]nc/, 'CC-BY-NC (NonCommercial)'],
   [/\bcc[- ]by[- ]sa/, 'CC-BY-SA (ShareAlike)'],
@@ -114,7 +114,7 @@ const OPEN_WITH_CONDITIONS = [
 /**
  * Which open-data portals serve this locality.
  * The catalogue has no "near here" filter, so the locality name is the query and
- * the portal domains in the answers are the result — which works because a
+ * the portal domains in the answers are the result, which works because a
  * city's own portal ranks for its own name.
  */
 export async function findPortals(locality, region = null, { limit = 4 } = {}) {
@@ -162,7 +162,7 @@ const SUBJECT_LAYER = {
   historic: 11, heritage: 11, cemetery: 11, landmark: 11, archaeolog: 11,
 };
 /**
- * Which layer a candidate belongs to — decided by the DATASET, not by the search.
+ * Which layer a candidate belongs to, decided by the DATASET, not by the search.
  *
  * Searching a portal for "creek" also returns library circulation figures,
  * because a portal's relevance ranking is its own business. Reading the layer
@@ -175,7 +175,7 @@ const SUBJECT_LAYER = {
 export function layerFor(subject = '', title = '', description = '') {
   // Title first, then description. A word in the title is what the dataset IS;
   // a word in the description may be an aside, so it only decides when the
-  // title is silent — and either way the matched term is returned so a person
+  // title is silent, and either way the matched term is returned so a person
   // can see why something landed on layer 6 and disagree with it.
   const t = String(title ?? '').toLowerCase();
   const dsc = String(description ?? '').toLowerCase();
@@ -190,11 +190,11 @@ export function layerFor(subject = '', title = '', description = '') {
 
 /**
  * Datasets a locality publishes about a subject.
- * Returns candidates — never layers. Nothing here is registered; the engine
+ * Returns candidates, never layers. Nothing here is registered; the engine
  * decides what happens next, and only a public-domain licence decides itself.
  */
 export async function discover({ locality, region = null, subject, limit = 12 } = {}) {
-  if (!subject) return { error: 'no_subject', message: 'Say what to look for — water, soil, trees, flooding, historic sites.' };
+  if (!subject) return { error: 'no_subject', message: 'Say what to look for, water, soil, trees, flooding, historic sites.' };
   if (!locality) return { error: 'no_locality', message: 'A locality name is what makes this local. Set one on the chapter, or pass one.' };
 
   const portals = await findPortals(locality, region).catch(() => []);
@@ -220,7 +220,7 @@ export async function discover({ locality, region = null, subject, limit = 12 } 
   // A catalogue ranks by its own relevance, and ArcGIS in particular will answer
   // "trees Asheville North Carolina" with anything about North Carolina. Keeping
   // those would mean telling somebody their city publishes eight datasets about
-  // trees when it publishes none — a confident answer to a question that was
+  // trees when it publishes none, a confident answer to a question that was
   // never actually answered, which is worse than an empty one.
   const candidates = scored.filter((c) => c.on_subject)
     .sort((a, b) => Number(b.license.auto_approvable) - Number(a.license.auto_approvable));
@@ -310,7 +310,7 @@ function readableDiscovery({ locality, subject, candidates, auto, portals, offSu
   return ((noPortal ? noPortal + ' ' : '') +
          `${where} publishes ${candidates.length} dataset${candidates.length === 1 ? '' : 's'} about ${subject}` +
          `, starting with "${top.title}"` +
-         (auto ? ` — ${auto} in the public domain and ready to use.`
-               : ' — none public domain, so each one needs a person to read its terms.')
+         (auto ? `, ${auto} in the public domain and ready to use.`
+               : ', none public domain, so each one needs a person to read its terms.')
         ).replace(/\s{2,}/g, ' ');
 }

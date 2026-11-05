@@ -6,7 +6,7 @@ import { callTool } from '../api.js';
  * What is being carried, and what is being neglected.
  *
  * The design problem this component has is that the same numbers, laid out
- * slightly differently, are a leaderboard — and §6 refuses leaderboards of
+ * slightly differently, are a leaderboard, and §6 refuses leaderboards of
  * people on evidence. Three rules keep it on the right side, and all three are
  * about presentation rather than data:
  *
@@ -16,7 +16,7 @@ import { callTool } from '../api.js';
  *   leaderboard no matter how gently it is worded.
  *
  *   The sentence is addressed to the council, not to the person carrying it.
- *   "Somebody has to offer" rather than "you are overloaded" — §3.8's finding
+ *   "Somebody has to offer" rather than "you are overloaded", §3.8's finding
  *   is that the person doing most of the work is the last one who will ask for
  *   relief, so asking them to self-report is asking the wrong human.
  *
@@ -64,7 +64,7 @@ export default function Carrying() {
                 {care.total_open} open {care.total_open === 1 ? 'responsibility' : 'responsibilities'}.
               </p>
               <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
-                Somebody has to offer to take one — the person carrying it is the last
+                Somebody has to offer to take one, the person carrying it is the last
                 one who will ask.
               </p>
               <ul className="mt-1.5 space-y-0.5">
@@ -104,7 +104,7 @@ export default function Carrying() {
                 {/* A guess and a record must not read the same. */}
                 {u.certain
                   ? ' Ask which member would notice if the work stopped.'
-                  : ' That name reads like a group — if it is one person, ignore this.'}
+                  : ' That name reads like a group, if it is one person, ignore this.'}
               </li>
             ))}
           </ul>
@@ -122,8 +122,8 @@ export default function Carrying() {
                 <span className="font-medium">{n.name}</span>
                 <span className="text-[var(--ink-2)]">
                   {n.never_visited
-                    ? ` — not since it was added ${n.added_days_ago} days ago`
-                    : ` — ${n.days_since} days`}
+                    ? `, not since it was added ${n.added_days_ago} days ago`
+                    : `, ${n.days_since} days`}
                   {n.open_work > 0 &&
                     `, with ${n.open_work} open project${n.open_work === 1 ? '' : 's'} there`}
                 </span>

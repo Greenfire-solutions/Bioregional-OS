@@ -23,7 +23,7 @@ import { callTool, get } from '../api.js';
 
 export default function TheGround({ place: given = null }) {
   // Fetches its own place rather than being handed one. That keeps this out of
-  // App.jsx entirely, and the request is local — the place row already carries
+  // App.jsx entirely, and the request is local, the place row already carries
   // soil, elevation, land cover and floodplain from locate().
   const [place, setPlace] = useState(given);
   // One local call. The registry is the only place a licence is declared, and
@@ -97,15 +97,15 @@ function Stored({ place, registry }) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <Fact label="Soil" value={place.soil_series ?? '—'}
+      <Fact label="Soil" value={place.soil_series ?? '-'}
         detail={[place.soil_map_unit, place.soil_drainage, soil].filter(Boolean).join(' · ')}
-        note={place.soil_hydric ? 'Hydric — this is wetland soil, which is a permitting question before it is an ecological one.' : null} />
-      <Fact label="Land cover" value={place.land_cover ?? '—'}
+        note={place.soil_hydric ? 'Hydric, this is wetland soil, which is a permitting question before it is an ecological one.' : null} />
+      <Fact label="Land cover" value={place.land_cover ?? '-'}
         detail={place.elevation_m != null ? `${Math.round(place.elevation_m)} m above sea level` : null} />
-      <Fact label="Floodplain" value={place.flood_zone ? `FEMA zone ${place.flood_zone}` : '—'}
+      <Fact label="Floodplain" value={place.flood_zone ? `FEMA zone ${place.flood_zone}` : '-'}
         detail={place.in_floodplain ? 'Inside the 1%-annual-chance floodplain' : place.flood_zone ? 'Outside the special flood hazard area' : null}
         note={place.flood_zone && !place.in_floodplain
-          ? 'No mapped hazard is not the same as no flood risk — much flooding happens outside the regulatory map.' : null} />
+          ? 'No mapped hazard is not the same as no flood risk, much flooding happens outside the regulatory map.' : null} />
       <div className="sm:col-span-3">
         <Src registry={registry}
           fallbackIds={[place.soil_source, 'usgs-3dep', 'mrlc-nlcd', 'fema-nfhl'].filter(Boolean)} />
@@ -160,7 +160,7 @@ function Section({ place, tool, icon: Icon, label, render, className = '' }) {
           {result?.message ?? 'Could not reach it.'}{' '}
           <button onClick={load} className="underline">try again</button>
           <p className="mt-1 text-[11px] text-[var(--ink-3)]">
-            Nothing is wrong with your commons — an upstream service did not answer. This is not an all-clear either.
+            Nothing is wrong with your commons, an upstream service did not answer. This is not an all-clear either.
           </p>
         </div>
       )}
@@ -178,7 +178,7 @@ const Lead = ({ children }) => <p className="text-xs text-[var(--ink-2)]">{child
  * Credit rendered from the registry, never retyped here.
  *
  * This component used to carry five hardcoded licence strings. The adapters
- * point at `source_id` and the registry declares the licence once — so a
+ * point at `source_id` and the registry declares the licence once, so a
  * retyped line meant the code could be right while the sentence on screen went
  * stale, and the sentence is the half somebody quotes.
  */
@@ -196,7 +196,7 @@ const Src = ({ attribution, fallbackIds, registry, children }) => {
   );
 };
 const Unavailable = ({ r }) => (
-  <p className="text-[11px] text-[var(--ink-3)]">Not available — {r?.reason ?? 'no answer'}.</p>
+  <p className="text-[11px] text-[var(--ink-3)]">Not available, {r?.reason ?? 'no answer'}.</p>
 );
 
 // ── renderers ─────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ function Water({ r }) {
             {q.characteristics.slice(0, 8).map((c, i) => (
               <tr key={i} className="border-t border-[var(--line-2)]">
                 <td className="py-1 pr-2">{c.name}</td>
-                <td className="py-1 pr-2 text-right tabular-nums">{c.median ?? '—'}</td>
+                <td className="py-1 pr-2 text-right tabular-nums">{c.median ?? '-'}</td>
                 <td className="py-1 pr-2 text-[var(--ink-3)]">{c.unit ?? ''}</td>
                 <td className="py-1 text-right text-[var(--ink-3)]">
                   {c.samples}×
@@ -228,7 +228,7 @@ function Water({ r }) {
       )}
       {q?.characteristics?.some((c) => c.also_reported_in) && (
         <p className="text-[11px] text-[#8A6D1F]">
-          Some measures arrive in more than one unit and are kept apart rather than averaged —
+          Some measures arrive in more than one unit and are kept apart rather than averaged,
           a median across mg/L as N and as NO₃ is a number nobody measured.
         </p>
       )}
@@ -255,7 +255,7 @@ function Life({ r }) {
         <div className="rounded bg-[#FBF1EE] px-2 py-1.5">
           <div className="text-[11px] text-[var(--clay)]">
             <Lock size={11} className="mr-1 inline align-[-1px]" />
-            {r.threatened.total_taxa} taxa carry a conservation status — held at{' '}
+            {r.threatened.total_taxa} taxa carry a conservation status, held at{' '}
             <strong>{r.threatened.sensitivity}</strong>
           </div>
           <p className="mt-1 text-[10px] text-[var(--ink-2)]">{r.threatened.disclosure}</p>
@@ -306,7 +306,7 @@ function Culture({ r }) {
       <Lead>{r.readable}</Lead>
       {(r.papers?.widened_from || r.research?.widened_from) && (
         <p className="text-[11px] text-[#8A6D1F]">
-          The archives were searched for a broader name than this place's own — results are about
+          The archives were searched for a broader name than this place's own, results are about
           the wider water, not this reach specifically.
         </p>
       )}
@@ -360,7 +360,7 @@ function Growing({ r }) {
 // ── A baseline from public record ─────────────────────────────────────────
 // The protocol says monitoring must change decisions. In practice it cannot,
 // because a decision_trigger set against a guessed baseline will not honestly
-// fire — and until now the only way to reach the open record was Claude Code.
+// fire, and until now the only way to reach the open record was Claude Code.
 // A person adding an indicator got a blank field and their best guess.
 //
 // This offers the number, with its source, its licence and its method, and
@@ -407,7 +407,7 @@ export function BaselineOffer({ indicator, onApplied }) {
     <div className="mt-2 rounded border border-dashed border-[var(--line)] px-2.5 py-2">
       {state === 'idle' && (
         <button onClick={propose} className="text-[11px] underline">
-          No baseline — see whether the open record has one
+          No baseline, see whether the open record has one
         </button>
       )}
       {state === 'loading' && <span className="text-[11px] text-[var(--ink-3)]">Looking…</span>}
@@ -430,7 +430,7 @@ export function BaselineOffer({ indicator, onApplied }) {
           <p className="text-[11px] text-[var(--ink-2)]">{proposal.method}</p>
           {proposal.note && <p className="text-[11px] text-[#8A6D1F]">{proposal.note}</p>}
           <p className="text-[10px] text-[var(--ink-3)]">
-            {proposal.source}{proposal.licence ? ` — ${proposal.licence}` : ''} · measured {proposal.measured_at}
+            {proposal.source}{proposal.licence ? `, ${proposal.licence}` : ''} · measured {proposal.measured_at}
           </p>
           <p className="text-[10px] text-[var(--ink-3)]">{proposal.caveat}</p>
           <div className="flex gap-2 pt-0.5">

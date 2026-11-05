@@ -13,7 +13,7 @@ export /**
  * A page heading, and the one thing this page is FOR.
  *
  * The primary action used to live in the tab strip, pushed to the far right as
- * a small outlined pill — styled as navigation, sitting outside the column the
+ * a small outlined pill, styled as navigation, sitting outside the column the
  * eye is reading, at the size of a label. "Propose to council" is the entire
  * point of the council page and it looked like a tab nobody had selected.
  *
@@ -42,8 +42,8 @@ const H = ({ children, sub, action }) => (
 /**
  * Something you can do to the thing you are looking at.
  *
- * These were 11px underlined text — "close it", "decide this", "resolve the
- * red flag" — sitting below a rule at the bottom of a card. Underlined small
+ * These were 11px underlined text, "close it", "decide this", "resolve the
+ * red flag", sitting below a rule at the bottom of a card. Underlined small
  * text reads as a footnote, and a footnote is not where somebody looks for the
  * next move. They are buttons now: a border, a hit area, and a verb.
  *
@@ -102,7 +102,7 @@ export function MyPlace({ data, onFocus }) {
       {v && (
         <Card>
           <H sub="Ten questions from the manual. A chapter is viable only when all ten are yes.">
-            Minimum Viable Chapter Test — {v.passed}/{v.total}
+            Minimum Viable Chapter Test, {v.passed}/{v.total}
           </H>
           <div className="space-y-1.5">
             {v.checks.map((k) => (
@@ -253,7 +253,7 @@ export function Quests({quests, tasks = [], gates, onLoadGates, onFocus, onAct, 
               ) : (
                 <div className="space-y-1">
                   <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
-                    Gates — {open.length ? `${open.length} open` : 'all satisfied'}
+                    Gates, {open.length ? `${open.length} open` : 'all satisfied'}
                   </div>
                   {g.map((x) => (
                     <div key={x.gate} className="flex items-center gap-2 text-[11px]">
@@ -288,7 +288,7 @@ export function Quests({quests, tasks = [], gates, onLoadGates, onFocus, onAct, 
  * A project's tasks, on the project.
  *
  * Deliberately a SUMMARY plus a door, not a second copy of the Tasks screen.
- * Two full task interfaces would be two places to fix a bug in — the same
+ * Two full task interfaces would be two places to fix a bug in, the same
  * argument verbs.js and actions.js make about wording and behaviour. What a
  * person needs here is to see that the work exists, who has it, and whether
  * anything is missing its evidence.
@@ -306,7 +306,7 @@ function TasksOn({ quest, tasks, onAct }) {
     <div className="mt-3 border-t border-[var(--line-2)] pt-2">
       <div className="mb-1.5 flex items-center gap-2">
         <div className="text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
-          The work {tasks.length ? `— ${open.length} open of ${tasks.length}` : ''}
+          The work {tasks.length ? `, ${open.length} open of ${tasks.length}` : ''}
         </div>
         <button onClick={() => onAct?.('add_task', { quest_id: quest.id })}
           className="ml-auto flex items-center gap-1 rounded border border-[var(--line)] px-2 py-0.5
@@ -317,7 +317,7 @@ function TasksOn({ quest, tasks, onAct }) {
 
       {!tasks.length ? (
         <p className="text-[11px] leading-snug text-[var(--ink-3)]">
-          Nothing written down yet — what is somebody actually going to do?
+          Nothing written down yet, what is somebody actually going to do?
           Tasks carry their own point on the map, and the ones that change the land
           do not close without a before-and-after.
         </p>
@@ -385,7 +385,7 @@ export function Council({decisions, due, onAct, primary}) {
           )}
           <div className="mt-2 rounded bg-[var(--paper-2)] px-2 py-1.5">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[var(--ink-3)]">
-              <Scale className="h-3 w-3" /> Land Seat — {d.land_seat_steward ?? 'unassigned'}
+              <Scale className="h-3 w-3" /> Land Seat, {d.land_seat_steward ?? 'unassigned'}
             </div>
             <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">{d.land_seat_report}</p>
           </div>
@@ -438,7 +438,7 @@ export function Gatherings({gatherings, primary}) {
 export function Exchange({exchange, primary}) {
   return (
     <div className="space-y-4">
-      <H action={primary} sub="Contributions as ValueFlows economic events — exportable to hREA or Bonfire.">Exchange &amp; Care</H>
+      <H action={primary} sub="Contributions as ValueFlows economic events, exportable to hREA or Bonfire.">Exchange &amp; Care</H>
       {exchange?.events?.map((e) => (
         <Card key={e.id}>
           <div className="flex items-center gap-2">
@@ -541,7 +541,7 @@ export function Listen({intake, primary}) {
       )}
       {!!waiting.length && (
         <div className="text-[10px] uppercase tracking-wide text-[var(--clay)]">
-          Waiting for an answer — {waiting.length}
+          Waiting for an answer, {waiting.length}
         </div>
       )}
       {[...waiting, ...answered].map((i) => (
@@ -597,7 +597,7 @@ export function Measure({indicators, onAct, onRefresh, primary}) {
             <h3 className="mt-1.5 text-sm font-medium">{n.name}</h3>
             <div className="mt-2 flex flex-wrap gap-4 text-xs">
               <Stat label="Baseline" value={fmt(n.baseline_value, n.unit)} sub={n.baseline_at} />
-              <Stat label="Latest" value={n.latest_value != null ? fmt(n.latest_value, n.unit) : '—'} sub={n.latest_at} />
+              <Stat label="Latest" value={n.latest_value != null ? fmt(n.latest_value, n.unit) : '-'} sub={n.latest_at} />
               <Stat label="Target" value={fmt(n.target_value, n.unit)} sub={n.target_by} />
             </div>
             {n.method && <p className="mt-2 text-[11px] text-[var(--ink-3)]"><b>Method:</b> {n.method}</p>}
@@ -633,4 +633,4 @@ const Stat = ({ label, value, sub }) => (
     {sub && <div className="text-[10px] text-[var(--ink-3)]">{String(sub).slice(0, 10)}</div>}
   </div>
 );
-const fmt = (v, u) => (v == null ? '—' : `${v}${u ? ' ' + u : ''}`);
+const fmt = (v, u) => (v == null ? '-' : `${v}${u ? ' ' + u : ''}`);

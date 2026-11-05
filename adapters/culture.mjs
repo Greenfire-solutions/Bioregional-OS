@@ -1,5 +1,5 @@
 // ── Culture, history and community memory ─────────────────────────────────
-// Atlas layer 11 — the one that was still empty after two research sweeps.
+// Atlas layer 11, the one that was still empty after two research sweeps.
 //
 // A bioregion has a written memory and almost no community knows it. The creek
 // appeared in newspapers a century ago; somebody has published research about
@@ -15,13 +15,13 @@
 // cc-by-nc 41, cc-by 2, and 2 with no licence at all.
 //
 // Three consequences, all enforced below rather than remembered:
-//   1. CC-BY-NC cannot be redistributed by this project — the same call
+//   1. CC-BY-NC cannot be redistributed by this project: the same call
 //      INTEROP.md already made for One Earth Bioregions. So audio is LINKED at
 //      its source and never copied, vendored or bundled. The OS hosts nothing.
 //   2. Nothing carrying media may leave the machine. An export or a shared card
 //      is redistribution. Facts about the recordings travel; the recordings
 //      do not. `export_safe` says which is which on every block.
-//   3. A recording with a null licence is NOT permissive, it is unlicensed —
+//   3. A recording with a null licence is NOT permissive, it is unlicensed,
 //      the same absent-branch-first trap as ArcGIS's 'none'. Null is excluded
 //      before anything else is considered.
 import { getJSON, qs } from './http.mjs';
@@ -44,14 +44,14 @@ const REDISTRIBUTABLE = new Set(['cc0', 'cc-by', 'cc-by-sa']);
 
 /**
  * What may be done with one piece of media. Absent is handled first and
- * excluded, because an unlicensed recording is all rights reserved — it is not
+ * excluded, because an unlicensed recording is all rights reserved, it is not
  * "no restrictions", it is no permission.
  */
 export function mediaRights(licenseCode) {
   const code = String(licenseCode ?? '').trim().toLowerCase();
   if (!code || code === 'null' || code === 'none') {
     return { code: null, streamable: false, redistributable: false,
-             why: 'no licence on the recording, which means all rights reserved — not free to use' };
+             why: 'no licence on the recording, which means all rights reserved, not free to use' };
   }
   if (!STREAMABLE.has(code)) {
     return { code, streamable: false, redistributable: false, why: `licence "${code}" is not one this OS knows how to honour` };
@@ -61,8 +61,8 @@ export function mediaRights(licenseCode) {
     streamable: true,
     redistributable: REDISTRIBUTABLE.has(code),
     why: REDISTRIBUTABLE.has(code)
-      ? `${code} — may be played and may travel, with attribution`
-      : `${code} — may be played from its own host, but NonCommercial or ND terms mean no copy of it leaves this machine`,
+      ? `${code}, may be played and may travel, with attribution`
+      : `${code}, may be played from its own host, but NonCommercial or ND terms mean no copy of it leaves this machine`,
   };
 }
 
@@ -92,7 +92,7 @@ export async function soundsHere(lat, lng, { radiusKm = 15, limit = 30, months =
     for (const snd of o.sounds ?? []) {
       const rights = mediaRights(snd.license_code);
       if (!rights.streamable) { unlicensed++; continue; }
-      // One naming rule, imported rather than restated — see life.mjs.
+      // One naming rule, imported rather than restated, see life.mjs.
       const named = displayName(o.taxon);
       recordings.push({
         species: named.name,
@@ -130,7 +130,7 @@ export async function soundsHere(lat, lng, { radiusKm = 15, limit = 30, months =
     by_month: byMonth,
     excluded_unlicensed: unlicensed,
     // Pre-chewed for anything that has to state the fact without carrying the
-    // media — a weekly card, a printed sheet, a message in a group chat. These
+    // media, a weekly card, a printed sheet, a message in a group chat. These
     // are facts about recordings, not recordings, so they travel freely.
     species_count: species.length,
     most_recent: recordings[0]
@@ -147,10 +147,10 @@ export async function soundsHere(lat, lng, { radiusKm = 15, limit = 30, months =
     export_safe: false,
     export_note:
       'Recordings are linked at their own host and never copied. Most are CC-BY-NC, which this ' +
-      'project does not redistribute — so no audio may enter an export, a card or anything else ' +
+      'project does not redistribute, so no audio may enter an export, a card or anything else ' +
       'that leaves this machine. Counts, species and dates are facts and may travel freely.',
     readable: recordings.length
-      ? `${data.total_results ?? recordings.length} field recordings within ${radiusKm} km — ` +
+      ? `${data.total_results ?? recordings.length} field recordings within ${radiusKm} km, ` +
         `${species.length} species, most recently ${recordings[0].species ?? 'an unidentified caller'}` +
         `${recordings[0].observed_on ? ` on ${recordings[0].observed_on}` : ''}.`
       : `No field recordings within ${radiusKm} km yet.`,
@@ -162,7 +162,7 @@ export async function soundsHere(lat, lng, { radiusKm = 15, limit = 30, months =
 /**
  * Search terms for a place, longest first.
  *
- * A place row is named for people — "Barton Creek Greenbelt Reach" — and an
+ * A place row is named for people, "Barton Creek Greenbelt Reach", and an
  * archive is indexed on what things were called. Searching the full label found
  * nothing, while "Barton Creek" has 235 newspaper pages behind it. So the full
  * name is tried first and shorter forms after, and the answer always reports

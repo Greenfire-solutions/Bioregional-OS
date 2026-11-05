@@ -3,7 +3,7 @@
 // steward's own keyboard, `members` or `council` for an enrolled device, and
 // `public` for a stranger on the wifi. It was consulted by three export routes
 // and by nothing else. `POST /api/tool` ran every tool in the registry for
-// whoever asked — so with --share on, anybody on the gathering wifi could
+// whoever asked, so with --share on, anybody on the gathering wifi could
 // mint themselves a coordinator code, revoke the steward's devices, or decide
 // a council item, and the enrolment engine beneath it, hashed tokens and
 // constant-time compares and all, protected a door that was never closed.
@@ -15,8 +15,8 @@
 // machine the commons lives on. That is the direction a mistake should fail in:
 // forgetting to list a new tool makes it unreachable from the wifi, which
 // somebody notices and fixes, rather than reachable by strangers, which nobody
-// notices at all. Local callers — Claude Code over MCP, the in-app assistant,
-// the test suite, the prover — are the steward's own process and are never
+// notices at all. Local callers, Claude Code over MCP, the in-app assistant,
+// the test suite, the prover, are the steward's own process and are never
 // gated by this.
 //
 // The tiers follow the sensitivity ladder because a device's role IS its
@@ -37,8 +37,8 @@
 // Two placements that are judgement rather than lookup:
 //
 //   satisfy_quest_gate is council, not members, because three of the gates it
-//   closes are the ones that never graduate — rights-holder consent, indigenous
-//   consent, youth safeguarding — and the test for those is whether the person
+//   closes are the ones that never graduate, rights-holder consent, indigenous
+//   consent, youth safeguarding, and the test for those is whether the person
 //   clicking could be the person the gate protects. A device enrolled in a
 //   room is a device somebody handed over, not a council.
 //
@@ -60,7 +60,7 @@ const PUBLIC = [
   // which is exactly inverted from how people use community software: the 90 in
   // 90-9-1 participate BY READING, and most lurkers report that browsing IS
   // their participation rather than a phase before it. DAILY_USE.md §4 already
-  // specified the day clock as "60 seconds, ANYONE — it gives before it asks",
+  // specified the day clock as "60 seconds, ANYONE, it gives before it asks",
   // and the OS was delivering it to nobody.
   //
   // `ground_today` is the only read here, and it does not hand over the
@@ -71,7 +71,7 @@ const PUBLIC = [
   //
   // The comment above still holds for everything else: nothing else here reads
   // the commons. `this_week_last_year` in particular stays at members, because
-  // it is made ENTIRELY of the chapter's own records — the part the projection
+  // it is made ENTIRELY of the chapter's own records, the part the projection
   // deliberately removes.
   'ground_today',
 ];
@@ -89,11 +89,11 @@ const MEMBERS = [
   'growing_year', 'water_here', 'whats_next', 'the_round', 'library_status', 'list_regions',
   'region_brief', 'find_species', 'settling_in',
   // The work inside the projects. Reading it, writing it down, picking it up,
-  // putting it down, and filing the evidence — all of it ordinary field work by
+  // putting it down, and filing the evidence, all of it ordinary field work by
   // somebody holding a device a steward handed them in a room.
   'list_tasks', 'task_board', 'pending_proofs', 'list_media',
-  // Seeing who else is here. A member may know who the coordinators are —
-  // that is the list on the wall, not a secret — and `list_accounts` never
+  // Seeing who else is here. A member may know who the coordinators are,
+  // that is the list on the wall, not a secret, and `list_accounts` never
   // returns a hash or anything that could be used to sign in as somebody.
   'list_accounts',
   // The ledger is READ by everybody who is in it. A commons whose members
@@ -114,9 +114,9 @@ const MEMBERS = [
   'submit_proof',
   // Spending what you have. A transfer moves units between two holders and can
   // never create any, and redeeming takes them out against a pool whose terms
-  // the commons already agreed — both are using the economy, not changing it.
+  // the commons already agreed, both are using the economy, not changing it.
   'transfer_credit', 'redeem_credit',
-  // Setting something aside is housekeeping on the week, not a protocol gate —
+  // Setting something aside is housekeeping on the week, not a protocol gate,
   // the work is untouched and stays in whats_next. A member doing the round is
   // the point of there being a round.
   'set_aside',
@@ -141,10 +141,10 @@ const COUNCIL = [
   'review_proof',
   // Issuing brings units into existence, which is the act everything else in
   // this ledger is arranged to keep honest. Council, and when the currency's
-  // own policy says 'council' it ALSO needs a decided decision naming it — the
+  // own policy says 'council' it ALSO needs a decided decision naming it, the
   // tier says who may ask, the policy says what they must show.
   'issue_credit',
-  // Reversing does not destroy anything — both entries stay — but it is the
+  // Reversing does not destroy anything, both entries stay, but it is the
   // act of saying the record was wrong, which is council work.
   'reverse_entry',
   // Making somebody an account is a coordinator's act, sitting exactly where
@@ -235,8 +235,8 @@ export function refusal(name, clearance) {
 export const POLICY_NAMES = [...PUBLIC, ...MEMBERS, ...COUNCIL];
 
 /**
- * The tiers themselves, so the suite can assert the property `claim()` enforces
- * — no tool in two of them — rather than only catching it when the module
+ * The tiers themselves, so the suite can assert the property `claim()` enforces,
+ * no tool in two of them, rather than only catching it when the module
  * throws at import time, which is a failure with no name attached to it.
  */
 export const PUBLIC_NAMES = [...PUBLIC];

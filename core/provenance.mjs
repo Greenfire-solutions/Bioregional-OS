@@ -2,7 +2,7 @@
 // One declaration of which signals a PERSON put there.
 //
 // Every adapter writes into the same `signals` table a human observation goes
-// into — USGS gages, NOAA alerts, FIRMS fire detections, drought classes,
+// into, USGS gages, NOAA alerts, FIRMS fire detections, drought classes,
 // imported field data. That is the right design: one stream, one map, one set
 // of protocol gates. But it means any question of the form "what did people
 // notice?" needs to know the difference, and getting it wrong is quiet.
@@ -10,7 +10,7 @@
 // The list below is HUMAN sources, not automated ones, and that direction is
 // deliberate. If it listed the machines, every new adapter would have to
 // remember to add itself, and the failure mode of forgetting would be crediting
-// a person for something NOAA issued — quiet, flattering, and wrong. Listed the
+// a person for something NOAA issued, quiet, flattering, and wrong. Listed the
 // other way round, a new automated source is excluded by default and the worst
 // that happens is an observation waits to be counted.
 //
@@ -19,11 +19,11 @@
 
 /**
  * Sources that mean a person was there.
- *   manual    — typed into the interface
- *   notice    — the one-line daily prompt
- *   assistant — recorded by the assistant because a person asked it to
- *   comapeo   — carried back from the field in CoMapeo
- *   geojson   — imported from a survey somebody did
+ *   manual, typed into the interface
+ *   notice, the one-line daily prompt
+ *   assistant, recorded by the assistant because a person asked it to
+ *   comapeo, carried back from the field in CoMapeo
+ *   geojson, imported from a survey somebody did
  */
 export const HUMAN_SOURCES = Object.freeze(['manual', 'notice', 'assistant', 'comapeo', 'geojson']);
 
@@ -39,7 +39,7 @@ export function humanObserved(sourceAdapter) {
  * The same rule as SQL, so a query and a filter can never disagree.
  * Inlined as literals rather than bound parameters so it composes into a WHERE
  * clause without the caller having to thread the right number of arguments
- * through — the values are a frozen constant in this file, never user input.
+ * through, the values are a frozen constant in this file, never user input.
  */
 export function humanObservedSql(column = 'source_adapter') {
   const list = HUMAN_SOURCES.map((s) => `'${s}'`).join(', ');
@@ -59,7 +59,7 @@ export function automatedSql(column = 'source_adapter') {
  * answers. A USGS gage is bolted to a spot and its coordinate is the most
  * precise in the table; a NOAA advisory covering sixteen counties is filed at
  * the place's point, and so is a one-line notice typed at the kitchen table.
- * Splitting those by who observed them gets it backwards in both directions —
+ * Splitting those by who observed them gets it backwards in both directions,
  * the gage becomes vague and the notice becomes precise.
  *
  * Exact equality is correct: a borrowed coordinate is copied verbatim from the

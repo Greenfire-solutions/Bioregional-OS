@@ -7,7 +7,7 @@ import FieldSheet from './FieldSheet.jsx';
 import { printOnly } from '../print.js';
 
 /**
- * The weekly card — the thing somebody pastes into the group chat.
+ * The weekly card, the thing somebody pastes into the group chat.
  *
  * The OS sends nothing. This screen produces something a person copies and
  * posts, under their own name, at a moment they judge right. That is the whole
@@ -55,7 +55,7 @@ export default function Card({ onClose }) {
       await navigator.clipboard.writeText(card.text);
       flash('Copied. Paste it into the group.');
       callTool('mark_card_sent', {}).catch(() => {});
-    } catch { flash('Could not copy — select the text below instead.'); }
+    } catch { flash('Could not copy, select the text below instead.'); }
   }
 
   async function copyImage() {
@@ -102,7 +102,7 @@ export default function Card({ onClose }) {
         <div className="min-w-0">
           <h2 className="text-base font-medium">This week's card</h2>
           <p className="mt-0.5 text-xs text-[var(--ink-2)]">
-            For the group chat you already use. Nothing is sent from here — you post it, in your
+            For the group chat you already use. Nothing is sent from here, you post it, in your
             own name, when it suits.
           </p>
         </div>

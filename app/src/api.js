@@ -47,7 +47,7 @@ export async function callTool(name, input = {}) {
 /**
  * Put a file into the commons and get back the id of the stored object.
  *
- * The bytes go up as the raw body with the name in a header — there is no
+ * The bytes go up as the raw body with the name in a header, there is no
  * multipart here, because a contract this small can be re-implemented from a
  * phone with `fetch` and cannot rot the way a parsing library does.
  *
@@ -68,8 +68,8 @@ export async function uploadFile(file, meta = {}) {
     }),
     body: file,
   });
-  // A refusal here is a sentence worth showing — the type list, the size
-  // limit, the missing consent record — so the body is returned either way and
+  // A refusal here is a sentence worth showing, the type list, the size
+  // limit, the missing consent record, so the body is returned either way and
   // the caller decides. Throwing would turn all three into "upload failed".
   try { return await r.json(); }
   catch { return { error: 'upload_failed', message: `The file did not go up (${r.status}).` }; }
@@ -80,7 +80,7 @@ export async function uploadFile(file, meta = {}) {
  * The same stream shape as askAssistant, from a different engine.
  *
  * /api/ai is the Anthropic SDK and needs a key. /api/claude is the Claude Code
- * CLI on the steward's own subscription and needs none — it carries a
+ * CLI on the steward's own subscription and needs none, it carries a
  * `session_id` so the next turn resumes the same conversation rather than
  * starting over, which is what makes the panel feel like one sitting rather
  * than a row of unrelated questions.

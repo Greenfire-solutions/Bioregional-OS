@@ -20,7 +20,7 @@ export async function buildIndex({ log = true } = {}) {
       where: '1=1',
       outFields: 'US_L4CODE,US_L4NAME,US_L3CODE,US_L3NAME,NA_L2NAME,NA_L1NAME,STATE_NAME',
       returnGeometry: true,
-      maxAllowableOffset: 0.06,      // coarse — we only need extents from this
+      maxAllowableOffset: 0.06,      // coarse, we only need extents from this
       outSR: 4326,
       resultOffset: offset,
       resultRecordCount: PAGE,
@@ -83,7 +83,7 @@ export async function buildIndex({ log = true } = {}) {
     source: 'EPA Ecoregions Level III & IV',
     // The terms live in adapters/registry.mjs and are resolved from this id.
     // This file used to bake "(public domain)" into the line above, and the
-    // index it writes is TRACKED — so the one copy of a licence outside the
+    // index it writes is TRACKED, so the one copy of a licence outside the
     // registry that was world-readable was the one the checker could not see,
     // because the checker only walked adapters/.
     source_id: 'epa-ecoregions',
@@ -99,7 +99,7 @@ export async function buildIndex({ log = true } = {}) {
   writeFileSync(path, JSON.stringify(out));
   if (log) {
     ok(`${list.length} Level IV and ${l3list.length} Level III ecoregions indexed`);
-    info(`${path.replace(ROOT + '/', '')} — ${(JSON.stringify(out).length / 1024).toFixed(0)} KB`);
+    info(`${path.replace(ROOT + '/', '')}, ${(JSON.stringify(out).length / 1024).toFixed(0)} KB`);
   }
   return out;
 }

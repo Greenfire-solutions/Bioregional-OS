@@ -14,7 +14,7 @@ import { all, one } from '../core/db.mjs';
 
 export { regions, region, regionsAt, loadDossier, staleSections, coverage };
 
-/** The regions this chapter actually sits in — what to download first. */
+/** The regions this chapter actually sits in, what to download first. */
 export function myRegions(chapterId) {
   const places = all('SELECT name, lat, lng FROM places WHERE chapter_id=? AND lat IS NOT NULL', chapterId);
   const chapter = one('SELECT lat, lng FROM chapters WHERE id=?', chapterId);
@@ -35,7 +35,7 @@ export function myRegions(chapterId) {
  * central claim for every chapter that is not the demo.
  *
  * `regionsAt()` is a BOUNDING-BOX test, and it says so. For choosing what to
- * download that is correct and deliberate — you want every region that overlaps
+ * download that is correct and deliberate, you want every region that overlaps
  * your area. For "where am I" it is a guess, and the board was taking
  * `level4[0]`, the arbitrary first bbox hit. Ecoregions are long and crooked;
  * `samplePoints()` in dossier.mjs writes that lesson down thirty lines below the
@@ -45,7 +45,7 @@ export function myRegions(chapterId) {
  *                 The EPA polygon says 9d Ponderosa Pine/Bitterbrush Woodland.
  *   Asheville NC  13 hits, picked Southern Outer Piedmont. It is in the Blue Ridge.
  *   Missoula MT   3 hits, picked 15a. The polygon says 17s.
- *   Barton Creek  4 hits, picked 30c. Correct — which is why nobody saw this.
+ *   Barton Creek  4 hits, picked 30c. Correct, which is why nobody saw this.
  *
  * The right answer was already in the row the whole time: `places.ecoregion_name`
  * is written by `resolveEcoregion()`, a real EPA polygon query, when the place is
@@ -57,7 +57,7 @@ export function myRegions(chapterId) {
  * across Level III regions, so the intersection of the two is what disambiguates.
  *
  * Rows located before this existed carry a name and no code, which is the usual
- * trap — a lookup that fails has to read as "not resolved", never as "no region".
+ * trap, a lookup that fails has to read as "not resolved", never as "no region".
  * Hence the explicit `basis` field: a caller can tell a polygon answer from a
  * fallback, and nothing silently presents a guess as a fact.
  */
@@ -96,7 +96,7 @@ export function homeRegion(chapterId) {
   return { ...nearest, basis: 'guess', place: place.name };
 }
 
-/** Regions adjacent to mine — where a neighbouring chapter's knowledge applies. */
+/** Regions adjacent to mine, where a neighbouring chapter's knowledge applies. */
 export function neighbours(code, { scheme = 'epa-l4', limit = 8 } = {}) {
   const r = region(code, { scheme });
   if (!r) return [];
@@ -110,7 +110,7 @@ export function neighbours(code, { scheme = 'epa-l4', limit = 8 } = {}) {
 }
 
 /**
- * Search everything downloaded, offline, for a species — common or scientific.
+ * Search everything downloaded, offline, for a species, common or scientific.
  * "Where does Ashe juniper actually live?" answered from disk.
  */
 export function findSpecies(query, { limit = 40 } = {}) {

@@ -9,7 +9,7 @@
 //   might usefully ask another person about, and the asking is theirs.
 //
 // The other half of the design is where the evidence comes from. Nobody is
-// asked to fill in a skills profile — a self-declared skill list is a document
+// asked to fill in a skills profile, a self-declared skill list is a document
 // that is accurate on the day it is written and wrong within a season, and the
 // people least likely to fill one in are the ones already doing the most. So a
 // person's skills here are READ FROM WHAT THEY HAVE ALREADY DONE: work they
@@ -36,7 +36,7 @@ export function whoCouldHelp(chapterId, { limit = 8 } = {}) {
   // ── What this commons is actually short of ─────────────────────────────
   const needs = [];
 
-  // A need somebody brought and nobody has answered. PRIVATE ITEMS EXCLUDED —
+  // A need somebody brought and nobody has answered. PRIVATE ITEMS EXCLUDED,
   // a private need is private from the matcher too, and this is the one place
   // where forgetting that would publish somebody's circumstances as a task.
   for (const r of all(
@@ -55,7 +55,7 @@ export function whoCouldHelp(chapterId, { limit = 8 } = {}) {
                  text: `${q.title}. ${q.description ?? ''}`.trim(), from: null });
   }
 
-  // A gate nobody has reviewed. These are the most concretely askable of all —
+  // A gate nobody has reviewed. These are the most concretely askable of all,
   // each one names a specific competence somebody has to bring.
   for (const g of all(
     `SELECT g.id, g.gate, q.title, q.id quest_id FROM quest_gates g
@@ -74,7 +74,7 @@ export function whoCouldHelp(chapterId, { limit = 8 } = {}) {
       WHERE i.chapter_id = ? AND i.cadence IS NOT NULL AND trim(i.cadence) <> ''
         AND NOT EXISTS (SELECT 1 FROM measurements m WHERE m.indicator_id = i.id)`, chapterId)) {
     needs.push({ kind: 'measurement nobody has taken', id: i.id,
-                 text: `${i.name} — ${i.method ?? 'no method recorded'} (${i.title})`, from: null });
+                 text: `${i.name}, ${i.method ?? 'no method recorded'} (${i.title})`, from: null });
   }
 
   // ── What people here have demonstrably done ────────────────────────────
@@ -116,7 +116,7 @@ export function whoCouldHelp(chapterId, { limit = 8 } = {}) {
 
   // ── The join. Word overlap, and deliberately nothing cleverer ──────────
   // A similarity score here would be a number nobody can argue with, attached
-  // to a suggestion about a person. Shared words can be checked by eye — the
+  // to a suggestion about a person. Shared words can be checked by eye, the
   // answer says WHICH words matched, so a steward can see instantly that
   // "bank" matched a river bank to a savings bank and ignore it.
   const matched = needs.slice(0, limit).map((n) => {
@@ -144,7 +144,7 @@ export function whoCouldHelp(chapterId, { limit = 8 } = {}) {
     rule: 'AI may assist with skill matching. It may not decide who deserves care, whose work ' +
           'is legitimate, or who is a member.',
     caveat: 'These are candidates, not introductions. Nobody has been asked, nobody has agreed, ' +
-            'and a shared word is not a shared skill — the matching words are shown so you can ' +
+            'and a shared word is not a shared skill, the matching words are shown so you can ' +
             'dismiss the ones that are coincidence.',
     sentence: !needs.length
       ? 'Nothing is currently waiting on a person here.'

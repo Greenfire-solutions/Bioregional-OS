@@ -13,7 +13,7 @@ import { actionKind, goesTo } from '../actions.js';
  * The board.
  *
  * The front of this app used to be fifteen tabs named after the protocol's
- * stages — Listen, Signals, Quests, Convene, Measure. That is the system's
+ * stages, Listen, Signals, Quests, Convene, Measure. That is the system's
  * filing cabinet: complete, correct, and navigable only by somebody who
  * already knows the twelve-stage loop. The person who designed it could not
  * tell where to click, which is not a lapse of attention. It is what a taxonomy
@@ -21,7 +21,7 @@ import { actionKind, goesTo } from '../actions.js';
  *
  * So this screen is arranged by what a person arrives looking for, in the order
  * they arrive looking for it: where am I, what can I do, what is going on, who
- * is here, what is around me. Nothing was removed — every tab still exists and
+ * is here, what is around me. Nothing was removed, every tab still exists and
  * every one of these panels is a door into the matching one.
  *
  * Four rules it is built on:
@@ -31,14 +31,14 @@ import { actionKind, goesTo } from '../actions.js';
  *   opened twice, and that is the whole argument of docs/DAILY_USE.md.
  *
  *   EVERY THING TO DO IS ONE CLICK FROM DONE. Not a link to a tab where the
- *   thing might be — the button that does it. The operator already knows which
+ *   thing might be, the button that does it. The operator already knows which
  *   tool each item needs; the old interface simply never put it in reach.
  *
  *   FIVE THINGS, NOT THIRTY. A list of thirty is a list nobody starts. The
  *   rest is one click away rather than hidden, and the count is shown so the
  *   shortening is visible rather than a quiet omission.
  *
- *   A PROJECT SAYS WHAT IS ACTUALLY IN ITS WAY. Not its stage — a project can
+ *   A PROJECT SAYS WHAT IS ACTUALLY IN ITS WAY. Not its stage, a project can
  *   sit at co-design for a season with nothing blocking it, or at prototype
  *   with four gates open. The stage is the protocol's word; "three things in
  *   the way" is the answer to the question being asked.
@@ -76,8 +76,8 @@ export default function Commons({ onGoTo, onChanged }) {
 
   // Being refused is not the same as there being nothing here.
   //
-  // Every error landed on the founding screen, so a stranger on the wifi — who
-  // is refused `commons_board` because it is members-only — was shown "no
+  // Every error landed on the founding screen, so a stranger on the wifi, who
+  // is refused `commons_board` because it is members-only, was shown "no
   // commons yet, find your bioregion", and the one button on it runs a tool
   // that is keyboard-only. A permission refusal wearing a welcome screen's
   // clothes, ending in a second refusal.
@@ -132,7 +132,7 @@ export default function Commons({ onGoTo, onChanged }) {
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
           {h.now.water && (
             <Bit Icon={Droplets} tone={h.now.water_stale ? 'warn' : 'plain'}>
-              {h.now.water}{h.now.water_stale && ' — stale'}
+              {h.now.water}{h.now.water_stale && ', stale'}
             </Bit>
           )}
           {h.now.hazards.map((z, i) => (
@@ -168,7 +168,7 @@ export default function Commons({ onGoTo, onChanged }) {
         <Head Icon={Flag} label="This week"
               note={b.round?.sentence
                 ?? (b.todo_total > b.todo.length
-                  ? `${b.todo.length} of ${b.todo_total} — the rest are on Today`
+                  ? `${b.todo.length} of ${b.todo_total}, the rest are on Today`
                   : b.todo.length ? 'Each one cites the rule it comes from' : null)}
               onMore={b.round?.waiting ? () => onGoTo?.('today') : null} />
         {/*
@@ -199,7 +199,7 @@ export default function Commons({ onGoTo, onChanged }) {
           </div>
         ) : b.todo.length === 0 ? (
           <Empty Icon={CheckCircle2}>
-            Nothing is blocked, slipped or missing. That is rare — worth publishing a report
+            Nothing is blocked, slipped or missing. That is rare, worth publishing a report
             while it is true.
           </Empty>
         ) : (
@@ -227,7 +227,7 @@ export default function Commons({ onGoTo, onChanged }) {
                   {/*
                     Deferring, which the spec asks for by name. Without it, one
                     thing a steward cannot do this week holds the round open for
-                    ever and "finished" becomes unreachable — the original
+                    ever and "finished" becomes unreachable, the original
                     problem with an extra step. A button rather than underlined
                     text, because no action here is drawn as a footnote.
                   */}
@@ -331,7 +331,7 @@ export default function Commons({ onGoTo, onChanged }) {
               <HandHeart className="mt-0.5 h-3 w-3 shrink-0 text-[var(--ink-3)]" />
               <span>
                 <span className="text-[var(--ink-2)]">{c.need}</span>
-                {' — '}
+                {', '}
                 {c.could.map((x) => x.who).join(', ')}
                 <span className="text-[var(--ink-3)]">
                   {' '}{c.could[0].where === 'here' ? 'have' : 'has'} done something like it
@@ -369,7 +369,7 @@ export default function Commons({ onGoTo, onChanged }) {
                   <a href={n.url} target="_blank" rel="noreferrer noopener"
                      className="text-[var(--ink-2)] hover:text-[var(--moss)]">{n.name}</a>
                   {n.is_chapter && <span className="text-[var(--moss)]"> · chapter</span>}
-                  {' — '}{n.line}
+                  {', '}{n.line}
                 </li>
               ))}
             </ul>

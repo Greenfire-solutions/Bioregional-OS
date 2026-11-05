@@ -1,18 +1,18 @@
 #!/usr/bin/env node
-// Actually erase the commons — all of it, not just the file people can see.
+// Actually erase the commons, all of it, not just the file people can see.
 //   npm run erase            → show exactly what would go, and how to confirm
 //   npm run erase -- --force → do it
 //   npm run erase -- --keep-backups
 //
 // WHY THIS EXISTS. The documentation used to say "delete data/commons.db to
 // erase". SQLite runs in WAL mode here, so that leaves `commons.db-wal` and
-// `commons.db-shm` on disk — and the log is routinely LARGER than the database,
+// `commons.db-shm` on disk, and the log is routinely LARGER than the database,
 // so most of the commons survives an erase that looked complete.
 //
 // That is a consent failure, not untidiness. This protocol lets a rights-holder
 // withdraw consent and expects the record to go. A chapter that deleted the file
 // because somebody asked them to would believe the thing was gone, tell the
-// person it was gone, and be wrong — with no way to find out.
+// person it was gone, and be wrong, with no way to find out.
 //
 // So erase is a command, it names every file before it touches anything, and it
 // refuses to run without --force. Cached upstream data is NOT community data and
@@ -33,7 +33,7 @@ const targets = [db, `${db}-wal`, `${db}-shm`].filter(existsSync).map((f) => ({ 
 
 // Derived from the DATABASE being erased, not from the project root. Those are
 // the same directory in normal use and differ the moment BROS_DB points anywhere
-// else — at which point a root-derived path erases the real commons's backups
+// else, at which point a root-derived path erases the real commons's backups
 // while claiming to erase a throwaway. Found exactly that way, by doing it.
 const backupDir = join(dirname(dbPath()), 'backups');
 const backups = !KEEP_BACKUPS && existsSync(backupDir)
@@ -89,6 +89,6 @@ if (left.length) {
   process.exit(1);
 }
 
-ok(`Erased — ${kb(total)} across ${all.length} file${all.length > 1 ? 's' : ''}. Nothing is left on disk.`);
-info('Cached public data in data/upstream/ was left alone — it is public record, not yours.');
+ok(`Erased, ${kb(total)} across ${all.length} file${all.length > 1 ? 's' : ''}. Nothing is left on disk.`);
+info('Cached public data in data/upstream/ was left alone, it is public record, not yours.');
 console.log(`\n  ${c.dim}To start again: npm run setup${c.reset}\n`);

@@ -1,7 +1,7 @@
 // ── What a button says ────────────────────────────────────────────────────
 // One label per tool, in one place.
 //
-// There were three copies — Today.jsx, Commons.jsx and MapPanel.jsx — and by
+// There were three copies, Today.jsx, Commons.jsx and MapPanel.jsx, and by
 // the time anybody looked, eight of twenty had already drifted: "Respond" and
 // "Answer", "Open a project" and "Start a project", "Resolve flag" and
 // "Resolve the flag", "Pull water data" and "Pull the data". Nothing broke.
@@ -13,7 +13,7 @@
 //
 // A verb, not a name. `satisfy_quest_gate` tells a person nothing; "Close a
 // gate" tells them what is about to happen. Where no label exists the fallback
-// un-snakes the tool name, which is ugly on purpose — an ugly button is a
+// un-snakes the tool name, which is ugly on purpose, an ugly button is a
 // reminder to add the row.
 
 const VERB = {
@@ -80,7 +80,7 @@ const VERB = {
   who_could_help: 'See who could help',
   place_attention: 'See where nobody has been',
 
-  // devices — a second person writing, without an account
+  // devices, a second person writing, without an account
   invite_device: 'Add a device',
   enrol_device: 'Join with this code',
   revoke_device: 'Revoke',
@@ -107,7 +107,7 @@ export function verb(tool) {
 
 /**
  * The tools this file has a label for. Exported so the suite can assert they
- * all still exist — a row here for a renamed tool is a label nothing will ever
+ * all still exist, a row here for a renamed tool is a label nothing will ever
  * show, and the fallback quietly prints the snake_case name instead.
  */
 export const VERB_NAMES = Object.keys(VERB);

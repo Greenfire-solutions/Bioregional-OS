@@ -8,7 +8,7 @@ import { callTool } from '../api.js';
  * Every agenda item has always required a Land Seat report, and the report has
  * always been free text. The OS held the gage reading, the official alerts and
  * the position of the year, and none of it reached the person writing the
- * field — so the report got written from memory while the machine beside them
+ * field, so the report got written from memory while the machine beside them
  * held the measurements.
  *
  * This panel sits above the agenda for one reason: it has to be readable while
@@ -20,8 +20,8 @@ import { callTool } from '../api.js';
  *   formality nobody reads.
  *
  *   It names the two things it cannot know. A brief that showed only what the
- *   database holds would read as complete, and the two missing pieces —
- *   downstream effects and stated uncertainty — are exactly the ones that
+ *   database holds would read as complete, and the two missing pieces,
+ *   downstream effects and stated uncertainty, are exactly the ones that
  *   matter most to whoever is affected and not in the room.
  */
 export default function LandSeat() {
@@ -53,7 +53,7 @@ export default function LandSeat() {
           <Row Icon={Droplets} tone={b.water.stale ? 'warn' : 'plain'}>
             {b.water.reading}
             {b.water.stale
-              ? <span className="text-[var(--clay)]"> — {b.water.age_days} days old, treat as history</span>
+              ? <span className="text-[var(--clay)]">, {b.water.age_days} days old, treat as history</span>
               : <span className="text-[var(--ink-3)]"> · {b.water.age_days === 0 ? 'today' : `${b.water.age_days}d ago`}</span>}
           </Row>
         )}

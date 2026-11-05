@@ -43,7 +43,7 @@ export function exportLedger(chapterId) {
       hasPointInTime: e.occurred_at,
       inScopeOf: e.quest_id || undefined,
       note: e.note || undefined,
-      // Not part of VF core — the manual requires the work relationship to be
+      // Not part of VF core, the manual requires the work relationship to be
       // explicit and acknowledged before work begins, so it rides along.
       'bros:relationship': e.relationship,
       'bros:termsAcknowledged': !!e.terms_ack,
@@ -51,7 +51,7 @@ export function exportLedger(chapterId) {
   };
 }
 
-/** Contribution summary per agent — who actually carried the work. */
+/** Contribution summary per agent, who actually carried the work. */
 export function contributionSummary(chapterId) {
   return all(
     `SELECT a.name, a.role, e.relationship,

@@ -5,20 +5,20 @@ import GroundForAnyone from './GroundForAnyone.jsx';
 import { parseStamp } from '../../../core/time.mjs';
 
 /**
- * The page another device lands on — after scanning the code at a gathering,
+ * The page another device lands on, after scanning the code at a gathering,
  * or after being handed an invitation code by the steward.
  *
  * Designed against three findings in docs/SOCIAL_LAYER.md:
  *
- *  • §3.4 — in-person scanning converts at 15–35% against 1–5% for a poster,
+ *  • §3.4: in-person scanning converts at 15-35% against 1-5% for a poster,
  *    and the single biggest lever after that is how simple the landing action
  *    is. So this is one screen with one field, not a tour of the commons.
  *
- *  • §2 — this page is served over http on a wifi address, which is not a
+ *  • §2: this page is served over http on a wifi address, which is not a
  *    secure context. Nothing here may depend on the clipboard, on geolocation,
  *    or on anything else browsers gate behind HTTPS.
  *
- *  • Care as Infrastructure — a need brought in a room where a code is on the
+ *  • Care as Infrastructure: a need brought in a room where a code is on the
  *    wall is brought in public. Private is the default here, and the person is
  *    told what that means, because the alternative is somebody discovering
  *    afterwards that their situation is in a list.
@@ -29,7 +29,7 @@ import { parseStamp } from '../../../core/time.mjs';
  * write at the role the steward chose. The token that comes back is kept on
  * this device only, sent as a header on every call, and forgotten with one
  * click. A code arrives either typed, or in the link's fragment
- * (`/join#enrol=XXXX-XXXX`) — the fragment because a browser never sends it to
+ * (`/join#enrol=XXXX-XXXX`), the fragment because a browser never sends it to
  * the server and it lands in no log.
  *
  * No account, no login, no app. A name, typed once and remembered on the phone.
@@ -59,7 +59,7 @@ export default function Join() {
       const next = (g ?? []).filter((x) => x.starts_at).sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)))
         // parseStamp, not `replace(' ', 'T')`. A string pattern replaces the
       // FIRST space only, so "2026-09-20 10:00 AM" became
-      // "2026-09-20T10:00 AM" — Invalid Date — and the comparison was silently
+      // "2026-09-20T10:00 AM", Invalid Date, and the comparison was silently
       // false. That is the format add_gathering stores when a person types it,
       // and the format this project's own seed writes, so a person standing at
       // the clean-up scanned the QR and was offered the next day's seed swap.
@@ -224,7 +224,7 @@ export default function Join() {
                     onChange={(e) => setPrivateNeed(e.target.checked)} className="mt-0.5" />
                   <span>
                     <Lock className="mr-1 inline h-3 w-3" />
-                    Keep this private — only the people who answer needs will see it.
+                    Keep this private, only the people who answer needs will see it.
                     {!privateNeed && <strong className="block text-[var(--clay)]">
                       Unticked, this is visible to everyone who opens the commons.
                     </strong>}
@@ -275,7 +275,7 @@ export default function Join() {
             ))}
           </ul>
           <p className="mt-3 text-[11px] text-[var(--ink-3)]">
-            Observations start unverified. Somebody who knows the place will check them — that is a
+            Observations start unverified. Somebody who knows the place will check them, that is a
             human job here, and nothing verifies itself.
           </p>
         </div>

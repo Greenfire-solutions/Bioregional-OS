@@ -3,8 +3,8 @@
 //
 // This engine exists because of one finding: across the largest study of
 // citizen-science contributor motivation, 92% rated "improving my knowledge"
-// as very or extremely important — above science, above recognition, above
-// everything — and that held for newcomers and power users alike. So the thing
+// as very or extremely important, above science, above recognition, above
+// everything, and that held for newcomers and power users alike. So the thing
 // that earns a second visit is not a task list. It is knowing something true
 // about your place that you did not know yesterday.
 //
@@ -21,7 +21,7 @@ import { attributionFor, source as registrySource } from '../adapters/registry.m
 /**
  * The place the chapter looks out from: an explicit one, else its first located place.
  *
- * LOAD-BEARING. Five tools across two engines answer bare — with no place_id —
+ * LOAD-BEARING. Five tools across two engines answer bare, with no place_id,
  * by falling through to this: ground_today, soil_at, life_here, hazards_at and
  * anything else that means "here". A person asking the assistant "what is the
  * soil like here?" and "how is the creek?" gets a consistent answer only because
@@ -30,18 +30,18 @@ import { attributionFor, source as registrySource } from '../adapters/registry.m
  * The selection order is therefore part of the contract, not an implementation
  * detail, and `scripts/test.mjs` pins it:
  *   1. the place asked for, if it has coordinates;
- *   2. the best-resolved place in the chapter — watershed and ecoregion known
+ *   2. the best-resolved place in the chapter: watershed and ecoregion known
  *      first, then by name, so "here" means somewhere the OS can actually
  *      reason about rather than the most recently added row;
  *   3. the chapter's own centre, if it has one;
- *   4. nothing — and every caller must say so with the add_place action rather
+ *   4. nothing: and every caller must say so with the add_place action rather
  *      than failing.
  * Changing that order changes what "here" means in five places at once.
  */
 export function anchorPlace(chapterId, placeId = null) {
   if (placeId) {
     // Scoped to the chapter. Unscoped, `place_id` was a way to look out from
-    // ANY place in the database — and `ground_today` takes both `chapter_id`
+    // ANY place in the database, and `ground_today` takes both `chapter_id`
     // and `place_id` in its schema and is now reachable at public, so a
     // stranger could name another chapter's place and be answered about it.
     // A caller that may not read a chapter may not stand in it either.
@@ -59,13 +59,13 @@ export function anchorPlace(chapterId, placeId = null) {
 }
 
 /**
- * The gage a point watches — ONE implementation, used by the daily panel and by
+ * The gage a point watches, ONE implementation, used by the daily panel and by
  * the first run, because they were picking different creeks for the same place.
  *
  * The rule is: the nearest site that HAS a period of record to compare against.
  * A reading with history beats a closer reading without one, and it routes
  * around tidal gages, whose discharge reverses with the tide and carry no daily
- * statistics — "-993 ft³/s" is nobody's useful first sentence about their river.
+ * statistics, "-993 ft³/s" is nobody's useful first sentence about their river.
  *
  * An earlier version preferred gages this chapter had already ingested. That
  * sounded like "the gage we watch" and was actually "whatever the bounding box
@@ -81,7 +81,7 @@ export async function nearestGageContext(lat, lng) {
       ((a.lat - lat) ** 2 + (a.lng - lng) ** 2) - ((b.lat - lat) ** 2 + (b.lng - lng) ** 2));
   if (!candidates.length) return null;
 
-  // Asked together — done one after another this was the slowest thing in the
+  // Asked together, done one after another this was the slowest thing in the
   // first screen, and the first screen is the whole argument.
   const contexts = await Promise.all(candidates.slice(0, 3).map(async (c) => {
     const ctx = await gageContext(c.source_ref).catch(() => null);
@@ -99,7 +99,7 @@ function km(y1, x1, y2, x2) {
 }
 
 /**
- * Stage 3 — Observe, for one human, right now.
+ * Stage 3, Observe, for one human, right now.
  * Sky is computed locally and always answers. Weather and water are upstream
  * and may be stale or absent; each says so for itself rather than failing the
  * whole panel, because a commons tool that goes blank when the wifi drops is
@@ -110,7 +110,7 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
   if (!place) {
     return {
       error: 'no_located_place',
-      message: 'Add a place with coordinates — everything the land can tell you hangs off a point on it.',
+      message: 'Add a place with coordinates, everything the land can tell you hangs off a point on it.',
       action: { tool: 'add_place', input: {} },
     };
   }
@@ -151,15 +151,15 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
     sky, weather, water, heard,
     history: thisWeekInHistory(chapterId),
   };
-  // Resolved once here so every surface that prints the panel — the screen, the
-  // field sheet, anything later — credits the same sources the same way.
+  // Resolved once here so every surface that prints the panel, the screen, the
+  // field sheet, anything later, credits the same sources the same way.
   const ids = [weather?.source_id, water?.source_id, heard?.source_id].filter(Boolean);
   const unknown = ids.filter((i) => !registrySource(i));
   out.sources = attributionFor(ids.filter((i) => registrySource(i)));
   out.unresolved_sources = unknown;
   out.credit = [
     out.sources.map((r) => r.attribution || r.source).filter(Boolean).join(' · '),
-    unknown.length ? `Also drawn from: ${unknown.join(', ')} — check their terms before sharing further.` : null,
+    unknown.length ? `Also drawn from: ${unknown.join(', ')}, check their terms before sharing further.` : null,
   ].filter(Boolean).join(' ') || null;
 
   out.headline = headline(out);
@@ -174,7 +174,7 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
  * asks." As shipped it gave nothing: every read in the system was members-only
  * and the four public tools were all WRITES, so a stranger handed a link could
  * contribute and could not look. That is inverted from how people actually use
- * community software — the 90 in 90-9-1 participate BY READING, and most
+ * community software, the 90 in 90-9-1 participate BY READING, and most
  * lurkers report that browsing is their participation rather than a stage
  * before it.
  *
@@ -190,7 +190,7 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
  *   place.id                an id is a handle for asking about a thing by id.
  *   history                 the chapter's OWN records. Everything else here is
  *                           the sky, the weather, the gage and an upstream
- *                           species feed — public data about a public place.
+ *                           species feed, public data about a public place.
  *                           The chapter's observations are the commons'.
  *
  * `withhold()` in server/clearance.mjs still runs over the result, so a place
@@ -203,14 +203,14 @@ export async function groundToday(chapterId, { place_id = null } = {}) {
  * What this answer looks like to a given connection.
  *
  * Two rules, and the first applies at EVERY clearance rather than only to
- * strangers, because it is not about audiences — it is about what is left in an
+ * strangers, because it is not about audiences, it is about what is left in an
  * answer once its subject has been removed.
  */
 export function groundSeenBy(g, clearance) {
   if (!g || typeof g !== 'object' || g.error) return g;
   // Rule one: the subject was withheld, so the rest is locators. A member whose
   // connection is not allowed the place is not allowed the gage that watches it
-  // either — withhold() removes the place object and leaves the gage, the
+  // either, withhold() removes the place object and leaves the gage, the
   // weather station and the solar times sitting there, and those are a location.
   if (!g.place) return noPublicPlace();
   // Rule two: a stranger gets the day clock and nothing else.
@@ -271,7 +271,7 @@ function headline(g) {
   if (w?.standing && !/about median/.test(w.standing)) {
     const name = w.site_name ?? 'The gage';
     const val = w.current === 0 ? 'dry' : `${fmt(w.current)} ${(w.unit ?? '').replace('ft3/s', 'ft\u00B3/s')}`.trim();
-    return `${name} is ${val} — ${w.standing}${w.years_of_record ? `, over ${w.years_of_record} years of record` : ''}.`;
+    return `${name} is ${val}, ${w.standing}${w.years_of_record ? `, over ${w.years_of_record} years of record` : ''}.`;
   }
 
   const turn = g.sky?.next_turn;
@@ -284,7 +284,7 @@ function headline(g) {
 }
 
 /**
- * Mechanic 3 — what this week held in earlier years.
+ * Mechanic 3, what this week held in earlier years.
  * The archive is the one thing a local-first commons has that no cloud service
  * does, and it is the honest replacement for a streak: consistency shows up as
  * a record of the place, with nothing to break and no penalty for missing a week.
@@ -344,7 +344,7 @@ export function thisWeekInHistory(chapterId, { window_days = 3 } = {}) {
     note: items.length ? null
       : yearsHeld >= 1
         ? 'Nothing was recorded near this date in earlier years.'
-        : `This fills in from ${new Date(Date.now() + 365 * 86400000).getFullYear()} — it needs a year of your own records first.`,
+        : `This fills in from ${new Date(Date.now() + 365 * 86400000).getFullYear()}, it needs a year of your own records first.`,
   };
 }
 
